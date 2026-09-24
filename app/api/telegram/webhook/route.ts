@@ -7,6 +7,7 @@ async function send(token:string,chat:number,text:string,markup?:unknown){
 const inline=(rows:unknown[][])=>({inline_keyboard:rows});
 export async function POST(req:NextRequest){
  const token=process.env.TELEGRAM_BOT_TOKEN;
+ const adminChatId=process.env.ADMIN_CHAT_ID;
  if(!token)return NextResponse.json({ok:false});
  const u=await req.json();
  if(u.callback_query){
@@ -41,6 +42,10 @@ export async function POST(req:NextRequest){
   const uz=reply.includes("[PHONE_UZ|"),match=reply.match(/\[PHONE_(?:RU|UZ)\|([^|]+)\|(\d+)\]/),name=decodeURIComponent(match?.[1]||""),age=match?.[2]||"",phone=m.contact.phone_number;
   const summary=uz?"👤 "+name+", "+age+" yosh\n🏀 Basketbol\n📍 Shahriston, 117-maktab\n🗓 Sesh • Pay • Shan, 17:00\n💳 50 000 so‘m\n📱 "+phone:"👤 "+name+", "+age+" лет\n🏀 Баскетбол\n📍 Шахристан, школа №117\n🗓 Вт • Чт • Сб, 17:00\n💳 50 000 сум\n📱 "+phone;
   await send(token,chat,summary,inline([[{text:uz?"💳 To‘lash":"💳 Оплатить 50 000 сум",callback_data:uz?"pay_uz":"pay_ru"}],[{text:uz?"📍 Yo‘nalish":"📍 Построить маршрут",url:"https://yandex.uz/maps/-/CXEXq4iH"}]]));
+  if(adminChatId){
+   const adminText="🆕 НОВАЯ ЗАЯВКА SHARK TEAM\n\n👤 Ребёнок: "+name+", "+age+" лет\n🏀 Баскетбол\n📍 Шахристан — школа №117\n🗓 Вт • Чт • Сб, 17:00–18:00\n📱 Родитель: "+phone+"\n💳 Статус: ожидает оплату\n\nTelegram ID родителя: "+chat;
+   await send(token,Number(adminChatId),adminText);
+  }
  }else await send(token,chat,"Нажмите /start • /start ni bosing");
  return NextResponse.json({ok:true});
 }
