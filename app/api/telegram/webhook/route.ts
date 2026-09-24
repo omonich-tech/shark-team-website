@@ -23,6 +23,11 @@ export async function POST(req:NextRequest){
  const m=u.message;
  if(!m?.chat?.id)return NextResponse.json({ok:true});
  const chat=m.chat.id,text=String(m.text||"").trim(),reply=String(m.reply_to_message?.text||"");
+ if(text.startsWith("/admin") && (m.chat.type==="group" || m.chat.type==="supergroup")){
+  const title=String(m.chat.title||"SHARK TEAM Admin");
+  await send(token,chat,"✅ Группа администраторов подключена.\n\nНазвание: "+title+"\nChat ID: "+chat+"\n\nСкопируйте Chat ID и добавьте его в Vercel как переменную ADMIN_CHAT_ID. После этого сюда будут приходить заявки SHARK TEAM.");
+  return NextResponse.json({ok:true});
+ }
  if(text.startsWith("/start")){
   await send(token,chat,"SHARK TEAM 🦈\n\nВыберите язык / Tilni tanlang",inline([[{text:"Русский",callback_data:"lang_ru"},{text:"O‘zbekcha",callback_data:"lang_uz"}]]));
  }else if(reply.includes("[NAME_RU]")||reply.includes("[NAME_UZ]")){
