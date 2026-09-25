@@ -152,7 +152,7 @@ jobs:
           curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/children | grep -q "Payme Child"
           curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/payments | grep -q "REFUNDED"
 
-          curl -fsS -b /tmp/admin-cookies.txt             -X POST http://127.0.0.1:3000/api/admin/logout | grep -q '"ok":true'
+          curl -fsS -b /tmp/admin-cookies.txt -c /tmp/admin-cookies.txt -X POST http://127.0.0.1:3000/api/admin/logout | grep -q '"ok":true'
 
           POST_LOGOUT_STATUS=$(curl -s -o /dev/null -w "%{http_code}"             -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin)
           case "$POST_LOGOUT_STATUS" in
