@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LifecycleStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  INACTIVE
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  OPEN
+  PAUSED
+  CLOSED
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum PriceProductType {
+  TRIAL
+  SUBSCRIPTION
+}
+
+model Sport {
+  id                 String          @id
+  slug               String          @unique
+  status             LifecycleStatus @default(DRAFT)
+  nameRu             String
+  nameUz             String
+  shortDescriptionRu String?
+  shortDescriptionUz String?
+  ageMin             Int?
+  ageMax             Int?
+  sortOrder          Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  branchLinks BranchSport[]
+  coachLinks  CoachSport[]
+  groups      TrainingGroup[]
+  prices      Price[]
+
+  @@index([status, sortOrder])
+}
+
+model Branch {
+  id               String          @id
+  slug             String          @unique
+  status           LifecycleStatus @default(DRAFT)
+  internalName     String
+  publicNameRu     String
+  publicNameUz     String
+  districtRu       String?
+  districtUz       String?
+  addressRu        String
+  addressUz        String
+  postalCode       String?
+  landmarkRu       String?
+  landmarkUz       String?
+  entranceNoteRu   String?
+  entranceNoteUz   String?
+  latitude         Decimal?        @db.Decimal(9, 6)
+  longitude        Decimal?        @db.Decimal(9, 6)
+  publicPhone      String?
+  workingHoursRu   String?
+  workingHoursUz   String?
+  facilityNotesRu  String?
+  facilityNotesUz  String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  sportLinks BranchSport[]
+  coachLinks CoachBranch[]
+  groups     TrainingGroup[]
+  prices     Price[]
+
+  @@index([status])
+}
+
+model BranchSport {
+  branchId String
+  sportId  String
+  status   LifecycleStatus @default(ACTIVE)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  sport  Sport  @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@id([branchId, sportId])
+  @@index([sportId, status])
+}
+
+model Coach {
+  id                 String          @id
+  status             LifecycleStatus @default(ACTIVE)
+  firstName          String
+  lastName           String?
+  phonePrivate       String?
+  experienceYears    Int?
+  educationRu        String?
+  educationUz        String?
+  qualificationRu    String?
+  qualificationUz    String?
+  publicBioRu        String?
+  publicBioUz        String?
+  startedAt          DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  sportLinks   CoachSport[]
+  branchLinks  CoachBranch[]
+  primaryGroups TrainingGroup[] @relation("PrimaryCoach")
+  sessions      TrainingSession[]
+
+  @@index([status])
+}
+
+model CoachSport {
+  coachId String
+  sportId String
+  status  LifecycleStatus @default(ACTIVE)
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  sport Sport @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@id([coachId, sportId])
+}
+
+model CoachBranch {
+  coachId  String
+  branchId String
+  status   LifecycleStatus @default(ACTIVE)
+
+  coach  Coach  @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([coachId, branchId])
+}
+
+model TrainingGroup {
+  id                 String           @id
+  branchId           String
+  sportId            String
+  primaryCoachId     String
+  internalName       String
+  status             LifecycleStatus  @default(ACTIVE)
+  enrollmentStatus   EnrollmentStatus @default(OPEN)
+  ageMin             Int
+  ageMax             Int
+  capacityRegular    Int
+  capacityTrial      Int?
+  level              String?
+  startDate          DateTime?
+  endDate            DateTime?
+  notesInternal      String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  branch       Branch              @relation(fields: [branchId], references: [id])
+  sport        Sport               @relation(fields: [sportId], references: [id])
+  primaryCoach Coach               @relation("PrimaryCoach", fields: [primaryCoachId], references: [id])
+  scheduleRules GroupScheduleRule[]
+  sessions      TrainingSession[]
+  prices        Price[]
+
+  @@index([branchId, sportId, status])
+  @@index([primaryCoachId, status])
+  @@index([ageMin, ageMax])
+}
+
+model GroupScheduleRule {
+  id           String          @id
+  groupId      String
+  weekday      Weekday
+  startMinutes Int
+  endMinutes   Int
+  validFrom    DateTime?
+  validTo      DateTime?
+  status       LifecycleStatus @default(ACTIVE)
+
+  group TrainingGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, weekday, startMinutes, validFrom])
+  @@index([groupId, status])
+}
+
+model TrainingSession {
+  id                  String        @id @default(cuid())
+  groupId             String
+  coachId             String
+  startsAt            DateTime
+  endsAt              DateTime
+  status              SessionStatus @default(SCHEDULED)
+  regularCapacity     Int
+  trialCapacity       Int
+  trialBookingEnabled Boolean       @default(true)
+  cancellationReason  String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  group TrainingGroup @relation(fields: [groupId], references: [id])
+  coach Coach         @relation(fields: [coachId], references: [id])
+
+  @@unique([groupId, startsAt])
+  @@index([coachId, startsAt, status])
+  @@index([startsAt, status])
+}
+
+model Price {
+  id          String           @id
+  productType PriceProductType
+  amount      Int
+  currency    String           @default("UZS")
+  sportId     String?
+  branchId    String?
+  groupId     String?
+  validFrom   DateTime         @default(now())
+  validTo     DateTime?
+  status      LifecycleStatus  @default(ACTIVE)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  sport  Sport?         @relation(fields: [sportId], references: [id])
+  branch Branch?        @relation(fields: [branchId], references: [id])
+  group  TrainingGroup? @relation(fields: [groupId], references: [id])
+
+  @@index([productType, status, validFrom])
+  @@index([branchId, sportId, groupId])
+}
