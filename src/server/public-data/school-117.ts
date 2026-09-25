@@ -1,5 +1,7 @@
 import {
   LifecycleStatus,
+  MediaConsentStatus,
+  MediaTargetType,
   PriceProductType,
   Weekday
 } from "@/generated/prisma/client";
@@ -50,15 +52,53 @@ export async function getSchool117PublicData() {
     return null;
   }
 
-  const prices = await prisma.price.findMany({
-    where: {
-      branchId: branch.id,
-      status: LifecycleStatus.ACTIVE,
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gt: now } }]
-    },
-    orderBy: [{ productType: "asc" }, { validFrom: "desc" }]
-  });
+  const [prices, media] = await Promise.all([
+    prisma.price.findMany({
+      where: {
+        branchId: branch.id,
+        status: LifecycleStatus.ACTIVE,
+        validFrom: { lte: now },
+        OR: [{ validTo: null }, { validTo: { gt: now } }]
+      },
+      orderBy: [{ productType: "asc" }, { validFrom: "desc" }]
+    }),
+    prisma.mediaAsset.findMany({
+      where: {
+        AND: [
+          {
+            OR: [
+              { containsMinors: false },
+              {
+                containsMinors: true,
+                consentStatus: MediaConsentStatus.APPROVED
+              }
+            ]
+          },
+          {
+            OR: [
+              {
+                targetType: MediaTargetType.BRANCH,
+                targetId: branch.id
+              },
+              {
+                targetType: MediaTargetType.COACH,
+                targetId: "CO-0001"
+              },
+              {
+                targetType: MediaTargetType.SPORT,
+                targetId: "SP-BASKETBALL-01"
+              }
+            ]
+          }
+        ]
+      },
+      orderBy: [
+        { isPrimary: "desc" },
+        { sortOrder: "asc" },
+        { createdAt: "asc" }
+      ]
+    })
+  ]);
 
   return {
     id: branch.id,
@@ -115,6 +155,19 @@ export async function getSchool117PublicData() {
           end: formatMinutes(rule.endMinutes)
         }))
         .sort((a, b) => weekdayOrder[a.weekday] - weekdayOrder[b.weekday])
+    })),
+    media: media.map((item) => ({
+      id: item.id,
+      targetType: item.targetType,
+      targetId: item.targetId,
+      category: item.category,
+      url: item.url,
+      contentType: item.contentType,
+      isPrimary: item.isPrimary,
+      alt: {
+        ru: item.altRu,
+        uz: item.altUz
+      }
     })),
     prices: {
       trial:
