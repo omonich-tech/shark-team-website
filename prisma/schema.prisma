@@ -45,7 +45,17 @@ enum PriceProductType {
 enum LeadStatus {
   NEW
   TRIAL_SELECTED
+  TRIAL_HELD
   CLOSED
+}
+
+enum TrialBookingStatus {
+  HOLD
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
 }
 
 model Sport {
@@ -235,6 +245,7 @@ model TrainingSession {
   coach        Coach              @relation(fields: [coachId], references: [id])
   scheduleRule GroupScheduleRule? @relation(fields: [scheduleRuleId], references: [id])
   leads        Lead[]
+  trialBookings TrialBooking[]
 
   @@unique([groupId, startsAt])
   @@unique([scheduleRuleId, sourceDate])
@@ -290,8 +301,30 @@ model Lead {
   sport           Sport?           @relation(fields: [sportId], references: [id], onDelete: SetNull)
   group           TrainingGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
   selectedSession TrainingSession? @relation(fields: [selectedSessionId], references: [id], onDelete: SetNull)
+  trialBookings   TrialBooking[]
 
   @@index([phone, status])
   @@index([selectedSessionId])
   @@index([createdAt])
+}
+
+model TrialBooking {
+  id             String             @id @default(cuid())
+  leadId         String
+  sessionId      String
+  status         TrialBookingStatus @default(HOLD)
+  expiresAt      DateTime
+  reminderAt     DateTime?
+  reminderSentAt DateTime?
+  confirmedAt    DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  lead    Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, sessionId])
+  @@index([sessionId, status, expiresAt])
+  @@index([status, expiresAt])
 }

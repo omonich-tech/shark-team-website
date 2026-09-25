@@ -25,7 +25,11 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:bootstrap": "npm run db:migrate:deploy && npm run db:seed && npm run db:sessions",
     "db:prepare-booking-smoke": "tsx scripts/prepare-booking-smoke.ts",
-    "smoke:booking": "node scripts/smoke-booking-http.mjs"
+    "smoke:booking": "node scripts/smoke-booking-http.mjs",
+    "verify:hold-window": "tsx scripts/verify-hold-window.ts",
+    "smoke:reservation-race": "node scripts/smoke-reservation-race.mjs",
+    "verify:expired-hold": "tsx scripts/verify-expired-hold-reclaim.ts",
+    "db:expire-trial-holds": "tsx scripts/expire-trial-bookings.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

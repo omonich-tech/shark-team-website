@@ -76,6 +76,9 @@ jobs:
       - name: Prepare booking smoke data
         run: npm run db:prepare-booking-smoke
 
+      - name: Verify trial hold windows
+        run: npm run verify:hold-window
+
       - name: Lint
         run: npm run lint
 
@@ -107,6 +110,12 @@ jobs:
 
       - name: Smoke test trial lead flow
         run: npm run smoke:booking
+
+      - name: Smoke test atomic trial reservations
+        run: npm run smoke:reservation-race
+
+      - name: Verify expired hold frees capacity
+        run: npm run verify:expired-hold
 
       - name: Stop production server
         if: always()

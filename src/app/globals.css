@@ -723,3 +723,20 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+
+.session-option span {
+  display: block;
+}
+
+.session-option small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.session-option.selected small {
+  color: #0b67d8;
+}
