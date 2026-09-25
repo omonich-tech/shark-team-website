@@ -43,7 +43,8 @@ export default async function PublicHome({
           prices: "Стоимость",
           coach: "Тренер",
           details: "Подробнее о филиале",
-          schedule: "Открыть расписание"
+          schedule: "Открыть расписание",
+          trial: "Записаться на пробное"
         }
       : {
           eyebrow: "SHARK TEAM · TOSHKENT",
@@ -54,7 +55,8 @@ export default async function PublicHome({
           prices: "Narxlar",
           coach: "Murabbiy",
           details: "Filial haqida batafsil",
-          schedule: "Jadvalni ochish"
+          schedule: "Jadvalni ochish",
+          trial: "Sinovga yozilish"
         };
 
   return (
@@ -65,8 +67,8 @@ export default async function PublicHome({
           <h1>{copy.title}</h1>
           <p className="lead">{copy.lead}</p>
           <div className="hero-actions">
-            <Link className="button primary" href={`/${locale}/schedule`}>
-              {copy.schedule}
+            <Link className="button primary" href={`/${locale}/trial`}>
+              {copy.trial}
             </Link>
             <Link
               className="button secondary"
