@@ -26,8 +26,17 @@ type TrialOptions =
         id: string;
         startsAt: string;
         endsAt: string;
+        remainingTrialSpots: number;
       }>;
     };
+
+type Reservation = {
+  id: string;
+  status: string;
+  expiresAt: string;
+  reminderAt: string | null;
+  sessionId: string;
+};
 
 const copy = {
   ru: {
@@ -40,15 +49,19 @@ const copy = {
     noSessions: "Свободные даты пока не опубликованы.",
     groupTitle: "Подходящая группа",
     chooseDate: "Выберите дату пробного",
+    spots: "мест",
     childName: "Имя ребёнка",
     parentName: "Имя родителя",
     phone: "Телефон",
-    submit: "Сохранить заявку",
-    saving: "Сохраняем…",
-    successTitle: "Заявка получена",
-    successText:
-      "Мы сохранили выбранную тренировку и ваши контакты. Место будет подтверждено отдельно.",
-    error: "Не удалось сохранить заявку. Проверьте данные и попробуйте ещё раз."
+    submit: "Забронировать пробное",
+    saving: "Бронируем…",
+    successTitle: "Место временно забронировано",
+    successPrefix: "Место удерживается до",
+    successSuffix:
+      "После оплаты бронь будет подтверждена окончательно.",
+    full:
+      "Это место только что заняли. Мы обновили доступные даты — выберите другую тренировку.",
+    error: "Не удалось оформить бронь. Проверьте данные и попробуйте ещё раз."
   },
   uz: {
     ageLabel: "Bolaning yoshi",
@@ -60,15 +73,19 @@ const copy = {
     noSessions: "Bo‘sh sanalar hozircha e’lon qilinmagan.",
     groupTitle: "Mos guruh",
     chooseDate: "Sinov mashg‘uloti sanasini tanlang",
+    spots: "joy",
     childName: "Bolaning ismi",
     parentName: "Ota-ona ismi",
     phone: "Telefon",
-    submit: "Arizani saqlash",
-    saving: "Saqlanmoqda…",
-    successTitle: "Ariza qabul qilindi",
-    successText:
-      "Tanlangan mashg‘ulot va aloqa ma’lumotlaringiz saqlandi. Joy alohida tasdiqlanadi.",
-    error: "Arizani saqlab bo‘lmadi. Ma’lumotlarni tekshirib qayta urinib ko‘ring."
+    submit: "Sinov joyini band qilish",
+    saving: "Band qilinmoqda…",
+    successTitle: "Joy vaqtincha band qilindi",
+    successPrefix: "Joy quyidagi vaqtgacha saqlanadi:",
+    successSuffix:
+      "To‘lovdan keyin bron yakuniy tasdiqlanadi.",
+    full:
+      "Bu joy hozirgina band qilindi. Mavjud sanalarni yangiladik — boshqa mashg‘ulotni tanlang.",
+    error: "Bronni rasmiylashtirib bo‘lmadi. Ma’lumotlarni tekshirib qayta urinib ko‘ring."
   }
 } as const;
 
@@ -76,6 +93,16 @@ function sessionLabel(iso: string, locale: PublicLocale) {
   return new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "uz-UZ", {
     timeZone: "Asia/Tashkent",
     weekday: "short",
+    day: "2-digit",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(iso));
+}
+
+function holdLabel(iso: string, locale: PublicLocale) {
+  return new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "uz-UZ", {
+    timeZone: "Asia/Tashkent",
     day: "2-digit",
     month: "long",
     hour: "2-digit",
@@ -93,17 +120,33 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
   const [parentName, setParentName] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<"success" | "error" | null>(null);
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [result, setResult] = useState<
+    "success" | "error" | "full" | null
+  >(null);
 
   const selectedSession = useMemo(() => {
     if (!options?.ok) return null;
-    return options.sessions.find((session) => session.id === selectedSessionId) ?? null;
+    return (
+      options.sessions.find((session) => session.id === selectedSessionId) ??
+      null
+    );
   }, [options, selectedSessionId]);
+
+  async function fetchOptions(nextAge: string) {
+    const response = await fetch(
+      `/api/public/trial-options?age=${encodeURIComponent(nextAge)}`,
+      { cache: "no-store" }
+    );
+
+    return (await response.json()) as TrialOptions;
+  }
 
   async function loadOptions(nextAge: string) {
     setAge(nextAge);
     setOptions(null);
     setSelectedSessionId("");
+    setReservation(null);
     setResult(null);
 
     if (!nextAge) return;
@@ -111,12 +154,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `/api/public/trial-options?age=${encodeURIComponent(nextAge)}`,
-        { cache: "no-store" }
-      );
-      const payload = (await response.json()) as TrialOptions;
-      setOptions(payload);
+      setOptions(await fetchOptions(nextAge));
     } catch {
       setOptions({ ok: false, error: "NETWORK_ERROR" });
     } finally {
@@ -130,12 +168,13 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     if (!selectedSession || !age) return;
 
     setSubmitting(true);
+    setReservation(null);
     setResult(null);
 
     const query = new URLSearchParams(window.location.search);
 
     try {
-      const response = await fetch("/api/public/leads", {
+      const leadResponse = await fetch("/api/public/leads", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -155,13 +194,41 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
         })
       });
 
-      const payload = await response.json();
+      const leadPayload = await leadResponse.json();
 
-      if (!response.ok || !payload.ok) {
+      if (!leadResponse.ok || !leadPayload.ok) {
         setResult("error");
         return;
       }
 
+      const bookingResponse = await fetch("/api/public/trial-bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          leadId: leadPayload.lead.id
+        })
+      });
+
+      const bookingPayload = await bookingResponse.json();
+
+      if (
+        bookingResponse.status === 409 &&
+        bookingPayload.error === "SLOT_FULL"
+      ) {
+        setSelectedSessionId("");
+        setOptions(await fetchOptions(age));
+        setResult("full");
+        return;
+      }
+
+      if (!bookingResponse.ok || !bookingPayload.ok) {
+        setResult("error");
+        return;
+      }
+
+      setReservation(bookingPayload.booking as Reservation);
       setResult("success");
     } catch {
       setResult("error");
@@ -237,10 +304,14 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
                       key={session.id}
                       onClick={() => {
                         setSelectedSessionId(session.id);
+                        setReservation(null);
                         setResult(null);
                       }}
                     >
-                      {sessionLabel(session.startsAt, locale)}
+                      <span>{sessionLabel(session.startsAt, locale)}</span>
+                      <small>
+                        {session.remainingTrialSpots} {t.spots}
+                      </small>
                     </button>
                   ))}
                 </div>
@@ -294,11 +365,19 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
         </form>
       ) : null}
 
-      {result === "success" ? (
+      {result === "success" && reservation ? (
         <div className="booking-success">
           <strong>{t.successTitle}</strong>
-          <p>{t.successText}</p>
+          <p>
+            {t.successPrefix}{" "}
+            <b>{holdLabel(reservation.expiresAt, locale)}</b>.{" "}
+            {t.successSuffix}
+          </p>
         </div>
+      ) : null}
+
+      {result === "full" ? (
+        <div className="booking-error">{t.full}</div>
       ) : null}
 
       {result === "error" ? (
