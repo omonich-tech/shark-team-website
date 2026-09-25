@@ -72,6 +72,7 @@ const copy = {
     successTitle: "Место временно забронировано",
     successPrefix: "Место удерживается до",
     pay: "Оплатить через Payme",
+    telegram: "Получать уведомления в Telegram",
     paymentPending:
       "Оплата Payme для этого окружения пока не подключена.",
     full:
@@ -97,6 +98,7 @@ const copy = {
     successTitle: "Joy vaqtincha band qilindi",
     successPrefix: "Joy quyidagi vaqtgacha saqlanadi:",
     pay: "Payme orqali to‘lash",
+    telegram: "Telegram orqali xabarnomalar olish",
     paymentPending:
       "Bu muhitda Payme to‘lovi hali ulanmagan.",
     full:
@@ -144,6 +146,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
   const [submitting, setSubmitting] = useState(false);
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [payme, setPayme] = useState<PaymeCheckout | null>(null);
+  const [telegramLink, setTelegramLink] = useState<string | null>(null);
   const [paymentUnavailable, setPaymentUnavailable] = useState(false);
   const [result, setResult] = useState<
     "success" | "error" | "full" | null
@@ -172,6 +175,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     setSelectedSessionId("");
     setReservation(null);
     setPayme(null);
+    setTelegramLink(null);
     setPaymentUnavailable(false);
     setResult(null);
 
@@ -185,6 +189,26 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
       setOptions({ ok: false, error: "NETWORK_ERROR" });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function initTelegram(bookingId: string) {
+    try {
+      const response = await fetch("/api/public/telegram/link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ bookingId })
+      });
+
+      const payload = await response.json();
+
+      if (response.ok && payload.ok && typeof payload.deepLink === "string") {
+        setTelegramLink(payload.deepLink);
+      }
+    } catch {
+      setTelegramLink(null);
     }
   }
 
@@ -286,7 +310,10 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
       const nextReservation = bookingPayload.booking as Reservation;
       setReservation(nextReservation);
       setResult("success");
-      await initPayme(nextReservation.id);
+      await Promise.all([
+        initPayme(nextReservation.id),
+        initTelegram(nextReservation.id)
+      ]);
     } catch {
       setResult("error");
     } finally {
@@ -363,6 +390,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
                         setSelectedSessionId(session.id);
                         setReservation(null);
                         setPayme(null);
+                        setTelegramLink(null);
                         setPaymentUnavailable(false);
                         setResult(null);
                       }}
@@ -445,6 +473,17 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
                 {t.pay} · {moneyLabel(payme.payment.amountUzs, locale)} UZS
               </button>
             </form>
+          ) : null}
+
+          {telegramLink ? (
+            <a
+              className="button telegram-button"
+              href={telegramLink}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t.telegram}
+            </a>
           ) : null}
 
           {paymentUnavailable ? (
