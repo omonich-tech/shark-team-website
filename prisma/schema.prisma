@@ -42,6 +42,12 @@ enum PriceProductType {
   SUBSCRIPTION
 }
 
+enum LeadStatus {
+  NEW
+  TRIAL_SELECTED
+  CLOSED
+}
+
 model Sport {
   id                 String          @id
   slug               String          @unique
@@ -60,6 +66,7 @@ model Sport {
   coachLinks  CoachSport[]
   groups      TrainingGroup[]
   prices      Price[]
+  leads       Lead[]
 
   @@index([status, sortOrder])
 }
@@ -95,6 +102,7 @@ model Branch {
   coachLinks CoachBranch[]
   groups     TrainingGroup[]
   prices     Price[]
+  leads      Lead[]
 
   @@index([status])
 }
@@ -183,6 +191,7 @@ model TrainingGroup {
   scheduleRules GroupScheduleRule[]
   sessions      TrainingSession[]
   prices        Price[]
+  leads         Lead[]
 
   @@index([branchId, sportId, status])
   @@index([primaryCoachId, status])
@@ -225,6 +234,7 @@ model TrainingSession {
   group        TrainingGroup      @relation(fields: [groupId], references: [id])
   coach        Coach              @relation(fields: [coachId], references: [id])
   scheduleRule GroupScheduleRule? @relation(fields: [scheduleRuleId], references: [id])
+  leads        Lead[]
 
   @@unique([groupId, startsAt])
   @@unique([scheduleRuleId, sourceDate])
@@ -253,4 +263,35 @@ model Price {
 
   @@index([productType, status, validFrom])
   @@index([branchId, sportId, groupId])
+}
+
+model Lead {
+  id                String     @id @default(cuid())
+  status            LeadStatus @default(NEW)
+  parentName        String
+  childName         String
+  phone             String
+  childAge          Int
+  locale            String     @default("ru")
+  source            String     @default("website")
+  branchId          String?
+  sportId           String?
+  groupId           String?
+  selectedSessionId String?
+  landingPage       String?
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  utmContent        String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  sport           Sport?           @relation(fields: [sportId], references: [id], onDelete: SetNull)
+  group           TrainingGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  selectedSession TrainingSession? @relation(fields: [selectedSessionId], references: [id], onDelete: SetNull)
+
+  @@index([phone, status])
+  @@index([selectedSessionId])
+  @@index([createdAt])
 }

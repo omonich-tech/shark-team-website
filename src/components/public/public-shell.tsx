@@ -9,6 +9,7 @@ const labels = {
     schedule: "Расписание",
     prices: "Цены",
     coaches: "Тренер",
+    trial: "Пробное",
     language: "UZ"
   },
   uz: {
@@ -17,6 +18,7 @@ const labels = {
     schedule: "Jadval",
     prices: "Narxlar",
     coaches: "Murabbiy",
+    trial: "Sinov",
     language: "RU"
   }
 } as const;
@@ -46,6 +48,7 @@ export function PublicShell({
             <Link href={`/${locale}/schedule`}>{copy.schedule}</Link>
             <Link href={`/${locale}/prices`}>{copy.prices}</Link>
             <Link href={`/${locale}/coaches`}>{copy.coaches}</Link>
+            <Link href={`/${locale}/trial`}>{copy.trial}</Link>
           </nav>
 
           <Link className="language-switch" href={`/${otherLocale}`}>
