@@ -302,6 +302,8 @@ model Lead {
   sportId           String?
   groupId           String?
   selectedSessionId String?
+  parentId          String?
+  childId           String?
   landingPage       String?
   utmSource         String?
   utmMedium         String?
@@ -314,10 +316,14 @@ model Lead {
   sport           Sport?           @relation(fields: [sportId], references: [id], onDelete: SetNull)
   group           TrainingGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
   selectedSession TrainingSession? @relation(fields: [selectedSessionId], references: [id], onDelete: SetNull)
+  parent          Parent?          @relation(fields: [parentId], references: [id], onDelete: SetNull)
+  child           Child?           @relation(fields: [childId], references: [id], onDelete: SetNull)
   trialBookings   TrialBooking[]
 
   @@index([phone, status])
   @@index([selectedSessionId])
+  @@index([parentId])
+  @@index([childId])
   @@index([createdAt])
 }
 
@@ -381,4 +387,34 @@ model PaymeTransaction {
 
   @@index([paymentId, state])
   @@index([requestTime])
+}
+
+model Parent {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  locale    String   @default("ru")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  children Child[]
+  leads    Lead[]
+
+  @@index([createdAt])
+}
+
+model Child {
+  id                String   @id @default(cuid())
+  parentId          String
+  name              String
+  ageAtRegistration Int
+  dateOfBirth       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  leads  Lead[]
+
+  @@index([parentId])
+  @@index([createdAt])
 }
