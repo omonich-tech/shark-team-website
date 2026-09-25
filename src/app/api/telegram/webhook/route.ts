@@ -53,9 +53,14 @@ export async function POST(request: NextRequest) {
   }
 
   const message = update.message;
-  const text = message?.text?.trim();
-  const chatId = message?.chat?.id;
-  const telegramUserId = message?.from?.id;
+
+  if (!message) {
+    return NextResponse.json({ ok: true });
+  }
+
+  const text = message.text?.trim();
+  const chatId = message.chat?.id;
+  const telegramUserId = message.from?.id;
 
   if (!text || chatId === undefined || telegramUserId === undefined) {
     return NextResponse.json({ ok: true });
