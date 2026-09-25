@@ -94,6 +94,9 @@ export async function getTrialOptions(age: number) {
               status: TrialBookingStatus.CONFIRMED
             },
             {
+              status: TrialBookingStatus.PAYMENT_PENDING
+            },
+            {
               status: TrialBookingStatus.HOLD,
               expiresAt: { gt: now }
             }
