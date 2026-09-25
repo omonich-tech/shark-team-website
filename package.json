@@ -20,7 +20,9 @@
     "db:verify": "tsx scripts/verify-core-data.ts",
     "db:studio": "prisma studio",
     "db:sessions": "tsx scripts/generate-sessions.ts",
-    "db:verify-sessions": "tsx scripts/verify-sessions.ts"
+    "db:verify-sessions": "tsx scripts/verify-sessions.ts",
+    "db:migration:print": "prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script",
+    "db:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
