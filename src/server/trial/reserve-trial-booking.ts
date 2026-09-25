@@ -1,5 +1,7 @@
 import {
   LeadStatus,
+  NotificationStatus,
+  NotificationType,
   SessionStatus,
   TrialBookingStatus
 } from "@/generated/prisma/client";
@@ -67,6 +69,26 @@ export async function reserveTrialBooking(leadId: string) {
       existing?.status === TrialBookingStatus.HOLD &&
       existing.expiresAt > now
     ) {
+      if (existing.reminderAt) {
+        await tx.notification.upsert({
+          where: {
+            dedupeKey: `trial:${existing.id}:payment-hold-reminder`
+          },
+          update: {
+            scheduledAt: existing.reminderAt,
+            status: NotificationStatus.PENDING,
+            lastError: null
+          },
+          create: {
+            type: NotificationType.PAYMENT_HOLD_REMINDER,
+            leadId,
+            trialBookingId: existing.id,
+            scheduledAt: existing.reminderAt,
+            dedupeKey: `trial:${existing.id}:payment-hold-reminder`
+          }
+        });
+      }
+
       return {
         ok: true as const,
         booking: {
@@ -152,6 +174,26 @@ export async function reserveTrialBooking(leadId: string) {
       where: { id: leadId },
       data: { status: LeadStatus.TRIAL_HELD }
     });
+
+    if (booking.reminderAt) {
+      await tx.notification.upsert({
+        where: {
+          dedupeKey: `trial:${booking.id}:payment-hold-reminder`
+        },
+        update: {
+          scheduledAt: booking.reminderAt,
+          status: NotificationStatus.PENDING,
+          lastError: null
+        },
+        create: {
+          type: NotificationType.PAYMENT_HOLD_REMINDER,
+          leadId,
+          trialBookingId: booking.id,
+          scheduledAt: booking.reminderAt,
+          dedupeKey: `trial:${booking.id}:payment-hold-reminder`
+        }
+      });
+    }
 
     return {
       ok: true as const,
