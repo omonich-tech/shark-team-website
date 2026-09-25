@@ -46,16 +46,29 @@ enum LeadStatus {
   NEW
   TRIAL_SELECTED
   TRIAL_HELD
+  TRIAL_CONFIRMED
   CLOSED
 }
 
 enum TrialBookingStatus {
   HOLD
+  PAYMENT_PENDING
   CONFIRMED
   EXPIRED
   CANCELLED
   ATTENDED
   NO_SHOW
+}
+
+enum PaymentProvider {
+  PAYME
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
 }
 
 model Sport {
@@ -323,8 +336,49 @@ model TrialBooking {
 
   lead    Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
   session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  payment Payment?
 
   @@unique([leadId, sessionId])
   @@index([sessionId, status, expiresAt])
   @@index([status, expiresAt])
+}
+
+model Payment {
+  id             String          @id @default(cuid())
+  trialBookingId String          @unique
+  provider       PaymentProvider @default(PAYME)
+  status         PaymentStatus   @default(PENDING)
+  amountUzs      Int
+  amountTiyin    Int
+  currency       String          @default("UZS")
+  paidAt         DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  trialBooking     TrialBooking       @relation(fields: [trialBookingId], references: [id], onDelete: Cascade)
+  paymeTransactions PaymeTransaction[]
+
+  @@index([provider, status])
+  @@index([createdAt])
+}
+
+model PaymeTransaction {
+  id                    String   @id @default(cuid())
+  paymentId             String
+  providerTransactionId String   @unique
+  requestTime           BigInt
+  amountTiyin           Int
+  state                 Int
+  reason                Int?
+  merchantCreateTime    DateTime
+  merchantPerformTime   DateTime?
+  merchantCancelTime    DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId, state])
+  @@index([requestTime])
 }
