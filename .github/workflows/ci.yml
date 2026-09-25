@@ -54,6 +54,25 @@ jobs:
       - name: Verify core data
         run: npm run db:verify
 
+      - name: Generate deterministic test sessions
+        run: npm run db:sessions
+        env:
+          SESSION_FROM: "2026-09-29"
+          SESSION_TO: "2026-10-12"
+          SESSION_BRANCH_ID: "BR-SCHOOL-117-01"
+
+      - name: Verify generated sessions
+        run: npm run db:verify-sessions
+
+      - name: Verify session generation is idempotent
+        run: |
+          npm run db:sessions
+          npm run db:verify-sessions
+        env:
+          SESSION_FROM: "2026-09-29"
+          SESSION_TO: "2026-10-12"
+          SESSION_BRANCH_ID: "BR-SCHOOL-117-01"
+
       - name: Lint
         run: npm run lint
 
