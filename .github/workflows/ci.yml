@@ -81,3 +81,30 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Start production server
+        run: |
+          npm start > /tmp/shark-next.log 2>&1 &
+          echo $! > /tmp/shark-next.pid
+
+      - name: Smoke test public RU/UZ pages
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:3000/api/health > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:3000/ru | grep -q "Баскетбол"
+          curl -fsS http://127.0.0.1:3000/uz | grep -q "Basketbol"
+          curl -fsS http://127.0.0.1:3000/ru/branches/school-117 | grep -q "Школа"
+          curl -fsS http://127.0.0.1:3000/api/public/branches/school-117 | grep -q "BR-SCHOOL-117-01"
+
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f /tmp/shark-next.pid ]; then
+            kill $(cat /tmp/shark-next.pid) || true
+          fi
+          cat /tmp/shark-next.log || true
