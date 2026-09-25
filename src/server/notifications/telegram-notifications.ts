@@ -1,6 +1,7 @@
 import {
   NotificationStatus,
-  NotificationType
+  NotificationType,
+  Prisma
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
@@ -130,10 +131,28 @@ export async function queueConfirmedTrialNotifications(input: {
   ]);
 }
 
+type NotificationWithContext = Prisma.NotificationGetPayload<{
+  include: {
+    lead: true;
+    parent: true;
+    trialBooking: {
+      include: {
+        session: {
+          include: {
+            group: {
+              include: {
+                branch: true;
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+}>;
+
 async function renderNotification(
-  notification: Awaited<
-    ReturnType<typeof getPrisma>
-  > extends never ? never : any
+  notification: NotificationWithContext
 ) {
   const locale: "ru" | "uz" =
     notification.parent?.locale === "uz" ||
