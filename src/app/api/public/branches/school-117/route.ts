@@ -3,7 +3,7 @@ import {
   LifecycleStatus,
   PriceProductType
 } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,7 @@ function formatMinutes(totalMinutes: number) {
 }
 
 export async function GET() {
+  const prisma = getPrisma();
   const now = new Date();
 
   const branch = await prisma.branch.findUnique({
