@@ -87,6 +87,7 @@ model Branch {
   workingHoursUz   String?
   facilityNotesRu  String?
   facilityNotesUz  String?
+  timezone         String          @default("Asia/Tashkent")
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -198,7 +199,8 @@ model GroupScheduleRule {
   validTo      DateTime?
   status       LifecycleStatus @default(ACTIVE)
 
-  group TrainingGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group    TrainingGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sessions TrainingSession[]
 
   @@unique([groupId, weekday, startMinutes, validFrom])
   @@index([groupId, status])
@@ -208,22 +210,27 @@ model TrainingSession {
   id                  String        @id @default(cuid())
   groupId             String
   coachId             String
+  scheduleRuleId      String?
+  sourceDate          DateTime?     @db.Date
   startsAt            DateTime
   endsAt              DateTime
   status              SessionStatus @default(SCHEDULED)
   regularCapacity     Int
-  trialCapacity       Int
-  trialBookingEnabled Boolean       @default(true)
+  trialCapacity       Int?
+  trialBookingEnabled Boolean       @default(false)
   cancellationReason  String?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  group TrainingGroup @relation(fields: [groupId], references: [id])
-  coach Coach         @relation(fields: [coachId], references: [id])
+  group        TrainingGroup      @relation(fields: [groupId], references: [id])
+  coach        Coach              @relation(fields: [coachId], references: [id])
+  scheduleRule GroupScheduleRule? @relation(fields: [scheduleRuleId], references: [id])
 
   @@unique([groupId, startsAt])
+  @@unique([scheduleRuleId, sourceDate])
   @@index([coachId, startsAt, status])
   @@index([startsAt, status])
+  @@index([groupId, sourceDate])
 }
 
 model Price {
