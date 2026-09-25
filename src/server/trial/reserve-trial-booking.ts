@@ -93,11 +93,8 @@ export async function reserveTrialBooking(leadId: string) {
     }
 
     if (
-      existing &&
-      [
-        TrialBookingStatus.ATTENDED,
-        TrialBookingStatus.NO_SHOW
-      ].includes(existing.status)
+      existing?.status === TrialBookingStatus.ATTENDED ||
+      existing?.status === TrialBookingStatus.NO_SHOW
     ) {
       return { ok: false as const, error: "BOOKING_FINALIZED" as const };
     }
