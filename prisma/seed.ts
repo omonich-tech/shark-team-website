@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
+  ContentStatus,
   EnrollmentStatus,
   LifecycleStatus,
   PriceProductType,
@@ -260,6 +261,30 @@ async function main() {
       sportId: SPORT_ID,
       branchId: BRANCH_ID,
       status: LifecycleStatus.ACTIVE
+    }
+  });
+
+  await prisma.contentPage.upsert({
+    where: { slug: "home" },
+    update: {},
+    create: {
+      slug: "home",
+      status: ContentStatus.PUBLISHED,
+      heroEyebrowRu: "SHARK TEAM · ТАШКЕНТ",
+      heroEyebrowUz: "SHARK TEAM · TOSHKENT",
+      heroTitleRu: "Баскетбол для детей в Ташкенте",
+      heroTitleUz: "Toshkentda bolalar uchun basketbol",
+      heroLeadRu:
+        "Три возрастные группы, понятное расписание и платное пробное занятие в действующей группе.",
+      heroLeadUz:
+        "Uchta yosh guruhi, aniq jadval va amaldagi guruhda pullik sinov mashg‘uloti.",
+      seoTitleRu: "SHARK TEAM — детский баскетбол в Ташкенте",
+      seoTitleUz: "SHARK TEAM — Toshkentda bolalar basketboli",
+      seoDescriptionRu:
+        "Детская баскетбольная секция SHARK TEAM в Ташкенте.",
+      seoDescriptionUz:
+        "Toshkentdagi SHARK TEAM bolalar basketbol seksiyasi.",
+      publishedAt: new Date()
     }
   });
 
