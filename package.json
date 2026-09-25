@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma@7 generate",
     "db:migrate": "prisma@7 migrate dev",
+    "db:push": "prisma@7 db push",
     "db:seed": "prisma@7 db seed",
+    "db:verify": "tsx scripts/verify-core-data.ts",
     "db:studio": "prisma@7 studio"
   },
   "dependencies": {
