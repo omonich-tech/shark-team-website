@@ -14,22 +14,27 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma@7 generate",
     "db:migrate": "prisma@7 migrate dev",
+    "db:seed": "prisma@7 db seed",
     "db:studio": "prisma@7 studio"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "next": "16.3.6",
+    "pg": "^8.16.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "dotenv": "^17.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.6",
     "prisma": "7.10.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.0"
   }
 }
