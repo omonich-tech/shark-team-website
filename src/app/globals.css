@@ -740,3 +740,31 @@ h3 {
 .session-option.selected small {
   color: #0b67d8;
 }
+
+
+.payme-form {
+  margin-top: 18px;
+}
+
+.payme-button {
+  border: 0;
+  background: #00b0f0;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.payme-button:hover {
+  background: #009cd6;
+}
+
+.payment-unavailable {
+  margin-top: 14px !important;
+  color: var(--muted) !important;
+  font-size: 13px;
+}
+
+.button.secondary.dark {
+  border-color: var(--border);
+  background: var(--white);
+  color: var(--navy);
+}
