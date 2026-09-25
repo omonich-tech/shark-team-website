@@ -18,7 +18,9 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:verify": "tsx scripts/verify-core-data.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:sessions": "tsx scripts/generate-sessions.ts",
+    "db:verify-sessions": "tsx scripts/verify-sessions.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
