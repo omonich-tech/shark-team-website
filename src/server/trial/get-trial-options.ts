@@ -1,7 +1,8 @@
 import {
   EnrollmentStatus,
   LifecycleStatus,
-  SessionStatus
+  SessionStatus,
+  TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 
@@ -14,6 +15,7 @@ export async function getTrialOptions(age: number) {
   }
 
   const prisma = getPrisma();
+  const now = new Date();
 
   const group = await prisma.trainingGroup.findFirst({
     where: {
@@ -66,23 +68,59 @@ export async function getTrialOptions(age: number) {
     };
   }
 
+  await prisma.trialBooking.updateMany({
+    where: {
+      status: TrialBookingStatus.HOLD,
+      expiresAt: { lte: now }
+    },
+    data: {
+      status: TrialBookingStatus.EXPIRED
+    }
+  });
+
   const sessions = await prisma.trainingSession.findMany({
     where: {
       groupId: group.id,
       status: SessionStatus.SCHEDULED,
-      startsAt: { gt: new Date() },
+      startsAt: { gt: now },
       trialBookingEnabled: true,
       trialCapacity: { gt: 0 }
     },
+    include: {
+      trialBookings: {
+        where: {
+          OR: [
+            {
+              status: TrialBookingStatus.CONFIRMED
+            },
+            {
+              status: TrialBookingStatus.HOLD,
+              expiresAt: { gt: now }
+            }
+          ]
+        },
+        select: {
+          id: true
+        }
+      }
+    },
     orderBy: { startsAt: "asc" },
-    take: 12
+    take: 24
   });
+
+  const availableSessions = sessions
+    .filter(
+      (session) =>
+        session.trialCapacity !== null &&
+        session.trialBookings.length < session.trialCapacity
+    )
+    .slice(0, 12);
 
   return {
     ok: true as const,
-    bookingAvailable: sessions.length > 0,
+    bookingAvailable: availableSessions.length > 0,
     reason:
-      sessions.length > 0
+      availableSessions.length > 0
         ? null
         : ("NO_AVAILABLE_SESSIONS" as const),
     group: {
@@ -97,10 +135,12 @@ export async function getTrialOptions(age: number) {
         .filter(Boolean)
         .join(" ")
     },
-    sessions: sessions.map((session) => ({
+    sessions: availableSessions.map((session) => ({
       id: session.id,
       startsAt: session.startsAt.toISOString(),
-      endsAt: session.endsAt.toISOString()
+      endsAt: session.endsAt.toISOString(),
+      remainingTrialSpots:
+        (session.trialCapacity ?? 0) - session.trialBookings.length
     }))
   };
 }
