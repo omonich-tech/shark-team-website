@@ -29,7 +29,8 @@
     "verify:hold-window": "tsx scripts/verify-hold-window.ts",
     "smoke:reservation-race": "node scripts/smoke-reservation-race.mjs",
     "verify:expired-hold": "tsx scripts/verify-expired-hold-reclaim.ts",
-    "db:expire-trial-holds": "tsx scripts/expire-trial-bookings.ts"
+    "db:expire-trial-holds": "tsx scripts/expire-trial-bookings.ts",
+    "smoke:payme": "node scripts/smoke-payme-http.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
