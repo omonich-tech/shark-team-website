@@ -428,7 +428,11 @@ async function performTransaction(id: RpcId, params: RpcParams) {
       include: {
         payment: {
           include: {
-            trialBooking: true
+            trialBooking: {
+              include: {
+                lead: true
+              }
+            }
           }
         }
       }
@@ -477,10 +481,53 @@ async function performTransaction(id: RpcId, params: RpcParams) {
       }
     });
 
+    const lead = booking.lead;
+
+    const parent = await tx.parent.upsert({
+      where: { phone: lead.phone },
+      update: {
+        name: lead.parentName,
+        locale: lead.locale
+      },
+      create: {
+        name: lead.parentName,
+        phone: lead.phone,
+        locale: lead.locale
+      }
+    });
+
+    let childId = lead.childId;
+
+    if (!childId) {
+      const existingChild = await tx.child.findFirst({
+        where: {
+          parentId: parent.id,
+          name: lead.childName
+        },
+        orderBy: {
+          createdAt: "asc"
+        }
+      });
+
+      childId = existingChild
+        ? existingChild.id
+        : (
+            await tx.child.create({
+              data: {
+                parentId: parent.id,
+                name: lead.childName,
+                ageAtRegistration: lead.childAge
+              }
+            })
+          ).id;
+    }
+
     await tx.lead.update({
       where: { id: booking.leadId },
       data: {
-        status: LeadStatus.TRIAL_CONFIRMED
+        status: LeadStatus.TRIAL_CONFIRMED,
+        parentId: parent.id,
+        childId
       }
     });
 
