@@ -45,6 +45,9 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
+      - name: Print baseline migration SQL
+        run: npm run db:migration:print
+
       - name: Apply schema to CI database
         run: npm run db:push
 
