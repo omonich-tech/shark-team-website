@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     name: ADMIN_SESSION_COOKIE,
     value: createAdminSessionToken(),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure:\n      process.env.NODE_ENV === "production" &&\n      process.env.ADMIN_COOKIE_SECURE !== "false",
     sameSite: "lax",
     path: "/",
     maxAge: ADMIN_SESSION_MAX_AGE
