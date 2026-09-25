@@ -28,6 +28,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shark_team
+      DATABASE_POOL_MAX: "1"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       PAYME_MERCHANT_ID: ci-merchant
       PAYME_LOGIN: ci-login
@@ -37,6 +38,10 @@ jobs:
       ADMIN_PASSWORD: ci-password
       ADMIN_SESSION_SECRET: ci-session-secret-0123456789-abcdefghijklmnopqrstuvwxyz
       ADMIN_COOKIE_SECURE: "false"
+      COACH_SESSION_SECRET: ci-coach-session-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+      COACH_COOKIE_SECURE: "false"
+      COACH_SMOKE_USERNAME: ci-coach
+      COACH_SMOKE_PASSWORD: ci-coach-password-123
 
     steps:
       - name: Checkout
@@ -87,6 +92,9 @@ jobs:
       - name: Verify trial hold windows
         run: npm run verify:hold-window
 
+      - name: Prepare coach smoke data
+        run: npm run db:prepare-coach-smoke
+
       - name: Lint
         run: npm run lint
 
@@ -127,6 +135,9 @@ jobs:
 
       - name: Smoke test Payme Merchant API
         run: npm run smoke:payme
+
+      - name: Smoke test coach dashboard
+        run: npm run smoke:coach
 
       - name: Smoke test protected CRM
         run: |

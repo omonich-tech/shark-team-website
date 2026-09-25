@@ -5,24 +5,32 @@ const globalForPrisma = globalThis as unknown as {
   sharkPrisma?: PrismaClient;
 };
 
-export function getPrisma() {
-  if (globalForPrisma.sharkPrisma) {
-    return globalForPrisma.sharkPrisma;
-  }
-
+function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {
     throw new Error("DATABASE_URL is not configured");
   }
 
-  const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString })
+  const configuredMax = Number(process.env.DATABASE_POOL_MAX ?? "3");
+  const max =
+    Number.isInteger(configuredMax) && configuredMax > 0
+      ? configuredMax
+      : 3;
+
+  const adapter = new PrismaPg({
+    connectionString,
+    max,
+    idleTimeoutMillis: 10_000
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.sharkPrisma = prisma;
+  return new PrismaClient({ adapter });
+}
+
+export function getPrisma() {
+  if (!globalForPrisma.sharkPrisma) {
+    globalForPrisma.sharkPrisma = createPrismaClient();
   }
 
-  return prisma;
+  return globalForPrisma.sharkPrisma;
 }

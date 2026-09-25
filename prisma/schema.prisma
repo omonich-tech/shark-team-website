@@ -71,6 +71,18 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum StudentEnrollmentStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
 model Sport {
   id                 String          @id
   slug               String          @unique
@@ -163,6 +175,9 @@ model Coach {
   branchLinks  CoachBranch[]
   primaryGroups TrainingGroup[] @relation("PrimaryCoach")
   sessions      TrainingSession[]
+  account       CoachAccount?
+  attendances   Attendance[]
+  assessments   TrialAssessment[]
 
   @@index([status])
 }
@@ -215,6 +230,7 @@ model TrainingGroup {
   sessions      TrainingSession[]
   prices        Price[]
   leads         Lead[]
+  enrollments   StudentEnrollment[]
 
   @@index([branchId, sportId, status])
   @@index([primaryCoachId, status])
@@ -259,6 +275,7 @@ model TrainingSession {
   scheduleRule GroupScheduleRule? @relation(fields: [scheduleRuleId], references: [id])
   leads        Lead[]
   trialBookings TrialBooking[]
+  attendances   Attendance[]
 
   @@unique([groupId, startsAt])
   @@unique([scheduleRuleId, sourceDate])
@@ -342,7 +359,9 @@ model TrialBooking {
 
   lead    Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
   session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  payment Payment?
+  payment    Payment?
+  attendance Attendance?
+  assessment TrialAssessment?
 
   @@unique([leadId, sessionId])
   @@index([sessionId, status, expiresAt])
@@ -412,9 +431,85 @@ model Child {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  leads  Lead[]
+  parent      Parent              @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  leads       Lead[]
+  enrollments StudentEnrollment[]
+  attendances Attendance[]
 
   @@index([parentId])
   @@index([createdAt])
+}
+
+model CoachAccount {
+  id           String   @id @default(cuid())
+  coachId      String   @unique
+  username     String   @unique
+  passwordHash String
+  passwordSalt String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+}
+
+model StudentEnrollment {
+  id        String                  @id @default(cuid())
+  childId   String
+  groupId   String
+  status    StudentEnrollmentStatus @default(ACTIVE)
+  startDate DateTime                @default(now())
+  endDate   DateTime?
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  child Child         @relation(fields: [childId], references: [id], onDelete: Cascade)
+  group TrainingGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([childId, status])
+  @@index([groupId, status])
+}
+
+model Attendance {
+  id             String           @id @default(cuid())
+  sessionId      String
+  childId        String
+  coachId        String
+  trialBookingId String?          @unique
+  status         AttendanceStatus
+  markedAt       DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  session      TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  child        Child           @relation(fields: [childId], references: [id], onDelete: Cascade)
+  coach        Coach           @relation(fields: [coachId], references: [id], onDelete: Restrict)
+  trialBooking TrialBooking?   @relation(fields: [trialBookingId], references: [id], onDelete: SetNull)
+
+  @@unique([sessionId, childId])
+  @@index([coachId, markedAt])
+  @@index([childId, markedAt])
+}
+
+model TrialAssessment {
+  id                     String   @id @default(cuid())
+  trialBookingId         String   @unique
+  coachId                String
+  ability                Int
+  discipline             Int
+  motivation             Int
+  coordination           Int
+  physicalPreparation    Int
+  psychologicalReadiness Int
+  coachComment           String?
+  recommendation         String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  trialBooking TrialBooking @relation(fields: [trialBookingId], references: [id], onDelete: Cascade)
+  coach        Coach        @relation(fields: [coachId], references: [id], onDelete: Restrict)
+
+  @@index([coachId, createdAt])
 }
