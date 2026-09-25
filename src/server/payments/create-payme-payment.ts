@@ -50,11 +50,9 @@ export async function createPaymePayment(
   }
 
   if (
-    ![
-      TrialBookingStatus.HOLD,
-      TrialBookingStatus.PAYMENT_PENDING,
-      TrialBookingStatus.CONFIRMED
-    ].includes(booking.status)
+    booking.status !== TrialBookingStatus.HOLD &&
+    booking.status !== TrialBookingStatus.PAYMENT_PENDING &&
+    booking.status !== TrialBookingStatus.CONFIRMED
   ) {
     return { ok: false as const, error: "BOOKING_NOT_PAYABLE" as const };
   }
