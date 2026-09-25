@@ -28,6 +28,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shark_team
+      DATABASE_POOL_MAX: "1"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       PAYME_MERCHANT_ID: ci-merchant
       PAYME_LOGIN: ci-login
