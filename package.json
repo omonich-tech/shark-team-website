@@ -22,7 +22,8 @@
     "db:sessions": "tsx scripts/generate-sessions.ts",
     "db:verify-sessions": "tsx scripts/verify-sessions.ts",
     "db:migration:print": "prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:bootstrap": "npm run db:migrate:deploy && npm run db:seed && npm run db:sessions"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
