@@ -1,5 +1,4 @@
 import {
-  LeadStatus,
   PaymentStatus,
   TrialBookingStatus
 } from "@/generated/prisma/client";
