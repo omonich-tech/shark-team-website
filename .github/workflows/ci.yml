@@ -33,6 +33,10 @@ jobs:
       PAYME_LOGIN: ci-login
       PAYME_KEY: ci-key
       PAYME_CHECKOUT_URL: https://test.paycom.uz
+      ADMIN_USERNAME: ci-admin
+      ADMIN_PASSWORD: ci-password
+      ADMIN_SESSION_SECRET: ci-session-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+      ADMIN_COOKIE_SECURE: "false"
 
     steps:
       - name: Checkout
@@ -123,6 +127,41 @@ jobs:
 
       - name: Smoke test Payme Merchant API
         run: npm run smoke:payme
+
+      - name: Smoke test protected CRM
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/admin)
+          case "$STATUS" in
+            303|307|308) ;;
+            *)
+              echo "Expected unauthenticated /admin to redirect, got HTTP $STATUS"
+              exit 1
+              ;;
+          esac
+
+          WRONG_STATUS=$(curl -s -o /dev/null -w "%{http_code}"             -H "Content-Type: application/json"             -d '{"username":"ci-admin","password":"wrong"}'             http://127.0.0.1:3000/api/admin/login)
+          test "$WRONG_STATUS" = "401"
+
+          LOGIN_STATUS=$(curl -s -o /tmp/admin-login.json -w "%{http_code}"             -c /tmp/admin-cookies.txt             -H "Content-Type: application/json"             -d '{"username":"ci-admin","password":"ci-password"}'             http://127.0.0.1:3000/api/admin/login)
+          test "$LOGIN_STATUS" = "200"
+          grep -q '"ok":true' /tmp/admin-login.json
+
+          curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin | grep -q "Dashboard"
+          curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/leads | grep -q "Payme Parent"
+          curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/parents | grep -q "Payme Parent"
+          curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/children | grep -q "Payme Child"
+          curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/payments | grep -q "REFUNDED"
+
+          curl -fsS -b /tmp/admin-cookies.txt             -X POST http://127.0.0.1:3000/api/admin/logout | grep -q '"ok":true'
+
+          POST_LOGOUT_STATUS=$(curl -s -o /dev/null -w "%{http_code}"             -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin)
+          case "$POST_LOGOUT_STATUS" in
+            303|307|308) ;;
+            *)
+              echo "Expected logged-out /admin to redirect, got HTTP $POST_LOGOUT_STATUS"
+              exit 1
+              ;;
+          esac
 
       - name: Stop production server
         if: always()
