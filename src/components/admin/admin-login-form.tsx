@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 export function AdminLoginForm() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -31,7 +33,8 @@ export function AdminLoginForm() {
         return;
       }
 
-      window.location.href = "/admin";
+      router.replace("/admin");
+      router.refresh();
     } catch {
       setError("Не удалось выполнить вход.");
     } finally {
