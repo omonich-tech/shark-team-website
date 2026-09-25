@@ -41,6 +41,12 @@ jobs:
       COACH_COOKIE_SECURE: "false"
       COACH_SMOKE_USERNAME: ci-coach
       COACH_SMOKE_PASSWORD: ci-coach-password-123
+      TELEGRAM_BOT_USERNAME: shark_ci_bot
+      TELEGRAM_WEBHOOK_SECRET: ci-telegram-webhook-secret
+      CRON_SECRET: ci-cron-secret
+      TELEGRAM_DRY_RUN: "true"
+      TRIAL_REMINDER_MINUTES: "180"
+      POST_TRIAL_FEEDBACK_MINUTES: "30"
 
     steps:
       - name: Checkout
@@ -134,6 +140,9 @@ jobs:
 
       - name: Smoke test Payme Merchant API
         run: npm run smoke:payme
+
+      - name: Smoke test Telegram linking and notifications
+        run: npm run smoke:telegram
 
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
