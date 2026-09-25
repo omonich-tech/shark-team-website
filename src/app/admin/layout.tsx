@@ -20,7 +20,15 @@ const nav = [
   ["/admin/trials", "Пробные"],
   ["/admin/parents", "Родители"],
   ["/admin/children", "Дети"],
-  ["/admin/payments", "Оплаты"]
+  ["/admin/payments", "Оплаты"],
+  ["/admin/branch", "Филиал"],
+  ["/admin/coach", "Тренер"],
+  ["/admin/groups", "Группы"],
+  ["/admin/prices", "Цены"],
+  ["/admin/content", "Контент"],
+  ["/admin/faq", "FAQ"],
+  ["/admin/media", "Медиа"],
+  ["/admin/audit", "История"]
 ] as const;
 
 export default async function AdminLayout({
