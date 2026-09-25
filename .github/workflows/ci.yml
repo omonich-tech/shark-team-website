@@ -45,8 +45,8 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
-      - name: Apply schema to CI database
-        run: npm run db:push
+      - name: Apply migrations to CI database
+        run: npm run db:migrate:deploy
 
       - name: Seed School 117
         run: npm run db:seed
