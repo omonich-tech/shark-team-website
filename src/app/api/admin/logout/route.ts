@@ -8,7 +8,7 @@ export async function POST() {
     name: ADMIN_SESSION_COOKIE,
     value: "",
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure:\n      process.env.NODE_ENV === "production" &&\n      process.env.ADMIN_COOKIE_SECURE !== "false",
     sameSite: "lax",
     path: "/",
     maxAge: 0
