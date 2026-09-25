@@ -38,6 +38,20 @@ type Reservation = {
   sessionId: string;
 };
 
+type PaymeCheckout = {
+  payment: {
+    id: string;
+    status: string;
+    amountUzs: number;
+    amountTiyin: number;
+    currency: string;
+  };
+  checkout: {
+    action: string;
+    fields: Record<string, string>;
+  };
+};
+
 const copy = {
   ru: {
     ageLabel: "Возраст ребёнка",
@@ -57,8 +71,9 @@ const copy = {
     saving: "Бронируем…",
     successTitle: "Место временно забронировано",
     successPrefix: "Место удерживается до",
-    successSuffix:
-      "После оплаты бронь будет подтверждена окончательно.",
+    pay: "Оплатить через Payme",
+    paymentPending:
+      "Оплата Payme для этого окружения пока не подключена.",
     full:
       "Это место только что заняли. Мы обновили доступные даты — выберите другую тренировку.",
     error: "Не удалось оформить бронь. Проверьте данные и попробуйте ещё раз."
@@ -81,8 +96,9 @@ const copy = {
     saving: "Band qilinmoqda…",
     successTitle: "Joy vaqtincha band qilindi",
     successPrefix: "Joy quyidagi vaqtgacha saqlanadi:",
-    successSuffix:
-      "To‘lovdan keyin bron yakuniy tasdiqlanadi.",
+    pay: "Payme orqali to‘lash",
+    paymentPending:
+      "Bu muhitda Payme to‘lovi hali ulanmagan.",
     full:
       "Bu joy hozirgina band qilindi. Mavjud sanalarni yangiladik — boshqa mashg‘ulotni tanlang.",
     error: "Bronni rasmiylashtirib bo‘lmadi. Ma’lumotlarni tekshirib qayta urinib ko‘ring."
@@ -110,6 +126,12 @@ function holdLabel(iso: string, locale: PublicLocale) {
   }).format(new Date(iso));
 }
 
+function moneyLabel(amount: number, locale: PublicLocale) {
+  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "uz-UZ").format(
+    amount
+  );
+}
+
 export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
   const t = copy[locale];
   const [age, setAge] = useState("");
@@ -121,6 +143,8 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [payme, setPayme] = useState<PaymeCheckout | null>(null);
+  const [paymentUnavailable, setPaymentUnavailable] = useState(false);
   const [result, setResult] = useState<
     "success" | "error" | "full" | null
   >(null);
@@ -147,6 +171,8 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     setOptions(null);
     setSelectedSessionId("");
     setReservation(null);
+    setPayme(null);
+    setPaymentUnavailable(false);
     setResult(null);
 
     if (!nextAge) return;
@@ -162,6 +188,33 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     }
   }
 
+  async function initPayme(bookingId: string) {
+    try {
+      const response = await fetch("/api/public/payments/payme/init", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          bookingId,
+          locale
+        })
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok || !payload.ok) {
+        setPaymentUnavailable(true);
+        return;
+      }
+
+      setPayme(payload as PaymeCheckout);
+      setPaymentUnavailable(false);
+    } catch {
+      setPaymentUnavailable(true);
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -169,6 +222,8 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
 
     setSubmitting(true);
     setReservation(null);
+    setPayme(null);
+    setPaymentUnavailable(false);
     setResult(null);
 
     const query = new URLSearchParams(window.location.search);
@@ -228,8 +283,10 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
         return;
       }
 
-      setReservation(bookingPayload.booking as Reservation);
+      const nextReservation = bookingPayload.booking as Reservation;
+      setReservation(nextReservation);
       setResult("success");
+      await initPayme(nextReservation.id);
     } catch {
       setResult("error");
     } finally {
@@ -305,6 +362,8 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
                       onClick={() => {
                         setSelectedSessionId(session.id);
                         setReservation(null);
+                        setPayme(null);
+                        setPaymentUnavailable(false);
                         setResult(null);
                       }}
                     >
@@ -370,9 +429,27 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
           <strong>{t.successTitle}</strong>
           <p>
             {t.successPrefix}{" "}
-            <b>{holdLabel(reservation.expiresAt, locale)}</b>.{" "}
-            {t.successSuffix}
+            <b>{holdLabel(reservation.expiresAt, locale)}</b>.
           </p>
+
+          {payme ? (
+            <form
+              className="payme-form"
+              method="POST"
+              action={payme.checkout.action}
+            >
+              {Object.entries(payme.checkout.fields).map(([name, value]) => (
+                <input key={name} type="hidden" name={name} value={value} />
+              ))}
+              <button className="button payme-button" type="submit">
+                {t.pay} · {moneyLabel(payme.payment.amountUzs, locale)} UZS
+              </button>
+            </form>
+          ) : null}
+
+          {paymentUnavailable ? (
+            <p className="payment-unavailable">{t.paymentPending}</p>
+          ) : null}
         </div>
       ) : null}
 
