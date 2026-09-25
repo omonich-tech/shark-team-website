@@ -105,7 +105,7 @@ Manual command:
 npm run notifications:run
 ```
 
-A scheduler should call the endpoint regularly. Hourly is sufficient for the first MVP, but a shorter interval can be configured by the deployment platform if supported.
+A scheduler should call the endpoint regularly. The production scheduler should run frequently enough to meet reminder timing; a 5–15 minute cadence is preferable when the deployment plan supports it.
 
 Delivery is retried up to 5 attempts.
 
