@@ -8,16 +8,17 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "db:generate": "prisma@7 generate",
-    "db:migrate": "prisma@7 migrate dev",
-    "db:push": "prisma@7 db push",
-    "db:seed": "prisma@7 db seed",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
     "db:verify": "tsx scripts/verify-core-data.ts",
-    "db:studio": "prisma@7 studio"
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
