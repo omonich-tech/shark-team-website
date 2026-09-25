@@ -83,6 +83,24 @@ enum AttendanceStatus {
   EXCUSED
 }
 
+enum NotificationChannel {
+  TELEGRAM
+}
+
+enum NotificationType {
+  PAYMENT_HOLD_REMINDER
+  TRIAL_CONFIRMED
+  TRIAL_REMINDER
+  POST_TRIAL_FEEDBACK
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 model Sport {
   id                 String          @id
   slug               String          @unique
@@ -335,7 +353,10 @@ model Lead {
   selectedSession TrainingSession? @relation(fields: [selectedSessionId], references: [id], onDelete: SetNull)
   parent          Parent?          @relation(fields: [parentId], references: [id], onDelete: SetNull)
   child           Child?           @relation(fields: [childId], references: [id], onDelete: SetNull)
-  trialBookings   TrialBooking[]
+  trialBookings      TrialBooking[]
+  telegramContacts   TelegramContact[]
+  telegramLinkTokens TelegramLinkToken[]
+  notifications      Notification[]
 
   @@index([phone, status])
   @@index([selectedSessionId])
@@ -359,9 +380,10 @@ model TrialBooking {
 
   lead    Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
   session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  payment    Payment?
-  attendance Attendance?
-  assessment TrialAssessment?
+  payment       Payment?
+  attendance    Attendance?
+  assessment    TrialAssessment?
+  notifications Notification[]
 
   @@unique([leadId, sessionId])
   @@index([sessionId, status, expiresAt])
@@ -416,8 +438,10 @@ model Parent {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  children Child[]
-  leads    Lead[]
+  children         Child[]
+  leads            Lead[]
+  telegramContacts TelegramContact[]
+  notifications    Notification[]
 
   @@index([createdAt])
 }
@@ -512,4 +536,66 @@ model TrialAssessment {
   coach        Coach        @relation(fields: [coachId], references: [id], onDelete: Restrict)
 
   @@index([coachId, createdAt])
+}
+
+model TelegramContact {
+  id             String   @id @default(cuid())
+  leadId         String?
+  parentId       String?
+  telegramUserId BigInt   @unique
+  chatId         BigInt   @unique
+  username       String?
+  firstName      String?
+  languageCode   String?
+  locale         String   @default("ru")
+  verifiedAt     DateTime @default(now())
+  lastMessageAt  DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  parent Parent? @relation(fields: [parentId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([parentId])
+}
+
+model TelegramLinkToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  leadId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, expiresAt])
+}
+
+model Notification {
+  id               String              @id @default(cuid())
+  channel          NotificationChannel @default(TELEGRAM)
+  type             NotificationType
+  status           NotificationStatus  @default(PENDING)
+  leadId           String?
+  parentId         String?
+  trialBookingId   String?
+  scheduledAt      DateTime
+  sentAt           DateTime?
+  attempts         Int                 @default(0)
+  externalMessageId String?
+  lastError        String?
+  dedupeKey        String              @unique
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  lead         Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  parent       Parent?       @relation(fields: [parentId], references: [id], onDelete: SetNull)
+  trialBooking TrialBooking? @relation(fields: [trialBookingId], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledAt])
+  @@index([leadId])
+  @@index([parentId])
+  @@index([trialBookingId])
 }
