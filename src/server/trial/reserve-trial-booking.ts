@@ -79,7 +79,10 @@ export async function reserveTrialBooking(leadId: string) {
       };
     }
 
-    if (existing?.status === TrialBookingStatus.CONFIRMED) {
+    if (
+      existing?.status === TrialBookingStatus.PAYMENT_PENDING ||
+      existing?.status === TrialBookingStatus.CONFIRMED
+    ) {
       return {
         ok: true as const,
         booking: {
@@ -105,6 +108,9 @@ export async function reserveTrialBooking(leadId: string) {
         OR: [
           {
             status: TrialBookingStatus.CONFIRMED
+          },
+          {
+            status: TrialBookingStatus.PAYMENT_PENDING
           },
           {
             status: TrialBookingStatus.HOLD,
