@@ -1,24 +1,28 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not configured");
-}
-
 const globalForPrisma = globalThis as unknown as {
   sharkPrisma?: PrismaClient;
 };
 
-function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString });
-  return new PrismaClient({ adapter });
-}
+export function getPrisma() {
+  if (globalForPrisma.sharkPrisma) {
+    return globalForPrisma.sharkPrisma;
+  }
 
-export const prisma =
-  globalForPrisma.sharkPrisma ?? createPrismaClient();
+  const connectionString = process.env.DATABASE_URL;
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.sharkPrisma = prisma;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not configured");
+  }
+
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString })
+  });
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.sharkPrisma = prisma;
+  }
+
+  return prisma;
 }
