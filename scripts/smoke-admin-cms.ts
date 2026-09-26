@@ -325,7 +325,7 @@ async function main() {
   );
   const publicBranchHtml = await publicBranch.text();
   assert(
-    publicBranch.ok && publicBranchHtml.includes("CI Volleyball"),
+    publicBranch.ok && publicBranchHtml.includes("CI Волейбол"),
     "Dynamic public branch page did not render created sport/group"
   );
 
