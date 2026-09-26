@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 type FieldOption = {
@@ -33,6 +34,7 @@ export function AdminEntityForm({
   submitLabel?: string;
   onSaved?: () => void;
 }) {
+  const router = useRouter();
   const [values, setValues] = useState(initialValues);
   const [state, setState] = useState<
     "idle" | "saving" | "saved" | "error"
@@ -73,6 +75,7 @@ export function AdminEntityForm({
       setState("saved");
       setMessage("Сохранено.");
       onSaved?.();
+      router.refresh();
     } catch {
       setState("error");
       setMessage("Не удалось сохранить изменения.");
