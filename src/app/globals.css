@@ -1642,3 +1642,56 @@ h3 {
 .admin-panel-head small {
   color: var(--muted);
 }
+
+
+.branch-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.branch-catalog-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--white);
+}
+
+.branch-catalog-card h2 {
+  margin: 8px 0;
+  color: var(--navy);
+}
+
+.branch-catalog-card p,
+.branch-catalog-card small {
+  color: var(--muted);
+}
+
+.faq-list {
+  display: grid;
+  gap: 10px;
+}
+
+.faq-item {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+.faq-item summary {
+  cursor: pointer;
+  color: var(--navy);
+  font-weight: 800;
+}
+
+.faq-item p {
+  margin: 12px 0 0;
+  color: #475467;
+}
+
+@media (max-width: 700px) {
+  .branch-catalog-grid {
+    grid-template-columns: 1fr;
+  }
+}
