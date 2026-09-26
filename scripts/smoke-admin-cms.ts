@@ -325,8 +325,10 @@ async function main() {
   );
   const publicBranchHtml = await publicBranch.text();
   assert(
-    publicBranch.ok && publicBranchHtml.includes("CI Волейбол"),
-    "Dynamic public branch page did not render created sport/group"
+    publicBranch.ok &&
+      publicBranchHtml.includes("CI Branch Updated") &&
+      publicBranchHtml.includes("10–12 лет"),
+    "Dynamic public branch page did not render created branch/group"
   );
 
   const home = await fetch(`${baseUrl}/ru`);
