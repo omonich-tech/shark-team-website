@@ -1606,3 +1606,14 @@ h3 {
     border-bottom: 0;
   }
 }
+
+
+.telegram-button {
+  margin-top: 12px;
+  background: #229ed9;
+  color: #ffffff;
+}
+
+.telegram-button:hover {
+  background: #168ac0;
+}

@@ -32,7 +32,10 @@
     "db:expire-trial-holds": "tsx scripts/expire-trial-bookings.ts",
     "smoke:payme": "node scripts/smoke-payme-http.mjs",
     "db:prepare-coach-smoke": "tsx scripts/prepare-coach-smoke.ts",
-    "smoke:coach": "tsx scripts/smoke-coach-http.ts"
+    "smoke:coach": "tsx scripts/smoke-coach-http.ts",
+    "telegram:set-webhook": "tsx scripts/set-telegram-webhook.ts",
+    "notifications:run": "tsx scripts/process-notifications.ts",
+    "smoke:telegram": "tsx scripts/smoke-telegram-http.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

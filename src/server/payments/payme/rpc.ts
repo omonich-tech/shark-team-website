@@ -1,5 +1,7 @@
 import {
   LeadStatus,
+  NotificationStatus,
+  NotificationType,
   PaymentStatus,
   TrialBookingStatus
 } from "@/generated/prisma/client";
@@ -35,6 +37,11 @@ export type PaymeRpcResponse =
 
 function localized(ru: string, uz: string, en: string) {
   return { ru, uz, en };
+}
+
+function envMinutes(name: string, fallback: number) {
+  const value = Number(process.env[name] ?? fallback);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
 export function rpcError(
@@ -430,7 +437,8 @@ async function performTransaction(id: RpcId, params: RpcParams) {
           include: {
             trialBooking: {
               include: {
-                lead: true
+                lead: true,
+                session: true
               }
             }
           }
@@ -528,6 +536,88 @@ async function performTransaction(id: RpcId, params: RpcParams) {
         status: LeadStatus.TRIAL_CONFIRMED,
         parentId: parent.id,
         childId
+      }
+    });
+
+    await tx.telegramContact.updateMany({
+      where: {
+        leadId: booking.leadId
+      },
+      data: {
+        parentId: parent.id
+      }
+    });
+
+    const reminderMinutes = envMinutes("TRIAL_REMINDER_MINUTES", 180);
+    const feedbackMinutes = envMinutes("POST_TRIAL_FEEDBACK_MINUTES", 30);
+    const reminderAtRaw = new Date(
+      booking.session.startsAt.getTime() - reminderMinutes * 60_000
+    );
+    const reminderAt = reminderAtRaw > now ? reminderAtRaw : now;
+    const feedbackAt = new Date(
+      booking.session.endsAt.getTime() + feedbackMinutes * 60_000
+    );
+
+    await tx.notification.upsert({
+      where: {
+        dedupeKey: `trial:${booking.id}:confirmed`
+      },
+      update: {
+        leadId: booking.leadId,
+        parentId: parent.id,
+        scheduledAt: now,
+        status: NotificationStatus.PENDING,
+        lastError: null
+      },
+      create: {
+        type: NotificationType.TRIAL_CONFIRMED,
+        leadId: booking.leadId,
+        parentId: parent.id,
+        trialBookingId: booking.id,
+        scheduledAt: now,
+        dedupeKey: `trial:${booking.id}:confirmed`
+      }
+    });
+
+    await tx.notification.upsert({
+      where: {
+        dedupeKey: `trial:${booking.id}:reminder`
+      },
+      update: {
+        leadId: booking.leadId,
+        parentId: parent.id,
+        scheduledAt: reminderAt,
+        status: NotificationStatus.PENDING,
+        lastError: null
+      },
+      create: {
+        type: NotificationType.TRIAL_REMINDER,
+        leadId: booking.leadId,
+        parentId: parent.id,
+        trialBookingId: booking.id,
+        scheduledAt: reminderAt,
+        dedupeKey: `trial:${booking.id}:reminder`
+      }
+    });
+
+    await tx.notification.upsert({
+      where: {
+        dedupeKey: `trial:${booking.id}:feedback`
+      },
+      update: {
+        leadId: booking.leadId,
+        parentId: parent.id,
+        scheduledAt: feedbackAt,
+        status: NotificationStatus.PENDING,
+        lastError: null
+      },
+      create: {
+        type: NotificationType.POST_TRIAL_FEEDBACK,
+        leadId: booking.leadId,
+        parentId: parent.id,
+        trialBookingId: booking.id,
+        scheduledAt: feedbackAt,
+        dedupeKey: `trial:${booking.id}:feedback`
       }
     });
 
@@ -665,6 +755,17 @@ async function cancelTransaction(id: RpcId, params: RpcParams) {
         where: { id: booking.leadId },
         data: {
           status: LeadStatus.CLOSED
+        }
+      });
+
+      await tx.notification.updateMany({
+        where: {
+          trialBookingId: booking.id,
+          status: NotificationStatus.PENDING
+        },
+        data: {
+          status: NotificationStatus.SKIPPED,
+          lastError: "BOOKING_CANCELLED"
         }
       });
 
