@@ -4,7 +4,8 @@ import {
   CoachCard,
   GroupGrid,
   LocationCard,
-  PriceCards
+  PriceCards,
+  PublicMediaGallery
 } from "@/components/public/school117-blocks";
 import {
   isPublicLocale,
@@ -39,7 +40,8 @@ export default async function School117Page({
           location: "Адрес и ориентир",
           groups: "Группы",
           coach: "Тренер",
-          prices: "Стоимость"
+          prices: "Стоимость",
+          media: "Фото и видео"
         }
       : {
           eyebrow: "YUNUSOBOD · TOSHKENT",
@@ -47,7 +49,8 @@ export default async function School117Page({
           location: "Manzil va mo‘ljal",
           groups: "Guruhlar",
           coach: "Murabbiy",
-          prices: "Narxlar"
+          prices: "Narxlar",
+          media: "Foto va video"
         };
 
   return (
@@ -86,6 +89,15 @@ export default async function School117Page({
           <PriceCards data={data} locale={locale} />
         </div>
       </section>
+
+      {data.media.length > 0 ? (
+        <section className="content-section">
+          <div className="section-heading">
+            <h2>{copy.media}</h2>
+          </div>
+          <PublicMediaGallery data={data} locale={locale} />
+        </section>
+      ) : null}
     </main>
   );
 }
