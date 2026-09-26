@@ -46,6 +46,7 @@ jobs:
       TELEGRAM_WEBHOOK_SECRET: ci-telegram-webhook-secret
       CRON_SECRET: ci-cron-secret
       TELEGRAM_DRY_RUN: "true"
+      MEDIA_DRY_RUN: "true"
       TRIAL_REMINDER_MINUTES: "180"
       POST_TRIAL_FEEDBACK_MINUTES: "30"
 
@@ -182,6 +183,9 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: Smoke test admin CMS
+        run: npm run smoke:admin-cms
 
       - name: Stop production server
         if: always()
