@@ -35,7 +35,8 @@
     "smoke:coach": "tsx scripts/smoke-coach-http.ts",
     "telegram:set-webhook": "tsx scripts/set-telegram-webhook.ts",
     "notifications:run": "tsx scripts/process-notifications.ts",
-    "smoke:telegram": "tsx scripts/smoke-telegram-http.ts"
+    "smoke:telegram": "tsx scripts/smoke-telegram-http.ts",
+    "smoke:admin-cms": "tsx scripts/smoke-admin-cms.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
