@@ -459,3 +459,7 @@ The public Vercel application must use Railway's public PostgreSQL connection st
 ## Production admin access
 
 Production admin authentication is configured through Vercel environment variables. Secret values are never committed to the repository. Any change to production environment variables requires a fresh Vercel deployment before runtime routes can use them.
+
+## Production coach access
+
+Coach authentication uses a production-only `COACH_SESSION_SECRET` in Vercel. Real coach usernames and password hashes are managed from Admin and stored in PostgreSQL; plaintext coach passwords are never committed or persisted.
