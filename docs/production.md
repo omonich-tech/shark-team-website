@@ -449,3 +449,9 @@ PRODUCTION_CRON_SECRET=
 If these secrets are absent, scheduled workflows safely skip without failing the repository.
 
 This can be used instead of provider-specific cron scheduling.
+
+## Railway production database
+
+The production PostgreSQL database is provisioned in Railway.
+
+The public Vercel application must use Railway's public PostgreSQL connection string as its production `DATABASE_URL`. Changes to Vercel environment variables require a new deployment before runtime functions can see them.
