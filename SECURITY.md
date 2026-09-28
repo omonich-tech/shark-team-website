@@ -40,3 +40,23 @@ The public media query filters non-approved child media.
 SHARK TEAM stores payment lifecycle metadata but must not store card numbers or payment credentials.
 
 Payment authorization is handled by Payme.
+
+
+## Dependency overrides
+
+The repository currently carries two explicit Prisma 7 transitive security overrides:
+
+- `deepmerge-ts: 8.0.2`
+- `mysql2: 3.24.4`
+
+They exist because Prisma 7.10.0 pins vulnerable transitive versions while the fixes are already present upstream but not yet released in the installed Prisma 7 package line.
+
+These overrides must be re-evaluated on every Prisma upgrade.
+
+Remove an override only after:
+
+1. the installed Prisma dependency tree resolves to a patched version without the override;
+2. `npm audit --omit=dev --audit-level=high` remains green;
+3. Prisma generate, migrations, typecheck, build and the full smoke suite remain green.
+
+Do not replace this with `npm audit fix --force` if it proposes a Prisma major downgrade.
