@@ -26,6 +26,7 @@ Before production deployment run:
 ```bash
 npm install
 npm run security:scan
+npm audit --omit=dev --audit-level=high
 npm run verify:production-env
 npm run lint
 npm run typecheck
@@ -412,3 +413,17 @@ A production release is complete only when:
 - database backups are enabled;
 - media storage works;
 - no fake operational data was introduced.
+
+
+## 17. Dependency override retirement
+
+Prisma 7.10.0 currently requires security overrides for transitive packages listed in SECURITY.md.
+
+On each Prisma upgrade:
+
+1. remove the overrides in a test branch;
+2. run `npm install`;
+3. run `npm audit --omit=dev --audit-level=high`;
+4. keep the overrides removed only if audit and the full CI suite stay green.
+
+This prevents a temporary security workaround from becoming permanent unowned configuration.
