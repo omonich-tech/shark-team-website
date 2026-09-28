@@ -6,8 +6,23 @@ import {
   isAdminConfigured,
   verifyAdminCredentials
 } from "@/server/admin/auth";
+import {
+  consumeRateLimit,
+  rateLimitedResponse
+} from "@/server/security/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await consumeRateLimit(request, {
+    namespace: "admin-login",
+    limit: 10,
+    windowSeconds: 10 * 60
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitedResponse(rateLimit.retryAfterSeconds);
+  }
+
+
   if (!isAdminConfigured()) {
     return NextResponse.json(
       { ok: false, error: "ADMIN_AUTH_NOT_CONFIGURED" },
