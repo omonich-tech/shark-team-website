@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TrialLeadFlow } from "@/components/public/trial-lead-flow";
 import { isPublicLocale } from "@/lib/public-i18n";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false
+  }
+};
 
 export default async function TrialPage({
   params
