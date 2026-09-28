@@ -427,3 +427,25 @@ On each Prisma upgrade:
 4. keep the overrides removed only if audit and the full CI suite stay green.
 
 This prevents a temporary security workaround from becoming permanent unowned configuration.
+
+
+## 18. GitHub Actions scheduler
+
+The repository includes provider-independent production scheduling:
+
+- `Production Notifications`: every 15 minutes
+- `Production Maintenance`: daily at 22:00 UTC / 03:00 Asia/Tashkent
+- `Production Smoke`: manual post-deploy verification
+
+Configure repository secrets:
+
+```
+PRODUCTION_APP_URL=
+PRODUCTION_CRON_SECRET=
+```
+
+`PRODUCTION_CRON_SECRET` must equal the application's `CRON_SECRET`.
+
+If these secrets are absent, scheduled workflows safely skip without failing the repository.
+
+This can be used instead of provider-specific cron scheduling.
