@@ -1,0 +1,49 @@
+name: Production Notifications
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-notifications
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PRODUCTION_APP_URL: ${{ secrets.PRODUCTION_APP_URL }}
+      CRON_SECRET: ${{ secrets.PRODUCTION_CRON_SECRET }}
+
+    steps:
+      - name: Check scheduler configuration
+        id: config
+        shell: bash
+        run: |
+          if [ -z "$PRODUCTION_APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Production scheduler is not configured yet; skipping."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Trigger notification worker
+        if: steps.config.outputs.configured == 'true'
+        shell: bash
+        run: |
+          URL="${PRODUCTION_APP_URL%/}/api/jobs/notifications"
+          RESPONSE_FILE="$(mktemp)"
+
+          HTTP_CODE=$(curl             --silent             --show-error             --location             --max-time 45             --output "$RESPONSE_FILE"             --write-out "%{http_code}"             --request POST             --header "Authorization: Bearer $CRON_SECRET"             "$URL")
+
+          cat "$RESPONSE_FILE"
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Notification worker returned HTTP $HTTP_CODE"
+            exit 1
+          fi
