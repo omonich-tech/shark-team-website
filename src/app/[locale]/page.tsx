@@ -4,13 +4,15 @@ import {
   CoachCard,
   GroupGrid,
   LocationCard,
-  PriceCards
+  PriceCards,
+  PublicMediaGallery
 } from "@/components/public/school117-blocks";
 import { DataUnavailable } from "@/components/public/public-shell";
 import {
   isPublicLocale,
   pickLocalized
 } from "@/lib/public-i18n";
+import { tryGetPublishedHomeCms } from "@/server/public-data/cms";
 import { tryGetSchool117PublicData } from "@/server/public-data/school-117";
 
 export const dynamic = "force-dynamic";
@@ -26,13 +28,16 @@ export default async function PublicHome({
     notFound();
   }
 
-  const data = await tryGetSchool117PublicData();
+  const [data, cms] = await Promise.all([
+    tryGetSchool117PublicData(),
+    tryGetPublishedHomeCms()
+  ]);
 
   if (!data) {
     return <DataUnavailable locale={locale} />;
   }
 
-  const copy =
+  const defaults =
     locale === "ru"
       ? {
           eyebrow: "SHARK TEAM · ТАШКЕНТ",
@@ -43,8 +48,9 @@ export default async function PublicHome({
           prices: "Стоимость",
           coach: "Тренер",
           details: "Подробнее о филиале",
-          schedule: "Открыть расписание",
-          trial: "Записаться на пробное"
+          trial: "Записаться на пробное",
+          media: "Фото и видео",
+          faq: "Частые вопросы"
         }
       : {
           eyebrow: "SHARK TEAM · TOSHKENT",
@@ -55,9 +61,27 @@ export default async function PublicHome({
           prices: "Narxlar",
           coach: "Murabbiy",
           details: "Filial haqida batafsil",
-          schedule: "Jadvalni ochish",
-          trial: "Sinovga yozilish"
+          trial: "Sinovga yozilish",
+          media: "Foto va video",
+          faq: "Ko‘p so‘raladigan savollar"
         };
+
+  const content = cms.content;
+  const copy = {
+    ...defaults,
+    eyebrow:
+      (locale === "ru"
+        ? content?.heroEyebrowRu
+        : content?.heroEyebrowUz) ?? defaults.eyebrow,
+    title:
+      (locale === "ru"
+        ? content?.heroTitleRu
+        : content?.heroTitleUz) ?? defaults.title,
+    lead:
+      (locale === "ru"
+        ? content?.heroLeadRu
+        : content?.heroLeadUz) ?? defaults.lead
+  };
 
   return (
     <main className="page-main">
@@ -87,7 +111,9 @@ export default async function PublicHome({
 
       <section className="content-section" id="groups">
         <div className="section-heading">
-          <p className="eyebrow">{locale === "ru" ? "БАСКЕТБОЛ" : "BASKETBOL"}</p>
+          <p className="eyebrow">
+            {locale === "ru" ? "БАСКЕТБОЛ" : "BASKETBOL"}
+          </p>
           <h2>{copy.groups}</h2>
         </div>
         <GroupGrid data={data} locale={locale} />
@@ -96,14 +122,18 @@ export default async function PublicHome({
       <section className="split-section">
         <div>
           <div className="section-heading">
-            <p className="eyebrow">{locale === "ru" ? "ЛОКАЦИЯ" : "MANZIL"}</p>
+            <p className="eyebrow">
+              {locale === "ru" ? "ЛОКАЦИЯ" : "MANZIL"}
+            </p>
             <h2>{copy.location}</h2>
           </div>
           <LocationCard data={data} locale={locale} />
         </div>
         <div>
           <div className="section-heading">
-            <p className="eyebrow">{locale === "ru" ? "КОМАНДА" : "JAMOA"}</p>
+            <p className="eyebrow">
+              {locale === "ru" ? "КОМАНДА" : "JAMOA"}
+            </p>
             <h2>{copy.coach}</h2>
           </div>
           <CoachCard data={data} locale={locale} />
@@ -112,11 +142,40 @@ export default async function PublicHome({
 
       <section className="content-section">
         <div className="section-heading">
-          <p className="eyebrow">{locale === "ru" ? "ОПЛАТА" : "TO‘LOV"}</p>
+          <p className="eyebrow">
+            {locale === "ru" ? "ОПЛАТА" : "TO‘LOV"}
+          </p>
           <h2>{copy.prices}</h2>
         </div>
         <PriceCards data={data} locale={locale} />
       </section>
+
+      {data.media.length > 0 ? (
+        <section className="content-section">
+          <div className="section-heading">
+            <h2>{copy.media}</h2>
+          </div>
+          <PublicMediaGallery data={data} locale={locale} />
+        </section>
+      ) : null}
+
+      {cms.faq.length > 0 ? (
+        <section className="content-section">
+          <div className="section-heading">
+            <h2>{copy.faq}</h2>
+          </div>
+          <div className="faq-list">
+            {cms.faq.map((item) => (
+              <details key={item.id} className="faq-item">
+                <summary>
+                  {locale === "ru" ? item.questionRu : item.questionUz}
+                </summary>
+                <p>{locale === "ru" ? item.answerRu : item.answerUz}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

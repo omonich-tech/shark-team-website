@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { DataUnavailable } from "@/components/public/public-shell";
 import {
   CoachCard,
   GroupGrid,
@@ -7,26 +6,21 @@ import {
   PriceCards,
   PublicMediaGallery
 } from "@/components/public/school117-blocks";
-import {
-  isPublicLocale,
-  pickLocalized
-} from "@/lib/public-i18n";
-import { tryGetSchool117PublicData } from "@/server/public-data/school-117";
+import { DataUnavailable } from "@/components/public/public-shell";
+import { isPublicLocale, pickLocalized } from "@/lib/public-i18n";
+import { tryGetBranchPublicData } from "@/server/public-data/branch";
 
 export const dynamic = "force-dynamic";
 
-export default async function School117Page({
+export default async function PublicBranchPage({
   params
 }: {
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: string; slug: string }>;
 }) {
-  const { locale } = await params;
+  const { locale, slug } = await params;
+  if (!isPublicLocale(locale)) notFound();
 
-  if (!isPublicLocale(locale)) {
-    notFound();
-  }
-
-  const data = await tryGetSchool117PublicData();
+  const data = await tryGetBranchPublicData(slug);
 
   if (!data) {
     return <DataUnavailable locale={locale} />;
@@ -35,8 +29,8 @@ export default async function School117Page({
   const copy =
     locale === "ru"
       ? {
-          eyebrow: "ЮНУСАБАД · ТАШКЕНТ",
-          lead: "Баскетбольный филиал SHARK TEAM в спортивном зале школы №117.",
+          eyebrow: "SHARK TEAM · ТАШКЕНТ",
+          lead: "Спортивный филиал SHARK TEAM.",
           location: "Адрес и ориентир",
           groups: "Группы",
           coach: "Тренер",
@@ -44,8 +38,8 @@ export default async function School117Page({
           media: "Фото и видео"
         }
       : {
-          eyebrow: "YUNUSOBOD · TOSHKENT",
-          lead: "117-maktab sport zalidagi SHARK TEAM basketbol filiali.",
+          eyebrow: "SHARK TEAM · TOSHKENT",
+          lead: "SHARK TEAM sport filiali.",
           location: "Manzil va mo‘ljal",
           groups: "Guruhlar",
           coach: "Murabbiy",
@@ -62,39 +56,29 @@ export default async function School117Page({
       </section>
 
       <section className="content-section">
-        <div className="section-heading">
-          <h2>{copy.location}</h2>
-        </div>
+        <div className="section-heading"><h2>{copy.location}</h2></div>
         <LocationCard data={data} locale={locale} />
       </section>
 
       <section className="content-section">
-        <div className="section-heading">
-          <h2>{copy.groups}</h2>
-        </div>
+        <div className="section-heading"><h2>{copy.groups}</h2></div>
         <GroupGrid data={data} locale={locale} />
       </section>
 
       <section className="split-section">
         <div>
-          <div className="section-heading">
-            <h2>{copy.coach}</h2>
-          </div>
+          <div className="section-heading"><h2>{copy.coach}</h2></div>
           <CoachCard data={data} locale={locale} />
         </div>
         <div>
-          <div className="section-heading">
-            <h2>{copy.prices}</h2>
-          </div>
+          <div className="section-heading"><h2>{copy.prices}</h2></div>
           <PriceCards data={data} locale={locale} />
         </div>
       </section>
 
       {data.media.length > 0 ? (
         <section className="content-section">
-          <div className="section-heading">
-            <h2>{copy.media}</h2>
-          </div>
+          <div className="section-heading"><h2>{copy.media}</h2></div>
           <PublicMediaGallery data={data} locale={locale} />
         </section>
       ) : null}

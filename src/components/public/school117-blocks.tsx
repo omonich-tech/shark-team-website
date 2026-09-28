@@ -95,12 +95,32 @@ export function CoachCard({
   }
 
   const name = [coach.firstName, coach.lastName].filter(Boolean).join(" ");
+  const photo = data.media.find(
+    (item) =>
+      item.targetType === "COACH" &&
+      item.targetId === coach.id &&
+      item.contentType?.startsWith("image/")
+  );
 
   return (
     <article className="coach-card">
-      <div className="coach-placeholder" aria-hidden="true">
-        {coach.firstName.slice(0, 1)}
-      </div>
+      {photo ? (
+        <div
+          className="coach-placeholder coach-photo"
+          role="img"
+          aria-label={
+            (locale === "ru" ? photo.alt.ru : photo.alt.uz) ??
+            name
+          }
+          style={{
+            backgroundImage: `url("${photo.url}")`
+          }}
+        />
+      ) : (
+        <div className="coach-placeholder" aria-hidden="true">
+          {coach.firstName.slice(0, 1)}
+        </div>
+      )}
       <div>
         <p className="eyebrow">{locale === "ru" ? "ТРЕНЕР" : "MURABBIY"}</p>
         <h3>{name}</h3>
@@ -130,5 +150,49 @@ export function LocationCard({
         <p className="muted">{pickLocalized(locale, data.landmark)}</p>
       ) : null}
     </article>
+  );
+}
+
+
+export function PublicMediaGallery({
+  data,
+  locale
+}: {
+  data: School117PublicData;
+  locale: PublicLocale;
+}) {
+  if (data.media.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="public-media-grid">
+      {data.media.slice(0, 8).map((item) =>
+        item.contentType?.startsWith("video/") ? (
+          <video
+            className="public-media-item"
+            key={item.id}
+            controls
+            preload="metadata"
+            src={item.url}
+          />
+        ) : (
+          <a
+            className="public-media-item public-media-image"
+            key={item.id}
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={
+              (locale === "ru" ? item.alt.ru : item.alt.uz) ??
+              (locale === "ru" ? "Фото SHARK TEAM" : "SHARK TEAM surati")
+            }
+            style={{
+              backgroundImage: `url("${item.url}")`
+            }}
+          />
+        )
+      )}
+    </div>
   );
 }
