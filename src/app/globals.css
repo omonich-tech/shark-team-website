@@ -1695,3 +1695,11 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+
+.admin-help {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}

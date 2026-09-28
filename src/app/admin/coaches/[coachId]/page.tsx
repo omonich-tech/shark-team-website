@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AdminEntityForm } from "@/components/admin/entity-form";
+import { CoachAccessForm } from "@/components/admin/coach-access-form";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function AdminCoachEditPage({ params }: { params: Promise<{ coachId: string }> }) {
   const { coachId } = await params;
   const prisma = getPrisma();
-  const coach = await prisma.coach.findUnique({ where: { id: coachId } });
+  const coach = await prisma.coach.findUnique({
+    where: { id: coachId },
+    include: { account: true }
+  });
   if (!coach) notFound();
 
   return (
@@ -37,6 +41,30 @@ export default async function AdminCoachEditPage({ params }: { params: Promise<{
             qualificationRu: coach.qualificationRu, qualificationUz: coach.qualificationUz,
             publicBioRu: coach.publicBioRu, publicBioUz: coach.publicBioUz
           }}
+        />
+      </section>
+
+      <section className="admin-panel admin-editor-panel">
+        <div className="admin-panel-head">
+          <div>
+            <p className="eyebrow">ДОСТУП</p>
+            <h2>Кабинет тренера</h2>
+          </div>
+          <span className="admin-count">
+            {coach.account?.isActive ? "Активен" : coach.account ? "Отключён" : "Не создан"}
+          </span>
+        </div>
+
+        <CoachAccessForm
+          coachId={coach.id}
+          account={
+            coach.account
+              ? {
+                  username: coach.account.username,
+                  isActive: coach.account.isActive
+                }
+              : null
+          }
         />
       </section>
     </>
