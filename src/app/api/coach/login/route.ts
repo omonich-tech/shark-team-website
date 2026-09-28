@@ -6,8 +6,22 @@ import {
   isCoachAuthConfigured,
   verifyCoachCredentials
 } from "@/server/coach/auth";
+import {
+  consumeRateLimit,
+  rateLimitedResponse
+} from "@/server/security/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await consumeRateLimit(request, {
+    namespace: "coach-login",
+    limit: 10,
+    windowSeconds: 10 * 60
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitedResponse(rateLimit.retryAfterSeconds);
+  }
+
   if (!isCoachAuthConfigured()) {
     return NextResponse.json(
       { ok: false, error: "COACH_AUTH_NOT_CONFIGURED" },
