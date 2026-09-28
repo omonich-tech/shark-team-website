@@ -1,0 +1,75 @@
+name: Production Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-smoke
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PRODUCTION_APP_URL: ${{ secrets.PRODUCTION_APP_URL }}
+
+    steps:
+      - name: Require production URL
+        shell: bash
+        run: |
+          if [ -z "$PRODUCTION_APP_URL" ]; then
+            echo "PRODUCTION_APP_URL repository secret is not configured."
+            exit 1
+          fi
+
+      - name: Verify public production endpoints
+        shell: bash
+        run: |
+          BASE="${PRODUCTION_APP_URL%/}"
+
+          check() {
+            local path="$1"
+            local expected="$2"
+            local tmp
+            tmp="$(mktemp)"
+
+            code=$(curl               --silent               --show-error               --location               --max-time 45               --output "$tmp"               --write-out "%{http_code}"               "$BASE$path")
+
+            echo "$path -> HTTP $code"
+
+            if [ "$code" != "$expected" ]; then
+              cat "$tmp"
+              exit 1
+            fi
+          }
+
+          check "/api/health" "200"
+          check "/api/ready" "200"
+          check "/robots.txt" "200"
+          check "/sitemap.xml" "200"
+          check "/ru" "200"
+          check "/uz" "200"
+          check "/ru/branches" "200"
+
+      - name: Verify private routes remain protected
+        shell: bash
+        run: |
+          BASE="${PRODUCTION_APP_URL%/}"
+
+          for path in /admin /coach; do
+            code=$(curl               --silent               --show-error               --max-time 45               --output /dev/null               --write-out "%{http_code}"               "$BASE$path")
+
+            case "$code" in
+              302|303|307|308)
+                echo "$path protected -> HTTP $code"
+                ;;
+              *)
+                echo "$path should redirect to login but returned HTTP $code"
+                exit 1
+                ;;
+            esac
+          done
