@@ -78,6 +78,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Inspect production dependency reachability
+        run: |
+          npm ls --omit=dev deepmerge-ts mysql2 @prisma/config prisma || true
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
