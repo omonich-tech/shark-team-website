@@ -8,6 +8,10 @@ import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
 import { storeMediaFile } from "@/server/media/storage";
+import {
+  hasValidMediaSignature,
+  safeMediaExtension
+} from "@/server/media/validate-media";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
@@ -89,7 +93,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!ALLOWED_TYPES.has(file.type) || file.size > MAX_FILE_SIZE) {
+  if (
+    !ALLOWED_TYPES.has(file.type) ||
+    file.size > MAX_FILE_SIZE ||
+    !(await hasValidMediaSignature(file))
+  ) {
     return NextResponse.json(
       { ok: false, error: "INVALID_MEDIA_FILE" },
       { status: 400 }
@@ -132,13 +140,24 @@ export async function POST(request: NextRequest) {
       : MediaConsentStatus.PENDING
     : MediaConsentStatus.NOT_REQUIRED;
 
-  const safeName = file.name
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .slice(-120);
+  const extension = safeMediaExtension(file.type);
+
+  if (!extension) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_MEDIA_FILE" },
+      { status: 400 }
+    );
+  }
+
+  const baseName = file.name
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(-80) || "media";
 
   const stored = await storeMediaFile(
     file,
-    `shark/${targetType.toLowerCase()}/${targetId}/${Date.now()}-${safeName}`
+    `shark/${targetType.toLowerCase()}/${targetId}/${Date.now()}-${baseName}.${extension}`
   );
 
   const prisma = getPrisma();
