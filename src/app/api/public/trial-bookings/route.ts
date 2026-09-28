@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reserveTrialBooking } from "@/server/trial/reserve-trial-booking";
+import {
+  consumeRateLimit,
+  rateLimitedResponse
+} from "@/server/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await consumeRateLimit(request, {
+    namespace: "public-trial-bookings",
+    limit: 60,
+    windowSeconds: 60 * 60
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitedResponse(rateLimit.retryAfterSeconds);
+  }
+
   try {
     const body = await request.json();
     const leadId = String(body.leadId ?? "").trim();
