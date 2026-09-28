@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { getPrisma } from "../src/lib/prisma";
+import { verifyCoachPassword } from "../src/server/coach/password";
 
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const username = process.env.ADMIN_USERNAME;
@@ -101,6 +102,35 @@ async function main() {
   const branchId = String(branchPayload.branch.id);
   const sportId = String(sportPayload.sport.id);
   const coachId = String(coachPayload.coach.id);
+
+  await json(
+    `/api/admin/coaches/${coachId}/account`,
+    "PATCH",
+    {
+      username: "ci-coach-admin",
+      password: "ci-coach-password-123",
+      isActive: true
+    },
+    cookie
+  );
+
+  const coachAccount = await prisma.coachAccount.findUnique({
+    where: { coachId }
+  });
+
+  assert(coachAccount, "Coach account was not created from Admin");
+  assert(
+    coachAccount.passwordHash !== "ci-coach-password-123",
+    "Coach password must never be stored in plaintext"
+  );
+  assert(
+    await verifyCoachPassword(
+      "ci-coach-password-123",
+      coachAccount.passwordSalt,
+      coachAccount.passwordHash
+    ),
+    "Coach account password hash is invalid"
+  );
 
   await json(
     `/api/admin/branches/${branchId}`,
