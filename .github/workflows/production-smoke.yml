@@ -1,6 +1,9 @@
 name: Production Smoke
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -8,23 +11,52 @@ permissions:
 
 concurrency:
   group: production-smoke
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     env:
       PRODUCTION_APP_URL: ${{ secrets.PRODUCTION_APP_URL }}
 
     steps:
-      - name: Require production URL
+      - name: Resolve production URL
         shell: bash
         run: |
           if [ -z "$PRODUCTION_APP_URL" ]; then
-            echo "PRODUCTION_APP_URL repository secret is not configured."
-            exit 1
+            echo "PRODUCTION_APP_URL=https://shark-team-website.vercel.app" >> "$GITHUB_ENV"
+            echo "Using default Vercel production domain."
           fi
+
+      - name: Wait for database readiness
+        shell: bash
+        run: |
+          BASE="${PRODUCTION_APP_URL%/}"
+
+          for attempt in $(seq 1 30); do
+            code=$(curl \
+              --silent \
+              --show-error \
+              --location \
+              --max-time 20 \
+              --output /tmp/ready.json \
+              --write-out "%{http_code}" \
+              "$BASE/api/ready" || true)
+
+            echo "Attempt $attempt: /api/ready -> HTTP $code"
+            cat /tmp/ready.json 2>/dev/null || true
+            echo
+
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "Production database did not become ready within 5 minutes."
+          exit 1
 
       - name: Verify public production endpoints
         shell: bash
@@ -37,7 +69,14 @@ jobs:
             local tmp
             tmp="$(mktemp)"
 
-            code=$(curl               --silent               --show-error               --location               --max-time 45               --output "$tmp"               --write-out "%{http_code}"               "$BASE$path")
+            code=$(curl \
+              --silent \
+              --show-error \
+              --location \
+              --max-time 45 \
+              --output "$tmp" \
+              --write-out "%{http_code}" \
+              "$BASE$path")
 
             echo "$path -> HTTP $code"
 
@@ -61,7 +100,13 @@ jobs:
           BASE="${PRODUCTION_APP_URL%/}"
 
           for path in /admin /coach; do
-            code=$(curl               --silent               --show-error               --max-time 45               --output /dev/null               --write-out "%{http_code}"               "$BASE$path")
+            code=$(curl \
+              --silent \
+              --show-error \
+              --max-time 45 \
+              --output /dev/null \
+              --write-out "%{http_code}" \
+              "$BASE$path")
 
             case "$code" in
               302|303|307|308)
