@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { buildTelegramAssistantReply } from "@/server/telegram/assistant";
@@ -24,16 +25,28 @@ type TelegramUpdate = {
   };
 };
 
-function webhookAuthorized(request: NextRequest) {
-  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+function safeEqual(left: string, right: string) {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
 
-  if (!secret) {
-    return true;
+  if (a.length !== b.length) {
+    return false;
   }
 
-  return (
-    request.headers.get("x-telegram-bot-api-secret-token") === secret
+  return timingSafeEqual(a, b);
+}
+
+function webhookAuthorized(request: NextRequest) {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  const received = request.headers.get(
+    "x-telegram-bot-api-secret-token"
   );
+
+  if (!secret || !received) {
+    return false;
+  }
+
+  return safeEqual(received, secret);
 }
 
 export async function POST(request: NextRequest) {
