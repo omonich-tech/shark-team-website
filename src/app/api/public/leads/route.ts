@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createWebsiteLead } from "@/server/leads/create-website-lead";
+import {
+  consumeRateLimit,
+  rateLimitedResponse
+} from "@/server/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await consumeRateLimit(request, {
+    namespace: "public-leads",
+    limit: 30,
+    windowSeconds: 60 * 60
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitedResponse(rateLimit.retryAfterSeconds);
+  }
+
   try {
     const body = await request.json();
 
