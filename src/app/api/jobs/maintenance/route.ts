@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isCronAuthorized } from "@/server/jobs/auth";
-import { processDueTelegramNotifications } from "@/server/notifications/telegram-notifications";
+import { runMaintenance } from "@/server/jobs/run-maintenance";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   if (!isCronAuthorized(request)) {
@@ -11,17 +13,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await processDueTelegramNotifications();
+    const result = await runMaintenance();
 
     return NextResponse.json({
       ok: true,
       ...result
     });
   } catch (error) {
-    console.error("Notification worker failed", error);
+    console.error("Maintenance job failed", error);
 
     return NextResponse.json(
-      { ok: false, error: "NOTIFICATION_WORKER_FAILED" },
+      { ok: false, error: "MAINTENANCE_FAILED" },
       { status: 500 }
     );
   }

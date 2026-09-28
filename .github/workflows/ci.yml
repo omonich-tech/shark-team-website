@@ -1,5 +1,12 @@
 name: CI
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
   push:
@@ -35,32 +42,53 @@ jobs:
       PAYME_KEY: ci-key
       PAYME_CHECKOUT_URL: https://test.paycom.uz
       ADMIN_USERNAME: ci-admin
-      ADMIN_PASSWORD: ci-password
+      ADMIN_PASSWORD: ci-admin-password-123
       ADMIN_SESSION_SECRET: ci-session-secret-0123456789-abcdefghijklmnopqrstuvwxyz
       ADMIN_COOKIE_SECURE: "false"
       COACH_SESSION_SECRET: ci-coach-session-secret-0123456789-abcdefghijklmnopqrstuvwxyz
       COACH_COOKIE_SECURE: "false"
       COACH_SMOKE_USERNAME: ci-coach
       COACH_SMOKE_PASSWORD: ci-coach-password-123
+      TELEGRAM_BOT_TOKEN: ci-telegram-token
       TELEGRAM_BOT_USERNAME: shark_ci_bot
       TELEGRAM_WEBHOOK_SECRET: ci-telegram-webhook-secret
-      CRON_SECRET: ci-cron-secret
+      CRON_SECRET: ci-cron-secret-0123456789abcdef
       TELEGRAM_DRY_RUN: "true"
       MEDIA_DRY_RUN: "true"
       TRIAL_REMINDER_MINUTES: "180"
       POST_TRIAL_FEEDBACK_MINUTES: "30"
+      RATE_LIMIT_SALT: ci-rate-limit-salt-0123456789-abcdefghijklmnopqrstuvwxyz
+      MAINTENANCE_SESSION_HORIZON_DAYS: "84"
+      BLOB_READ_WRITE_TOKEN: ci-blob-token
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22.18.0"
 
+      - name: Scan repository for committed secrets
+        run: npm run security:scan
+
       - name: Install dependencies
         run: npm install
+
+      - name: Inspect production dependency reachability
+        run: |
+          npm ls --omit=dev deepmerge-ts mysql2 @prisma/config prisma || true
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify production environment contract
+        run: npm run verify:production-env
+        env:
+          PRODUCTION_VERIFY_MODE: ci
 
       - name: Generate Prisma client
         run: npm run db:generate
@@ -163,7 +191,7 @@ jobs:
           WRONG_STATUS=$(curl -s -o /dev/null -w "%{http_code}"             -H "Content-Type: application/json"             -d '{"username":"ci-admin","password":"wrong"}'             http://127.0.0.1:3000/api/admin/login)
           test "$WRONG_STATUS" = "401"
 
-          LOGIN_STATUS=$(curl -s -o /tmp/admin-login.json -w "%{http_code}"             -c /tmp/admin-cookies.txt             -H "Content-Type: application/json"             -d '{"username":"ci-admin","password":"ci-password"}'             http://127.0.0.1:3000/api/admin/login)
+          LOGIN_STATUS=$(curl -s -o /tmp/admin-login.json -w "%{http_code}"             -c /tmp/admin-cookies.txt             -H "Content-Type: application/json"             -d '{"username":"ci-admin","password":"ci-admin-password-123"}'             http://127.0.0.1:3000/api/admin/login)
           test "$LOGIN_STATUS" = "200"
           grep -q '"ok":true' /tmp/admin-login.json
 
@@ -186,6 +214,9 @@ jobs:
 
       - name: Smoke test admin CMS
         run: npm run smoke:admin-cms
+
+      - name: Smoke test production hardening
+        run: npm run smoke:production
 
       - name: Stop production server
         if: always()

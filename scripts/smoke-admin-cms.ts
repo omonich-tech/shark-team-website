@@ -229,7 +229,7 @@ async function main() {
   const safeForm = new FormData();
   safeForm.set(
     "file",
-    new File([new Uint8Array([137, 80, 78, 71])], "ci-safe.png", {
+    new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], "ci-safe.png", {
       type: "image/png"
     })
   );
@@ -260,7 +260,7 @@ async function main() {
   const pendingForm = new FormData();
   pendingForm.set(
     "file",
-    new File([new Uint8Array([137, 80, 78, 71])], "ci-minor.png", {
+    new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], "ci-minor.png", {
       type: "image/png"
     })
   );
