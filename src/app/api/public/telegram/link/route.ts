@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTelegramLinkForBooking } from "@/server/telegram/link";
+import {
+  consumeRateLimit,
+  rateLimitedResponse
+} from "@/server/security/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await consumeRateLimit(request, {
+    namespace: "telegram-link",
+    limit: 30,
+    windowSeconds: 60 * 60
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitedResponse(rateLimit.retryAfterSeconds);
+  }
+
   try {
     const body = await request.json();
     const bookingId = String(body.bookingId ?? "").trim();
