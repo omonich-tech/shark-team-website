@@ -455,3 +455,7 @@ This can be used instead of provider-specific cron scheduling.
 The production PostgreSQL database is provisioned in Railway.
 
 The public Vercel application must use Railway's public PostgreSQL connection string as its production `DATABASE_URL`. Changes to Vercel environment variables require a new deployment before runtime functions can see them.
+
+## Production admin access
+
+Production admin authentication is configured through Vercel environment variables. Secret values are never committed to the repository. Any change to production environment variables requires a fresh Vercel deployment before runtime routes can use them.
