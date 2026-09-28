@@ -9,13 +9,19 @@ type RateLimitOptions = {
 };
 
 function clientAddress(request: NextRequest) {
+  const realIp = request.headers.get("x-real-ip")?.trim();
+
+  if (realIp) {
+    return realIp;
+  }
+
   const forwarded = request.headers.get("x-forwarded-for");
 
   if (forwarded) {
     return forwarded.split(",")[0]?.trim() || "unknown";
   }
 
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  return "unknown";
 }
 
 function fingerprint(value: string) {
