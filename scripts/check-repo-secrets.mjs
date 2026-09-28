@@ -32,7 +32,7 @@ const patterns = [
   },
   {
     name: "Non-placeholder Payme key assignment",
-    regex: /PAYME_KEY\s*[:=]\s*["']?(?!ci-key\b)[A-Za-z0-9_-]{16,}/
+    regex: /PAYME_KEY[ \\t]*[:=][ \\t]*["']?[A-Za-z0-9_-]{16,}/
   }
 ];
 
