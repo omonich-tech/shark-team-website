@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/server/jobs/auth";
 import { processDueTelegramNotifications } from "@/server/notifications/telegram-notifications";
 
-function authorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-
-  if (!secret) {
-    return false;
-  }
-
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 export async function POST(request: NextRequest) {
-  if (!authorized(request)) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json(
       { ok: false, error: "UNAUTHORIZED" },
       { status: 401 }
