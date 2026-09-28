@@ -8,11 +8,18 @@ export async function GET() {
     const prisma = getPrisma();
     await prisma.$queryRaw`SELECT 1`;
 
-    return NextResponse.json({
-      ok: true,
-      service: "shark-team-platform",
-      database: "ready"
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        service: "shark-team-platform",
+        database: "ready"
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
+    );
   } catch (error) {
     console.error("Readiness check failed", error);
 
@@ -22,7 +29,12 @@ export async function GET() {
         service: "shark-team-platform",
         database: "unavailable"
       },
-      { status: 503 }
+      {
+        status: 503,
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
     );
   }
 }
