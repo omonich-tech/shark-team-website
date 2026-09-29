@@ -407,7 +407,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  if (text === "/id") {
+  if (text && /^\/id(?:@[A-Za-z0-9_]+)?$/.test(text)) {
     await sendTelegramMessage({
       chatId: BigInt(chatId),
       text: `Chat ID: <code>${chatId}</code>\nUser ID: <code>${telegramUserId}</code>`
