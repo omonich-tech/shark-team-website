@@ -33,15 +33,36 @@ function minLength(name: string, length: number) {
   "COACH_SESSION_SECRET",
   "CRON_SECRET",
   "RATE_LIMIT_SALT",
-  "PAYME_MERCHANT_ID",
-  "PAYME_LOGIN",
-  "PAYME_KEY",
-  "PAYME_CHECKOUT_URL",
   "TELEGRAM_BOT_TOKEN",
   "TELEGRAM_BOT_USERNAME",
   "TELEGRAM_WEBHOOK_SECRET",
   "BLOB_READ_WRITE_TOKEN"
 ].forEach(requireValue);
+
+const paymentMode = value("PAYMENT_MODE") || "PAYME";
+
+if (paymentMode === "PAYME") {
+  [
+    "PAYME_MERCHANT_ID",
+    "PAYME_LOGIN",
+    "PAYME_KEY",
+    "PAYME_CHECKOUT_URL"
+  ].forEach(requireValue);
+} else if (paymentMode === "MANUAL_CARD") {
+  [
+    "MANUAL_PAYMENT_CARD_NUMBER",
+    "TELEGRAM_ADMIN_CHAT_ID"
+  ].forEach(requireValue);
+
+  const digits = value("MANUAL_PAYMENT_CARD_NUMBER").replace(/\D+/g, "");
+  if (digits && (digits.length < 12 || digits.length > 19)) {
+    errors.push(
+      "MANUAL_PAYMENT_CARD_NUMBER must contain 12 to 19 digits"
+    );
+  }
+} else {
+  errors.push("PAYMENT_MODE must be PAYME or MANUAL_CARD");
+}
 
 minLength("ADMIN_PASSWORD", 12);
 minLength("ADMIN_SESSION_SECRET", 32);
