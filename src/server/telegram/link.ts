@@ -6,12 +6,62 @@ import { getPrisma } from "@/lib/prisma";
 
 const LINK_TTL_MS = 24 * 60 * 60 * 1000;
 
+let cachedBotUsername: string | null | undefined;
+
+async function resolveBotUsername() {
+  if (cachedBotUsername !== undefined) {
+    return cachedBotUsername;
+  }
+
+  const configured =
+    process.env.TELEGRAM_BOT_USERNAME?.trim().replace(/^@/, "");
+
+  if (configured) {
+    cachedBotUsername = configured;
+    return configured;
+  }
+
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+
+  if (!token) {
+    cachedBotUsername = null;
+    return null;
+  }
+
+  try {
+    const apiBase =
+      process.env.TELEGRAM_API_BASE_URL ?? "https://api.telegram.org";
+    const response = await fetch(`${apiBase}/bot${token}/getMe`, {
+      cache: "no-store"
+    });
+    const payload = (await response.json()) as {
+      ok?: boolean;
+      result?: {
+        username?: string;
+      };
+    };
+
+    const username = payload.result?.username?.trim().replace(/^@/, "") ?? "";
+
+    if (!response.ok || payload.ok !== true || !username) {
+      cachedBotUsername = null;
+      return null;
+    }
+
+    cachedBotUsername = username;
+    return username;
+  } catch {
+    cachedBotUsername = null;
+    return null;
+  }
+}
+
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
 export async function createTelegramLinkForBooking(bookingId: string) {
-  const botUsername = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
+  const botUsername = await resolveBotUsername();
 
   if (!botUsername) {
     return {

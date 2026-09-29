@@ -34,7 +34,6 @@ function minLength(name: string, length: number) {
   "CRON_SECRET",
   "RATE_LIMIT_SALT",
   "TELEGRAM_BOT_TOKEN",
-  "TELEGRAM_BOT_USERNAME",
   "TELEGRAM_WEBHOOK_SECRET",
   "BLOB_READ_WRITE_TOKEN"
 ].forEach(requireValue);
@@ -131,6 +130,12 @@ if (strict && value("ADMIN_COOKIE_SECURE") === "false") {
 
 if (strict && value("COACH_COOKIE_SECURE") === "false") {
   errors.push("COACH_COOKIE_SECURE must not be false in production");
+}
+
+if (!value("TELEGRAM_BOT_USERNAME")) {
+  warnings.push(
+    "TELEGRAM_BOT_USERNAME is not set; the app will resolve the bot username from Telegram getMe"
+  );
 }
 
 if (!value("OPENAI_API_KEY")) {
