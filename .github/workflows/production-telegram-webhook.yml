@@ -1,0 +1,59 @@
+name: Production Telegram Webhook
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-telegram-webhook
+  cancel-in-progress: true
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PRODUCTION_APP_URL: ${{ secrets.PRODUCTION_APP_URL }}
+      CRON_SECRET: ${{ secrets.PRODUCTION_CRON_SECRET }}
+
+    steps:
+      - name: Resolve production URL
+        shell: bash
+        run: |
+          if [ -z "$PRODUCTION_APP_URL" ]; then
+            echo "PRODUCTION_APP_URL=https://shark-team-website.vercel.app" >> "$GITHUB_ENV"
+            echo "Using default Vercel production domain."
+          fi
+
+      - name: Check webhook configuration secret
+        id: config
+        shell: bash
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "PRODUCTION_CRON_SECRET is not configured; skipping webhook refresh."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Refresh Telegram webhook
+        if: steps.config.outputs.configured == 'true'
+        shell: bash
+        run: |
+          URL="${PRODUCTION_APP_URL%/}/api/jobs/telegram-webhook"
+          RESPONSE_FILE="$(mktemp)"
+
+          HTTP_CODE=$(curl             --silent             --show-error             --location             --max-time 45             --output "$RESPONSE_FILE"             --write-out "%{http_code}"             --request POST             --header "Authorization: Bearer $CRON_SECRET"             "$URL")
+
+          cat "$RESPONSE_FILE"
+          echo
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Telegram webhook refresh returned HTTP $HTTP_CODE"
+            exit 1
+          fi
