@@ -62,11 +62,14 @@ enum TrialBookingStatus {
 
 enum PaymentProvider {
   PAYME
+  MANUAL_CARD
 }
 
 enum PaymentStatus {
   PENDING
+  UNDER_REVIEW
   PAID
+  REJECTED
   CANCELLED
   REFUNDED
 }
@@ -431,22 +434,32 @@ model TrialBooking {
 }
 
 model Payment {
-  id             String          @id @default(cuid())
-  trialBookingId String          @unique
-  provider       PaymentProvider @default(PAYME)
-  status         PaymentStatus   @default(PENDING)
-  amountUzs      Int
-  amountTiyin    Int
-  currency       String          @default("UZS")
-  paidAt         DateTime?
-  cancelledAt    DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  trialBookingId  String          @unique
+  provider        PaymentProvider @default(PAYME)
+  status          PaymentStatus   @default(PENDING)
+  amountUzs       Int
+  amountTiyin     Int
+  currency        String          @default("UZS")
+  receiptUrl      String?
+  receiptPathname String?
+  receiptMimeType String?
+  receiptSize     Int?
+  receiptTelegramFileId String?
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  rejectionReason String?
+  paidAt          DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
-  trialBooking     TrialBooking       @relation(fields: [trialBookingId], references: [id], onDelete: Cascade)
+  trialBooking      TrialBooking       @relation(fields: [trialBookingId], references: [id], onDelete: Cascade)
   paymeTransactions PaymeTransaction[]
 
   @@index([provider, status])
+  @@index([status, submittedAt])
   @@index([createdAt])
 }
 

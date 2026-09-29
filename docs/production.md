@@ -56,9 +56,25 @@ RATE_LIMIT_SALT=
 MAINTENANCE_SESSION_HORIZON_DAYS=84
 ```
 
-Payme:
+Payments:
 
 ```
+PAYMENT_MODE=MANUAL_CARD
+```
+
+Temporary manual-card mode:
+
+```
+MANUAL_PAYMENT_CARD_NUMBER=
+MANUAL_PAYMENT_CARD_HOLDER=
+TELEGRAM_ADMIN_CHAT_ID=
+TELEGRAM_ADMIN_USER_IDS=
+```
+
+Payme mode, when activated later:
+
+```
+PAYMENT_MODE=PAYME
 PAYME_MERCHANT_ID=
 PAYME_LOGIN=
 PAYME_KEY=
@@ -143,7 +159,25 @@ A backup is not considered verified until a restore has been tested.
 
 Do not run destructive database repair commands before confirming that a usable backup exists.
 
-## 5. Payme activation
+## 5. Payments
+
+### Temporary manual-card activation
+
+Set `PAYMENT_MODE=MANUAL_CARD`, configure the card number only in the production environment, and set `TELEGRAM_ADMIN_CHAT_ID` to the private admin group used for receipt review. `TELEGRAM_ADMIN_USER_IDS` can restrict approval/rejection actions to specific Telegram users.
+
+Flow:
+
+1. parent books a trial;
+2. the site displays the configured card and exact trial amount;
+3. parent opens the linked Telegram chat and sends a receipt screenshot/photo;
+4. the booking moves to PAYMENT_PENDING and the payment to UNDER_REVIEW;
+5. the admin group receives the receipt with approve/reject buttons;
+6. approval marks the payment PAID and booking CONFIRMED;
+7. rejection records the reason and returns the booking to HOLD when the hold window is still valid.
+
+Never commit the card number to GitHub.
+
+### Payme activation
 
 Merchant endpoint:
 

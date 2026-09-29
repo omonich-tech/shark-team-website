@@ -37,6 +37,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shark_team
       DATABASE_POOL_MAX: "1"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      PAYMENT_MODE: PAYME
       PAYME_MERCHANT_ID: ci-merchant
       PAYME_LOGIN: ci-login
       PAYME_KEY: ci-key
@@ -141,6 +142,10 @@ jobs:
 
       - name: Start production server
         run: |
+          export MANUAL_PAYMENT_CARD_NUMBER="$(printf '1%.0s' {1..12})"
+          export MANUAL_PAYMENT_CARD_HOLDER="CI Test"
+          export TELEGRAM_ADMIN_CHAT_ID="-1001234567890"
+          export TELEGRAM_ADMIN_USER_IDS="999001"
           npm start > /tmp/shark-next.log 2>&1 &
           echo $! > /tmp/shark-next.pid
 
@@ -167,6 +172,12 @@ jobs:
 
       - name: Verify expired hold frees capacity
         run: npm run verify:expired-hold
+
+      - name: Smoke test manual card payment flow
+        run: npm run smoke:manual-card
+        env:
+          TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
+          TELEGRAM_ADMIN_USER_IDS: "999001"
 
       - name: Smoke test Payme Merchant API
         run: npm run smoke:payme

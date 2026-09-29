@@ -38,17 +38,17 @@ type Reservation = {
   sessionId: string;
 };
 
-type PaymeCheckout = {
+type ManualCardPayment = {
   payment: {
     id: string;
     status: string;
     amountUzs: number;
-    amountTiyin: number;
     currency: string;
   };
-  checkout: {
-    action: string;
-    fields: Record<string, string>;
+  manualCard: {
+    cardNumber: string;
+    cardLast4: string;
+    cardHolder: string | null;
   };
 };
 
@@ -71,10 +71,15 @@ const copy = {
     saving: "Бронируем…",
     successTitle: "Место временно забронировано",
     successPrefix: "Место удерживается до",
-    pay: "Оплатить через Payme",
+    pay: "Я оплатил — отправить чек в Telegram",
     telegram: "Получать уведомления в Telegram",
+    manualTitle: "Оплата переводом на карту",
+    cardLabel: "Карта",
+    holderLabel: "Получатель",
+    transferNote:
+      "Переведите точную сумму, затем отправьте чек в Telegram.",
     paymentPending:
-      "Оплата Payme для этого окружения пока не подключена.",
+      "Временная оплата на карту пока не настроена.",
     full:
       "Это место только что заняли. Мы обновили доступные даты — выберите другую тренировку.",
     error: "Не удалось оформить бронь. Проверьте данные и попробуйте ещё раз."
@@ -97,10 +102,15 @@ const copy = {
     saving: "Band qilinmoqda…",
     successTitle: "Joy vaqtincha band qilindi",
     successPrefix: "Joy quyidagi vaqtgacha saqlanadi:",
-    pay: "Payme orqali to‘lash",
+    pay: "To‘ladim — chekni Telegram orqali yuborish",
     telegram: "Telegram orqali xabarnomalar olish",
+    manualTitle: "Kartaga o‘tkazma orqali to‘lov",
+    cardLabel: "Karta",
+    holderLabel: "Qabul qiluvchi",
+    transferNote:
+      "Aniq summani o‘tkazing, so‘ng chekni Telegram orqali yuboring.",
     paymentPending:
-      "Bu muhitda Payme to‘lovi hali ulanmagan.",
+      "Kartaga vaqtinchalik to‘lov hali sozlanmagan.",
     full:
       "Bu joy hozirgina band qilindi. Mavjud sanalarni yangiladik — boshqa mashg‘ulotni tanlang.",
     error: "Bronni rasmiylashtirib bo‘lmadi. Ma’lumotlarni tekshirib qayta urinib ko‘ring."
@@ -145,7 +155,8 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reservation, setReservation] = useState<Reservation | null>(null);
-  const [payme, setPayme] = useState<PaymeCheckout | null>(null);
+  const [manualPayment, setManualPayment] =
+    useState<ManualCardPayment | null>(null);
   const [telegramLink, setTelegramLink] = useState<string | null>(null);
   const [paymentUnavailable, setPaymentUnavailable] = useState(false);
   const [result, setResult] = useState<
@@ -174,7 +185,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     setOptions(null);
     setSelectedSessionId("");
     setReservation(null);
-    setPayme(null);
+    setManualPayment(null);
     setTelegramLink(null);
     setPaymentUnavailable(false);
     setResult(null);
@@ -212,17 +223,14 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     }
   }
 
-  async function initPayme(bookingId: string) {
+  async function initManualCard(bookingId: string) {
     try {
-      const response = await fetch("/api/public/payments/payme/init", {
+      const response = await fetch("/api/public/payments/manual/init", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          bookingId,
-          locale
-        })
+        body: JSON.stringify({ bookingId })
       });
 
       const payload = await response.json();
@@ -232,7 +240,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
         return;
       }
 
-      setPayme(payload as PaymeCheckout);
+      setManualPayment(payload as ManualCardPayment);
       setPaymentUnavailable(false);
     } catch {
       setPaymentUnavailable(true);
@@ -246,7 +254,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
 
     setSubmitting(true);
     setReservation(null);
-    setPayme(null);
+    setManualPayment(null);
     setPaymentUnavailable(false);
     setResult(null);
 
@@ -311,7 +319,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
       setReservation(nextReservation);
       setResult("success");
       await Promise.all([
-        initPayme(nextReservation.id),
+        initManualCard(nextReservation.id),
         initTelegram(nextReservation.id)
       ]);
     } catch {
@@ -389,7 +397,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
                       onClick={() => {
                         setSelectedSessionId(session.id);
                         setReservation(null);
-                        setPayme(null);
+                        setManualPayment(null);
                         setTelegramLink(null);
                         setPaymentUnavailable(false);
                         setResult(null);
@@ -460,22 +468,36 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
             <b>{holdLabel(reservation.expiresAt, locale)}</b>.
           </p>
 
-          {payme ? (
-            <form
-              className="payme-form"
-              method="POST"
-              action={payme.checkout.action}
-            >
-              {Object.entries(payme.checkout.fields).map(([name, value]) => (
-                <input key={name} type="hidden" name={name} value={value} />
-              ))}
-              <button className="button payme-button" type="submit">
-                {t.pay} · {moneyLabel(payme.payment.amountUzs, locale)} UZS
-              </button>
-            </form>
+          {manualPayment ? (
+            <div className="manual-card-payment">
+              <strong>{t.manualTitle}</strong>
+              <p>
+                {t.cardLabel}: <b>{manualPayment.manualCard.cardNumber}</b>
+              </p>
+              {manualPayment.manualCard.cardHolder ? (
+                <p>
+                  {t.holderLabel}: <b>{manualPayment.manualCard.cardHolder}</b>
+                </p>
+              ) : null}
+              <p>
+                {moneyLabel(manualPayment.payment.amountUzs, locale)} UZS
+              </p>
+              <small>{t.transferNote}</small>
+
+              {telegramLink ? (
+                <a
+                  className="button telegram-button"
+                  href={telegramLink}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t.pay}
+                </a>
+              ) : null}
+            </div>
           ) : null}
 
-          {telegramLink ? (
+          {!manualPayment && telegramLink ? (
             <a
               className="button telegram-button"
               href={telegramLink}
