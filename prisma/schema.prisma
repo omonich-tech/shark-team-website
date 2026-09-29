@@ -445,6 +445,7 @@ model Payment {
   receiptPathname String?
   receiptMimeType String?
   receiptSize     Int?
+  receiptTelegramFileId String?
   submittedAt     DateTime?
   reviewedAt      DateTime?
   reviewedBy      String?
