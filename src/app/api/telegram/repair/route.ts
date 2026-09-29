@@ -20,16 +20,6 @@ function safeEqual(left: string, right: string) {
 }
 
 async function handle(request: NextRequest) {
-  const rateLimit = await consumeRateLimit(request, {
-    namespace: "telegram-webhook-repair",
-    limit: 5,
-    windowSeconds: 60 * 60
-  });
-
-  if (!rateLimit.allowed) {
-    return rateLimitedResponse(rateLimit.retryAfterSeconds);
-  }
-
   const expectedChatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
   const providedChatId = request.nextUrl.searchParams.get("chat")?.trim();
 
@@ -42,6 +32,16 @@ async function handle(request: NextRequest) {
       { ok: false, error: "NOT_AUTHORIZED" },
       { status: 403 }
     );
+  }
+
+  const rateLimit = await consumeRateLimit(request, {
+    namespace: "telegram-webhook-repair-v2",
+    limit: 20,
+    windowSeconds: 60 * 60
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitedResponse(rateLimit.retryAfterSeconds);
   }
 
   const result = await configureTelegramWebhook();
