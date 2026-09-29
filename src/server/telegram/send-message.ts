@@ -138,6 +138,80 @@ export async function sendTelegramPhoto(input: SendTelegramPhotoInput) {
   };
 }
 
+
+type SendTelegramDocumentInput = {
+  chatId: bigint | string;
+  document: string;
+  caption?: string;
+  replyMarkup?: Record<string, unknown>;
+};
+
+export async function sendTelegramDocument(
+  input: SendTelegramDocumentInput
+) {
+  if (process.env.TELEGRAM_DRY_RUN === "true") {
+    return {
+      ok: true as const,
+      messageId: `dry-${Date.now()}`
+    };
+  }
+
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+
+  if (!token) {
+    return {
+      ok: false as const,
+      error: "TELEGRAM_BOT_TOKEN_MISSING" as const
+    };
+  }
+
+  const apiBase =
+    process.env.TELEGRAM_API_BASE_URL ?? "https://api.telegram.org";
+
+  const response = await fetch(
+    `${apiBase}/bot${token}/sendDocument`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        chat_id: input.chatId.toString(),
+        document: input.document,
+        ...(input.caption
+          ? {
+              caption: input.caption,
+              parse_mode: "HTML"
+            }
+          : {}),
+        ...(input.replyMarkup
+          ? { reply_markup: input.replyMarkup }
+          : {})
+      })
+    }
+  );
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    result?: { message_id?: number };
+    description?: string;
+  };
+
+  if (!response.ok || payload.ok !== true) {
+    return {
+      ok: false as const,
+      error:
+        payload.description ??
+        `TELEGRAM_HTTP_${response.status}`
+    };
+  }
+
+  return {
+    ok: true as const,
+    messageId: String(payload.result?.message_id ?? "")
+  };
+}
+
 export async function answerTelegramCallbackQuery(input: {
   callbackQueryId: string;
   text?: string;
