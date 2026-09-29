@@ -407,6 +407,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  if (text === "/id") {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: `Chat ID: <code>${chatId}</code>\nUser ID: <code>${telegramUserId}</code>`
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
   if (message.chat?.type && message.chat.type !== "private") {
     return NextResponse.json({ ok: true });
   }
