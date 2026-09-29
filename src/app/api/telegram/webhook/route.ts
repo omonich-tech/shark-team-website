@@ -9,6 +9,7 @@ import { buildTelegramAssistantReply } from "@/server/telegram/assistant";
 import { consumeTelegramLinkToken } from "@/server/telegram/link";
 import {
   answerTelegramCallbackQuery,
+  sendTelegramDocument,
   sendTelegramMessage,
   sendTelegramPhoto
 } from "@/server/telegram/send-message";
@@ -20,10 +21,18 @@ type TelegramPhoto = {
   file_size?: number;
 };
 
+type TelegramDocument = {
+  file_id?: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
+};
+
 type TelegramMessage = {
   message_id?: number;
   text?: string;
   photo?: TelegramPhoto[];
+  document?: TelegramDocument;
   chat?: {
     id?: number;
     type?: string;
@@ -196,37 +205,50 @@ async function sendPaymentReviewToAdmin(
     `ID: <code>${escapeHtml(result.payment.id)}</code>`
   ].join("\n");
 
-  await sendTelegramPhoto({
-    chatId,
-    photo: result.payment.receiptTelegramFileId!,
-    caption,
-    replyMarkup: {
-      inline_keyboard: [
-        [
-          {
-            text: "✅ Подтвердить",
-            callback_data: `manual:approve:${result.payment.id}`
-          }
-        ],
-        [
-          {
-            text: "❌ Платёж не найден",
-            callback_data: `manual:not_found:${result.payment.id}`
-          },
-          {
-            text: "❌ Неверная сумма",
-            callback_data: `manual:wrong_amount:${result.payment.id}`
-          }
-        ],
-        [
-          {
-            text: "❌ Чек не читается",
-            callback_data: `manual:bad_receipt:${result.payment.id}`
-          }
-        ]
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        {
+          text: "✅ Подтвердить",
+          callback_data: `manual:approve:${result.payment.id}`
+        }
+      ],
+      [
+        {
+          text: "❌ Платёж не найден",
+          callback_data: `manual:not_found:${result.payment.id}`
+        },
+        {
+          text: "❌ Неверная сумма",
+          callback_data: `manual:wrong_amount:${result.payment.id}`
+        }
+      ],
+      [
+        {
+          text: "❌ Чек не читается",
+          callback_data: `manual:bad_receipt:${result.payment.id}`
+        }
       ]
-    }
-  });
+    ]
+  };
+
+  const fileId = result.payment.receiptTelegramFileId!;
+
+  if (result.payment.receiptMimeType?.startsWith("document:")) {
+    await sendTelegramDocument({
+      chatId,
+      document: fileId,
+      caption,
+      replyMarkup
+    });
+  } else {
+    await sendTelegramPhoto({
+      chatId,
+      photo: fileId,
+      caption,
+      replyMarkup
+    });
+  }
 }
 
 async function handlePaymentCallback(
@@ -483,8 +505,14 @@ export async function POST(request: NextRequest) {
   });
 
   const photos = message.photo ?? [];
+  const document = message.document;
+  const documentMimeType = document?.mime_type ?? "";
+  const documentIsReceipt =
+    Boolean(document?.file_id) &&
+    (documentMimeType === "application/pdf" ||
+      documentMimeType.startsWith("image/"));
 
-  if (photos.length > 0) {
+  if (photos.length > 0 || documentIsReceipt) {
     if (!adminChatId()) {
       await sendTelegramMessage({
         chatId: BigInt(chatId),
@@ -496,7 +524,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const fileId = photos.at(-1)?.file_id;
+    const photo = photos.at(-1);
+    const fileId = photo?.file_id ?? document?.file_id;
+    const receiptMimeType = photo
+      ? "photo:image/jpeg"
+      : `document:${documentMimeType || "application/octet-stream"}`;
+    const receiptSize = photo?.file_size ?? document?.file_size ?? null;
 
     if (!fileId) {
       return NextResponse.json({ ok: true });
@@ -504,7 +537,9 @@ export async function POST(request: NextRequest) {
 
     const result = await submitManualCardReceipt({
       telegramUserId: BigInt(telegramUserId),
-      telegramFileId: fileId
+      telegramFileId: fileId,
+      receiptMimeType,
+      receiptSize
     });
 
     if (!result.ok) {
@@ -546,6 +581,18 @@ export async function POST(request: NextRequest) {
     });
 
     await sendPaymentReviewToAdmin(result);
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (document?.file_id) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text:
+        contact.locale === "uz"
+          ? "Chekni PDF, rasm yoki skrinshot ko‘rinishida yuboring."
+          : "Отправьте чек в формате PDF, изображения или скриншота."
+    });
 
     return NextResponse.json({ ok: true });
   }

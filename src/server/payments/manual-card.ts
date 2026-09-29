@@ -35,6 +35,8 @@ async function leadIdsForTelegramUser(telegramUserId: bigint) {
 export async function submitManualCardReceipt(input: {
   telegramUserId: bigint;
   telegramFileId: string;
+  receiptMimeType?: string | null;
+  receiptSize?: number | null;
 }) {
   const prisma = getPrisma();
   const now = new Date();
@@ -120,6 +122,8 @@ export async function submitManualCardReceipt(input: {
       data: {
         status: PaymentStatus.UNDER_REVIEW,
         receiptTelegramFileId: input.telegramFileId,
+        receiptMimeType: input.receiptMimeType ?? null,
+        receiptSize: input.receiptSize ?? null,
         submittedAt: now,
         reviewedAt: null,
         reviewedBy: null,

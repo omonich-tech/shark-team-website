@@ -147,18 +147,12 @@ async function main() {
           first_name: "Manual Parent",
           language_code: "ru"
         },
-        photo: [
-          {
-            file_id: "ci-receipt-small",
-            width: 100,
-            height: 100
-          },
-          {
-            file_id: "ci-receipt-large",
-            width: 1200,
-            height: 1600
-          }
-        ]
+        document: {
+          file_id: "ci-receipt-pdf",
+          file_name: "receipt.pdf",
+          mime_type: "application/pdf",
+          file_size: 20100
+        }
       }
     },
     { "x-telegram-bot-api-secret-token": webhookSecret }
@@ -181,8 +175,16 @@ async function main() {
     "Receipt must put payment UNDER_REVIEW"
   );
   assert(
-    underReview.receiptTelegramFileId === "ci-receipt-large",
-    "Largest Telegram photo file id was not stored"
+    underReview.receiptTelegramFileId === "ci-receipt-pdf",
+    "Telegram document file id was not stored"
+  );
+  assert(
+    underReview.receiptMimeType === "document:application/pdf",
+    "Telegram document mime type was not stored"
+  );
+  assert(
+    underReview.receiptSize === 20100,
+    "Telegram document size was not stored"
   );
   assert(
     underReview.trialBooking.status === TrialBookingStatus.PAYMENT_PENDING,
