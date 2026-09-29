@@ -41,8 +41,7 @@
     "security:scan": "node scripts/check-repo-secrets.mjs",
     "smoke:production": "tsx scripts/smoke-production.ts",
     "maintenance:run": "tsx scripts/run-maintenance.ts",
-    "smoke:manual-card": "tsx scripts/smoke-manual-card-http.ts",
-    "postbuild": "tsx scripts/configure-telegram-on-production.ts"
+    "smoke:manual-card": "tsx scripts/smoke-manual-card-http.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
