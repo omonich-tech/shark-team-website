@@ -104,6 +104,20 @@ enum AttendanceStatus {
   EXCUSED
 }
 
+enum AbsenceReason {
+  ILLNESS
+  FAMILY
+  TRAVEL
+  SCHOOL
+  OTHER
+}
+
+enum AttendanceReasonSource {
+  COACH
+  PARENT
+  ADMIN
+}
+
 enum NotificationChannel {
   TELEGRAM
 }
@@ -119,6 +133,7 @@ enum NotificationType {
   SUBSCRIPTION_RESUMED
   SUBSCRIPTION_PAUSED
   SUBSCRIPTION_ENDED
+  REGULAR_ABSENCE_NOTICE
 }
 
 enum NotificationStatus {
@@ -658,6 +673,10 @@ model Attendance {
   coachId        String
   trialBookingId String?          @unique
   status         AttendanceStatus
+  absenceReason  AbsenceReason?
+  absenceNote    String?
+  reasonSource   AttendanceReasonSource?
+  reasonUpdatedAt DateTime?
   markedAt       DateTime         @default(now())
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
@@ -666,6 +685,7 @@ model Attendance {
   child        Child           @relation(fields: [childId], references: [id], onDelete: Cascade)
   coach        Coach           @relation(fields: [coachId], references: [id], onDelete: Restrict)
   trialBooking TrialBooking?   @relation(fields: [trialBookingId], references: [id], onDelete: SetNull)
+  notifications Notification[]
 
   @@unique([sessionId, childId])
   @@index([coachId, markedAt])
@@ -756,6 +776,7 @@ model Notification {
   trialBookingId   String?
   enrollmentId     String?
   subscriptionPaymentId String?
+  attendanceId     String?
   scheduledAt      DateTime
   sentAt           DateTime?
   attempts         Int                 @default(0)
@@ -770,6 +791,7 @@ model Notification {
   trialBooking TrialBooking? @relation(fields: [trialBookingId], references: [id], onDelete: SetNull)
   enrollment StudentEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
   subscriptionPayment SubscriptionPayment? @relation(fields: [subscriptionPaymentId], references: [id], onDelete: SetNull)
+  attendance Attendance? @relation(fields: [attendanceId], references: [id], onDelete: SetNull)
 
   @@index([status, scheduledAt])
   @@index([leadId])
@@ -777,6 +799,7 @@ model Notification {
   @@index([trialBookingId])
   @@index([enrollmentId])
   @@index([subscriptionPaymentId])
+  @@index([attendanceId])
 }
 
 
