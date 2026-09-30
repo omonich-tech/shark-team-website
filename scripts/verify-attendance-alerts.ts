@@ -32,7 +32,14 @@ async function main() {
   const sessions = await prisma.trainingSession.findMany({
     where: {
       groupId: enrollment.groupId,
-      startsAt: { gte: enrollment.startDate }
+      startsAt: { gte: enrollment.startDate },
+      trialBookings: {
+        none: {
+          lead: {
+            childId: enrollment.childId
+          }
+        }
+      }
     },
     orderBy: { startsAt: "asc" },
     take: 3
