@@ -11,12 +11,14 @@ export default async function CoachGroupPage({params}:{params:Promise<{groupId:s
   const auth=await requireCoachSession();
   const {groupId}=await params;
   const prisma=getPrisma();
+  const now=new Date();
+  const since7=new Date(now.getTime()-7*86400000);
   const group=await prisma.trainingGroup.findFirst({
     where:{id:groupId,primaryCoachId:auth.coachId,status:"ACTIVE"},
     include:{
       branch:true,sport:true,
       enrollments:{where:{status:StudentEnrollmentStatus.ACTIVE},include:{child:{include:{progressAssessments:{orderBy:{assessedAt:"desc"},take:1}}}},orderBy:{createdAt:"asc"}},
-      sessions:{where:{startsAt:{gte:new Date(Date.now()-7*86400000)}},orderBy:{startsAt:"asc"},take:12}
+      sessions:{where:{startsAt:{gte:since7}},orderBy:{startsAt:"asc"},take:12}
     }
   });
   if(!group) notFound();
