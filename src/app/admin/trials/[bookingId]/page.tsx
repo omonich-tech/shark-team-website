@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TrialConversionPanel } from "@/components/admin/trial-conversion-panel";
 import type { AttendanceStatus } from "@/generated/prisma/client";
 import { formatAdminDate, formatAdminMoney } from "@/lib/admin-format";
 import { getPrisma } from "@/lib/prisma";
@@ -36,6 +37,11 @@ export default async function AdminTrialDetailsPage({
       payment: true,
       attendance: true,
       feedback: true,
+      conversion: {
+        include: {
+          payment: true
+        }
+      },
       assessment: {
         include: {
           coach: true
@@ -271,6 +277,29 @@ export default async function AdminTrialDetailsPage({
             Оценка тренера пока не заполнена.
           </div>
         )}
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <h2>Конверсия в постоянного ученика</h2>
+          <small>
+            Решение администратора → предложение абонемента → оплата → зачисление.
+          </small>
+        </div>
+        <TrialConversionPanel
+          bookingId={trial.id}
+          ready={Boolean(
+            trial.status === "ATTENDED" &&
+              trial.feedback?.completedAt &&
+              trial.assessment
+          )}
+          conversion={{
+            status: trial.conversion?.status ?? null,
+            amountUzs: trial.conversion?.amountUzs ?? null,
+            currency: trial.conversion?.currency ?? null,
+            paymentStatus: trial.conversion?.payment?.status ?? null
+          }}
+        />
       </section>
 
       <section className="admin-panel">
