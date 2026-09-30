@@ -284,7 +284,14 @@ async function sendSubscriptionPaymentReviewToAdmin(
     "Направление: " + escapeHtml(group.sport.nameRu),
     "Группа: " + escapeHtml(group.internalName),
     "Тренер: " + escapeHtml(coach || "—"),
+    "Тип: " + (result.renewal ? "Продление" : "Первый абонемент"),
     "Сумма: <b>" + formatMoney(result.payment.amountUzs) + " сум</b>",
+    result.payment.periodStart && result.payment.periodEnd
+      ? "Период: " +
+        escapeHtml(formatDate(result.payment.periodStart, "ru")) +
+        " → " +
+        escapeHtml(formatDate(result.payment.periodEnd, "ru"))
+      : "",
     "ID: <code>" + escapeHtml(result.payment.id) + "</code>"
   ].join("\n");
 
@@ -519,6 +526,10 @@ async function handleSubscriptionPaymentCallback(
         .filter(Boolean)
         .join(" ");
 
+      const paidThrough = result.enrollment?.currentPeriodEnd
+        ? formatDate(result.enrollment.currentPeriodEnd, locale)
+        : null;
+
       const text =
         locale === "uz"
           ? [
@@ -530,7 +541,10 @@ async function handleSubscriptionPaymentCallback(
               "Sport: " + escapeHtml(group.sport.nameUz),
               "Murabbiy: " + escapeHtml(coach || "—"),
               "",
-              "Bola guruhga doimiy o‘quvchi sifatida qo‘shildi."
+              result.renewal
+                ? "Abonement uzaytirildi" +
+                  (paidThrough ? ": " + escapeHtml(paidThrough) + " gacha." : ".")
+                : "Bola guruhga doimiy o‘quvchi sifatida qo‘shildi."
             ].join("\n")
           : [
               "✅ <b>Оплата абонемента подтверждена</b>",
@@ -541,7 +555,10 @@ async function handleSubscriptionPaymentCallback(
               "Направление: " + escapeHtml(group.sport.nameRu),
               "Тренер: " + escapeHtml(coach || "—"),
               "",
-              "Ребёнок зачислен в группу как постоянный ученик."
+              result.renewal
+                ? "Абонемент продлён" +
+                  (paidThrough ? " до " + escapeHtml(paidThrough) + "." : ".")
+                : "Ребёнок зачислен в группу как постоянный ученик."
             ].join("\n");
 
       await sendTelegramMessage({
@@ -563,7 +580,8 @@ async function handleSubscriptionPaymentCallback(
       text: result.approved
         ? "✅ Абонемент <code>" +
           escapeHtml(paymentId) +
-          "</code> подтверждён. Ребёнок зачислен в группу."
+          "</code> подтверждён. " +
+          (result.renewal ? "Продление активировано." : "Ребёнок зачислен в группу.")
         : "❌ Оплата абонемента <code>" +
           escapeHtml(paymentId) +
           "</code> отклонена: " +
