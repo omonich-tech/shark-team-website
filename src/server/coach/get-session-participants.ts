@@ -96,6 +96,8 @@ export async function getCoachSessionParticipants(
       source: "REGULAR" | "TRIAL";
       trialBookingId: string | null;
       attendanceStatus: string | null;
+      absenceReason: string | null;
+      absenceNote: string | null;
       assessmentCompleted: boolean;
     }
   >();
@@ -120,6 +122,8 @@ export async function getCoachSessionParticipants(
       source: "REGULAR",
       trialBookingId: null,
       attendanceStatus: attendance?.status ?? null,
+      absenceReason: attendance?.absenceReason ?? null,
+      absenceNote: attendance?.absenceNote ?? null,
       assessmentCompleted: false
     });
   }
@@ -141,6 +145,8 @@ export async function getCoachSessionParticipants(
       source: "TRIAL",
       trialBookingId: booking.id,
       attendanceStatus: attendance?.status ?? null,
+      absenceReason: attendance?.absenceReason ?? null,
+      absenceNote: attendance?.absenceNote ?? null,
       assessmentCompleted: Boolean(booking.assessment)
     });
   }

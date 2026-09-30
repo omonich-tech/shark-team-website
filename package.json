@@ -45,7 +45,7 @@
     "verify:manual-payment-states": "tsx scripts/verify-manual-payment-rejection-expiry.ts",
     "verify:subscription-lifecycle": "tsx scripts/verify-subscription-renewal-lifecycle.ts && tsx scripts/verify-subscription-controls.ts",
     "verify:subscription-controls": "tsx scripts/verify-subscription-controls.ts",
-    "verify:subscription-controls": "tsx scripts/verify-subscription-controls.ts"
+    "verify:regular-attendance": "tsx scripts/verify-regular-attendance.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

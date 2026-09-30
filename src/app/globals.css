@@ -2096,3 +2096,39 @@ h3 {
     width: 100%;
   }
 }
+
+
+.attendance-row-expanded {
+  align-items: start;
+}
+
+.attendance-reason-editor {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(220px, 1.4fr) auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.attendance-reason-editor select,
+.attendance-reason-editor input {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--white);
+  color: #344054;
+  font: inherit;
+  font-size: 11px;
+}
+
+.attendance-reason-editor select:focus,
+.attendance-reason-editor input:focus {
+  outline: 2px solid rgba(20, 121, 243, 0.16);
+  border-color: var(--blue);
+}
+
+@media (max-width: 900px) {
+  .attendance-reason-editor {
+    grid-template-columns: 1fr;
+  }
+}

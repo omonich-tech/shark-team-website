@@ -5,6 +5,7 @@ import {
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { absenceReasonLabel } from "@/server/attendance/absence-reason";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
 
 function escapeHtml(value: string) {
@@ -186,6 +187,21 @@ type NotificationWithContext = Prisma.NotificationGetPayload<{
       };
     };
     subscriptionPayment: true;
+    attendance: {
+      include: {
+        child: true;
+        session: {
+          include: {
+            group: {
+              include: {
+                branch: true;
+                sport: true;
+              };
+            };
+          };
+        };
+      };
+    };
   };
 }>;
 
@@ -202,6 +218,59 @@ async function renderNotification(
   const childName = escapeHtml(notification.lead?.childName ?? "");
   const session = booking?.session;
   const branch = session?.group?.branch;
+
+  if (notification.type === NotificationType.REGULAR_ABSENCE_NOTICE) {
+    const attendance = notification.attendance;
+
+    if (!attendance) {
+      return locale === "uz"
+        ? "Davomat ma’lumotlarini topib bo‘lmadi."
+        : "Не удалось загрузить данные посещаемости.";
+    }
+
+    const child = escapeHtml(attendance.child.name);
+    const group = attendance.session.group;
+    const sessionDate = formatDate(attendance.session.startsAt, locale);
+    const statusText =
+      attendance.status === "EXCUSED"
+        ? locale === "uz"
+          ? "sababli kelmadi"
+          : "уважительный пропуск"
+        : locale === "uz"
+          ? "mashg‘ulotga kelmadi"
+          : "отсутствовал на тренировке";
+    const reason = attendance.absenceReason
+      ? absenceReasonLabel(attendance.absenceReason, locale)
+      : null;
+
+    return locale === "uz"
+      ? [
+          "📋 <b>Davomat — SHARK TEAM</b>",
+          "",
+          "Bola: <b>" + child + "</b>",
+          "Mashg‘ulot: " + escapeHtml(sessionDate),
+          "Guruh: " + escapeHtml(group.internalName),
+          "Holat: " + statusText + ".",
+          reason ? "Sabab: <b>" + escapeHtml(reason) + "</b>" : "",
+          "",
+          reason
+            ? "Davomat ma’lumoti saqlandi."
+            : "Iltimos, kelmaganlik sababini tanlang."
+        ].filter(Boolean).join("\n")
+      : [
+          "📋 <b>Посещаемость — SHARK TEAM</b>",
+          "",
+          "Ребёнок: <b>" + child + "</b>",
+          "Занятие: " + escapeHtml(sessionDate),
+          "Группа: " + escapeHtml(group.internalName),
+          "Статус: " + statusText + ".",
+          reason ? "Причина: <b>" + escapeHtml(reason) + "</b>" : "",
+          "",
+          reason
+            ? "Информация о посещаемости сохранена."
+            : "Пожалуйста, укажите причину пропуска."
+        ].filter(Boolean).join("\n");
+  }
 
   if (
     notification.type === NotificationType.SUBSCRIPTION_FROZEN ||
@@ -445,7 +514,22 @@ export async function processDueTelegramNotifications(
           }
         }
       },
-      subscriptionPayment: true
+      subscriptionPayment: true,
+      attendance: {
+        include: {
+          child: true,
+          session: {
+            include: {
+              group: {
+                include: {
+                  branch: true,
+                  sport: true
+                }
+              }
+            }
+          }
+        }
+      }
     },
     orderBy: {
       scheduledAt: "asc"
@@ -498,6 +582,28 @@ export async function processDueTelegramNotifications(
           skipped += 1;
         }
 
+        continue;
+      }
+    }
+
+    if (notification.type === NotificationType.REGULAR_ABSENCE_NOTICE) {
+      const attendance = notification.attendance;
+
+      if (
+        !attendance ||
+        attendance.trialBookingId ||
+        attendance.status === "PRESENT"
+      ) {
+        await prisma.notification.update({
+          where: { id: notification.id },
+          data: {
+            status: NotificationStatus.SKIPPED,
+            lastError: !attendance
+              ? "ATTENDANCE_CONTEXT_MISSING"
+              : "ATTENDANCE_CHANGED"
+          }
+        });
+        skipped += 1;
         continue;
       }
     }
@@ -645,7 +751,65 @@ export async function processDueTelegramNotifications(
               ]
             ]
           }
-        : undefined;
+        : notification.type === NotificationType.REGULAR_ABSENCE_NOTICE &&
+            notification.attendanceId &&
+            !notification.attendance?.absenceReason
+          ? {
+              inline_keyboard: [
+                [
+                  {
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "🤒 Kasallik"
+                        : "🤒 Болезнь",
+                    callback_data:
+                      "attendance-reason:ILLNESS:" +
+                      notification.attendanceId
+                  },
+                  {
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "👨‍👩‍👧 Oila"
+                        : "👨‍👩‍👧 Семья",
+                    callback_data:
+                      "attendance-reason:FAMILY:" +
+                      notification.attendanceId
+                  }
+                ],
+                [
+                  {
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "✈️ Safar"
+                        : "✈️ Поездка",
+                    callback_data:
+                      "attendance-reason:TRAVEL:" +
+                      notification.attendanceId
+                  },
+                  {
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "📚 O‘qish"
+                        : "📚 Учёба",
+                    callback_data:
+                      "attendance-reason:SCHOOL:" +
+                      notification.attendanceId
+                  }
+                ],
+                [
+                  {
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "Boshqa sabab"
+                        : "Другая причина",
+                    callback_data:
+                      "attendance-reason:OTHER:" +
+                      notification.attendanceId
+                  }
+                ]
+              ]
+            }
+          : undefined;
 
     const result = await sendTelegramMessage({
       chatId: contact.chatId,
