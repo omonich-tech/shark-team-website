@@ -453,10 +453,7 @@ export async function reviewSubscriptionPayment(input: {
   const now = new Date();
 
   return prisma.$transaction(async (tx) => {
-    await tx.$queryRawUnsafe(
-      'SELECT "id" FROM "SubscriptionPayment" WHERE "id" = $1 FOR UPDATE',
-      input.paymentId
-    );
+    await tx.$queryRaw`\n      SELECT "id"\n      FROM "SubscriptionPayment"\n      WHERE "id" = ${input.paymentId}\n      FOR UPDATE\n    `;
 
     const payment = await tx.subscriptionPayment.findUnique({
       where: { id: input.paymentId },
