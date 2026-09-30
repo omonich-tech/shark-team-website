@@ -44,6 +44,7 @@
     "smoke:manual-card": "tsx scripts/smoke-manual-card-http.ts",
     "verify:manual-payment-states": "tsx scripts/verify-manual-payment-rejection-expiry.ts",
     "verify:subscription-lifecycle": "tsx scripts/verify-subscription-renewal-lifecycle.ts",
+    "verify:subscription-controls": "tsx scripts/verify-subscription-controls.ts",
     "verify:subscription-controls": "tsx scripts/verify-subscription-controls.ts"
   },
   "dependencies": {
