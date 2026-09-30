@@ -7,9 +7,34 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function envMinutes(name: string, fallback: number) {
   const parsed = Number(process.env[name] ?? fallback);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("ru-RU").format(value);
+}
+
+function formatCard(value: string) {
+  const digits = value.replace(/\s+/g, "");
+  return digits.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function formatDay(value: Date, locale: "ru" | "uz") {
+  return new Intl.DateTimeFormat(locale === "uz" ? "uz-UZ" : "ru-RU", {
+    timeZone: "Asia/Tashkent",
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  }).format(value);
 }
 
 function formatDate(value: Date, locale: "ru" | "uz") {
@@ -150,6 +175,17 @@ type NotificationWithContext = Prisma.NotificationGetPayload<{
         };
       };
     };
+    enrollment: {
+      include: {
+        child: true;
+        group: {
+          include: {
+            branch: true;
+          };
+        };
+      };
+    };
+    subscriptionPayment: true;
   };
 }>;
 
@@ -163,9 +199,105 @@ async function renderNotification(
       : "ru";
 
   const booking = notification.trialBooking;
-  const childName = notification.lead?.childName ?? "";
+  const childName = escapeHtml(notification.lead?.childName ?? "");
   const session = booking?.session;
   const branch = session?.group?.branch;
+
+  if (
+    notification.type === NotificationType.SUBSCRIPTION_RENEWAL_REMINDER ||
+    notification.type === NotificationType.SUBSCRIPTION_PAST_DUE ||
+    notification.type === NotificationType.SUBSCRIPTION_PAUSED
+  ) {
+    const enrollment = notification.enrollment;
+    const payment = notification.subscriptionPayment;
+
+    if (!enrollment || !payment) {
+      return locale === "uz"
+        ? "Abonement ma’lumotlarini topib bo‘lmadi. Administrator bilan bog‘laning."
+        : "Не удалось загрузить данные абонемента. Свяжитесь с администратором.";
+    }
+
+    const cardNumber = process.env.MANUAL_PAYMENT_CARD_NUMBER?.trim();
+    const card = cardNumber ? formatCard(cardNumber) : null;
+    const child = escapeHtml(enrollment.child.name);
+    const amount = formatMoney(payment.amountUzs);
+    const due = payment.dueAt
+      ? formatDay(payment.dueAt, locale)
+      : "";
+    const grace = enrollment.graceUntil
+      ? formatDay(enrollment.graceUntil, locale)
+      : "";
+
+    if (notification.type === NotificationType.SUBSCRIPTION_RENEWAL_REMINDER) {
+      return locale === "uz"
+        ? [
+            "💳 <b>SHARK TEAM abonementini uzaytirish</b>",
+            "",
+            "Bola: <b>" + child + "</b>",
+            "Joriy abonement " + due + " gacha amal qiladi.",
+            "Keyingi oy: <b>" + amount + " so‘m</b>",
+            card ? "Karta: <code>" + card + "</code>" : "",
+            "",
+            "To‘lovdan so‘ng chek yoki skrinshotni shu chatga yuboring."
+          ].filter(Boolean).join("\n")
+        : [
+            "💳 <b>Продление абонемента SHARK TEAM</b>",
+            "",
+            "Ребёнок: <b>" + child + "</b>",
+            "Текущий абонемент действует до " + due + ".",
+            "Следующий месяц: <b>" + amount + " сум</b>",
+            card ? "Карта: <code>" + card + "</code>" : "",
+            "",
+            "После перевода отправьте чек или скриншот прямо сюда."
+          ].filter(Boolean).join("\n");
+    }
+
+    if (notification.type === NotificationType.SUBSCRIPTION_PAST_DUE) {
+      return locale === "uz"
+        ? [
+            "⚠️ <b>Abonement to‘lovi muddati keldi</b>",
+            "",
+            "Bola: <b>" + child + "</b>",
+            "To‘lov: <b>" + amount + " so‘m</b>",
+            grace ? "Imtiyozli muddat: " + grace + " gacha." : "",
+            card ? "Karta: <code>" + card + "</code>" : "",
+            "",
+            "To‘lovdan so‘ng chekni shu chatga yuboring."
+          ].filter(Boolean).join("\n")
+        : [
+            "⚠️ <b>Наступил срок оплаты абонемента</b>",
+            "",
+            "Ребёнок: <b>" + child + "</b>",
+            "К оплате: <b>" + amount + " сум</b>",
+            grace ? "Льготный период действует до " + grace + "." : "",
+            card ? "Карта: <code>" + card + "</code>" : "",
+            "",
+            "После оплаты отправьте чек в этот чат."
+          ].filter(Boolean).join("\n");
+    }
+
+    return locale === "uz"
+      ? [
+          "⏸ <b>Abonement vaqtincha to‘xtatildi</b>",
+          "",
+          "Bola: <b>" + child + "</b>",
+          "Sabab: abonement to‘lovi tasdiqlanmagan.",
+          "To‘lov: <b>" + amount + " so‘m</b>",
+          card ? "Karta: <code>" + card + "</code>" : "",
+          "",
+          "To‘lovdan so‘ng chekni yuboring. Tasdiqlangach abonement qayta faollashadi."
+        ].filter(Boolean).join("\n")
+      : [
+          "⏸ <b>Абонемент временно приостановлен</b>",
+          "",
+          "Ребёнок: <b>" + child + "</b>",
+          "Причина: оплата абонемента не подтверждена.",
+          "К оплате: <b>" + amount + " сум</b>",
+          card ? "Карта: <code>" + card + "</code>" : "",
+          "",
+          "После оплаты отправьте чек. После подтверждения абонемент будет восстановлен."
+        ].filter(Boolean).join("\n");
+  }
 
   if (notification.type === NotificationType.PAYMENT_HOLD_REMINDER) {
     const expires = booking?.expiresAt
@@ -228,7 +360,18 @@ export async function processDueTelegramNotifications(
             }
           }
         }
-      }
+      },
+      enrollment: {
+        include: {
+          child: true,
+          group: {
+            include: {
+              branch: true
+            }
+          }
+        }
+      },
+      subscriptionPayment: true
     },
     orderBy: {
       scheduledAt: "asc"
@@ -281,6 +424,43 @@ export async function processDueTelegramNotifications(
           skipped += 1;
         }
 
+        continue;
+      }
+    }
+
+    if (
+      notification.type === NotificationType.SUBSCRIPTION_RENEWAL_REMINDER ||
+      notification.type === NotificationType.SUBSCRIPTION_PAST_DUE ||
+      notification.type === NotificationType.SUBSCRIPTION_PAUSED
+    ) {
+      const enrollment = notification.enrollment;
+      const payment = notification.subscriptionPayment;
+
+      const expectedStatus =
+        notification.type === NotificationType.SUBSCRIPTION_RENEWAL_REMINDER
+          ? "PAYMENT_DUE"
+          : notification.type === NotificationType.SUBSCRIPTION_PAST_DUE
+            ? "PAST_DUE"
+            : "PAUSED";
+
+      if (
+        !enrollment ||
+        !payment ||
+        payment.status === "PAID" ||
+        enrollment.subscriptionStatus !== expectedStatus
+      ) {
+        await prisma.notification.update({
+          where: { id: notification.id },
+          data: {
+            status: NotificationStatus.SKIPPED,
+            lastError: !enrollment || !payment
+              ? "SUBSCRIPTION_CONTEXT_MISSING"
+              : payment.status === "PAID"
+                ? "SUBSCRIPTION_ALREADY_PAID"
+                : "SUBSCRIPTION_STATE_CHANGED"
+          }
+        });
+        skipped += 1;
         continue;
       }
     }

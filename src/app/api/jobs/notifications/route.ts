@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { advanceSubscriptionLifecycle } from "@/server/billing/subscription-lifecycle";
 import { isCronAuthorized } from "@/server/jobs/auth";
 import { processDueTelegramNotifications } from "@/server/notifications/telegram-notifications";
 
@@ -11,11 +12,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await processDueTelegramNotifications();
+    const lifecycle = await advanceSubscriptionLifecycle();
+    const notifications = await processDueTelegramNotifications();
 
     return NextResponse.json({
       ok: true,
-      ...result
+      lifecycle,
+      notifications
     });
   } catch (error) {
     console.error("Notification worker failed", error);

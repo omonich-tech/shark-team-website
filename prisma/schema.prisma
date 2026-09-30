@@ -112,6 +112,9 @@ enum NotificationType {
   TRIAL_CONFIRMED
   TRIAL_REMINDER
   POST_TRIAL_FEEDBACK
+  SUBSCRIPTION_RENEWAL_REMINDER
+  SUBSCRIPTION_PAST_DUE
+  SUBSCRIPTION_PAUSED
 }
 
 enum NotificationStatus {
@@ -572,7 +575,8 @@ model StudentEnrollment {
 
   child    Child                 @relation(fields: [childId], references: [id], onDelete: Cascade)
   group    TrainingGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  payments SubscriptionPayment[]
+  payments      SubscriptionPayment[]
+  notifications Notification[]
 
   @@index([childId, status])
   @@index([groupId, status])
@@ -629,6 +633,7 @@ model SubscriptionPayment {
 
   trialConversion TrialConversion   @relation(fields: [trialConversionId], references: [id], onDelete: Cascade)
   enrollment      StudentEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  notifications   Notification[]
 
   @@unique([trialConversionId, sequence])
   @@index([enrollmentId, status])
@@ -740,6 +745,8 @@ model Notification {
   leadId           String?
   parentId         String?
   trialBookingId   String?
+  enrollmentId     String?
+  subscriptionPaymentId String?
   scheduledAt      DateTime
   sentAt           DateTime?
   attempts         Int                 @default(0)
@@ -752,11 +759,15 @@ model Notification {
   lead         Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
   parent       Parent?       @relation(fields: [parentId], references: [id], onDelete: SetNull)
   trialBooking TrialBooking? @relation(fields: [trialBookingId], references: [id], onDelete: SetNull)
+  enrollment StudentEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  subscriptionPayment SubscriptionPayment? @relation(fields: [subscriptionPaymentId], references: [id], onDelete: SetNull)
 
   @@index([status, scheduledAt])
   @@index([leadId])
   @@index([parentId])
   @@index([trialBookingId])
+  @@index([enrollmentId])
+  @@index([subscriptionPaymentId])
 }
 
 

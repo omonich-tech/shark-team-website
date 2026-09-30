@@ -1,16 +1,20 @@
 import {
   EnrollmentStatus,
   LeadStatus,
-  LifecycleStatus,
   PaymentProvider,
   PaymentStatus,
-  PriceProductType,
   StudentEnrollmentStatus,
   SubscriptionStatus,
   TrialBookingStatus,
   TrialConversionStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  addDays,
+  addSubscriptionMonth,
+  subscriptionGraceDays
+} from "@/server/billing/subscription-period";
+import { findSubscriptionPrice } from "@/server/billing/subscription-price";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
 
 function escapeHtml(value: string) {
@@ -27,80 +31,6 @@ function formatCard(value: string) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("ru-RU").format(value);
-}
-
-function daysInUtcMonth(year: number, monthIndex: number) {
-  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-}
-
-export function addSubscriptionMonth(value: Date) {
-  const year = value.getUTCFullYear();
-  const month = value.getUTCMonth();
-  const targetMonth = month + 1;
-  const targetYear = year + Math.floor(targetMonth / 12);
-  const normalizedMonth = targetMonth % 12;
-  const day = Math.min(
-    value.getUTCDate(),
-    daysInUtcMonth(targetYear, normalizedMonth)
-  );
-
-  return new Date(
-    Date.UTC(
-      targetYear,
-      normalizedMonth,
-      day,
-      value.getUTCHours(),
-      value.getUTCMinutes(),
-      value.getUTCSeconds(),
-      value.getUTCMilliseconds()
-    )
-  );
-}
-
-function subscriptionGraceDays() {
-  const configured = Number(process.env.SUBSCRIPTION_GRACE_DAYS ?? "3");
-
-  return Number.isInteger(configured) && configured >= 0 && configured <= 30
-    ? configured
-    : 3;
-}
-
-function addDays(value: Date, amount: number) {
-  return new Date(value.getTime() + amount * 24 * 60 * 60 * 1000);
-}
-
-async function findSubscriptionPrice(groupId: string) {
-  const prisma = getPrisma();
-  const now = new Date();
-  const group = await prisma.trainingGroup.findUnique({ where: { id: groupId } });
-
-  if (!group) return null;
-
-  const prices = await prisma.price.findMany({
-    where: {
-      productType: PriceProductType.SUBSCRIPTION,
-      status: LifecycleStatus.ACTIVE,
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gt: now } }],
-      AND: [{
-        OR: [
-          { groupId: group.id },
-          { groupId: null, branchId: group.branchId, sportId: group.sportId },
-          { groupId: null, branchId: group.branchId, sportId: null },
-          { groupId: null, branchId: null, sportId: group.sportId }
-        ]
-      }]
-    },
-    orderBy: { validFrom: "desc" }
-  });
-
-  return (
-    prices.find((item) => item.groupId === group.id) ??
-    prices.find((item) => item.branchId === group.branchId && item.sportId === group.sportId) ??
-    prices.find((item) => item.branchId === group.branchId) ??
-    prices.find((item) => item.sportId === group.sportId) ??
-    null
-  );
 }
 
 export async function ensureTrialConversionReady(trialBookingId: string) {
@@ -437,6 +367,81 @@ export async function submitSubscriptionReceipt(input: {
     return { ok: false as const, error: "NO_ACTIVE_SUBSCRIPTION" as const };
   }
 
+  const renewals = await prisma.subscriptionPayment.findMany({
+    where: {
+      sequence: { gt: 1 },
+      status: {
+        in: [
+          PaymentStatus.PENDING,
+          PaymentStatus.REJECTED,
+          PaymentStatus.UNDER_REVIEW
+        ]
+      },
+      enrollment: {
+        child: {
+          parentId: contact.parentId
+        },
+        subscriptionStatus: {
+          in: [
+            SubscriptionStatus.PAYMENT_DUE,
+            SubscriptionStatus.PAST_DUE,
+            SubscriptionStatus.PAUSED
+          ]
+        }
+      }
+    },
+    include: {
+      enrollment: true,
+      trialConversion: {
+        include: {
+          child: { include: { parent: true } },
+          group: {
+            include: {
+              branch: true,
+              sport: true,
+              primaryCoach: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 2
+  });
+
+  if (renewals.length > 1) {
+    return {
+      ok: false as const,
+      error: "MULTIPLE_ACTIVE_SUBSCRIPTIONS" as const
+    };
+  }
+
+  if (renewals.length === 1) {
+    const renewal = renewals[0];
+    const updatedPayment = await prisma.subscriptionPayment.update({
+      where: { id: renewal.id },
+      data: {
+        status: PaymentStatus.UNDER_REVIEW,
+        receiptTelegramFileId: input.telegramFileId,
+        receiptMimeType: input.receiptMimeType ?? null,
+        receiptSize: input.receiptSize ?? null,
+        submittedAt: new Date(),
+        reviewedAt: null,
+        reviewedBy: null,
+        rejectionReason: null
+      }
+    });
+
+    return {
+      ok: true as const,
+      alreadyPaid: false as const,
+      renewal: true as const,
+      conversion: renewal.trialConversion,
+      enrollment: renewal.enrollment,
+      payment: updatedPayment
+    };
+  }
+
   const conversions = await prisma.trialConversion.findMany({
     where: {
       child: { parentId: contact.parentId },
@@ -471,7 +476,10 @@ export async function submitSubscriptionReceipt(input: {
   }
 
   if (conversions.length > 1) {
-    return { ok: false as const, error: "MULTIPLE_ACTIVE_SUBSCRIPTIONS" as const };
+    return {
+      ok: false as const,
+      error: "MULTIPLE_ACTIVE_SUBSCRIPTIONS" as const
+    };
   }
 
   const conversion = conversions[0];
@@ -485,6 +493,7 @@ export async function submitSubscriptionReceipt(input: {
     return {
       ok: true as const,
       alreadyPaid: true as const,
+      renewal: false as const,
       conversion,
       payment
     };
@@ -514,6 +523,7 @@ export async function submitSubscriptionReceipt(input: {
   return {
     ok: true as const,
     alreadyPaid: false as const,
+    renewal: false as const,
     conversion,
     payment: updatedPayment
   };
@@ -534,6 +544,7 @@ export async function reviewSubscriptionPayment(input: {
     const payment = await tx.subscriptionPayment.findUnique({
       where: { id: input.paymentId },
       include: {
+        enrollment: true,
         trialConversion: {
           include: {
             trialBooking: { include: { lead: true } },
@@ -559,7 +570,9 @@ export async function reviewSubscriptionPayment(input: {
         ok: true as const,
         alreadyProcessed: true as const,
         approved: true as const,
+        renewal: payment.sequence > 1,
         payment,
+        enrollment: payment.enrollment,
         conversion: payment.trialConversion
       };
     }
@@ -581,6 +594,18 @@ export async function reviewSubscriptionPayment(input: {
         }
       });
 
+      if (payment.sequence > 1) {
+        return {
+          ok: true as const,
+          alreadyProcessed: false as const,
+          approved: false as const,
+          renewal: true as const,
+          payment: updatedPayment,
+          enrollment: payment.enrollment,
+          conversion
+        };
+      }
+
       const updatedConversion = await tx.trialConversion.update({
         where: { id: conversion.id },
         data: { status: TrialConversionStatus.OFFERED }
@@ -590,8 +615,92 @@ export async function reviewSubscriptionPayment(input: {
         ok: true as const,
         alreadyProcessed: false as const,
         approved: false as const,
+        renewal: false as const,
         payment: updatedPayment,
         conversion: { ...conversion, status: updatedConversion.status }
+      };
+    }
+
+    if (payment.sequence > 1) {
+      if (
+        !payment.enrollmentId ||
+        !payment.enrollment ||
+        !payment.periodStart ||
+        !payment.periodEnd
+      ) {
+        return {
+          ok: false as const,
+          error: "RENEWAL_CONTEXT_MISSING" as const
+        };
+      }
+
+      await tx.$queryRaw`
+        SELECT "id"
+        FROM "TrainingGroup"
+        WHERE "id" = ${conversion.groupId}
+        FOR UPDATE
+      `;
+
+      if (payment.enrollment.status === StudentEnrollmentStatus.PAUSED) {
+        const activeCount = await tx.studentEnrollment.count({
+          where: {
+            groupId: conversion.groupId,
+            status: StudentEnrollmentStatus.ACTIVE
+          }
+        });
+
+        const group = await tx.trainingGroup.findUnique({
+          where: { id: conversion.groupId },
+          select: { capacityRegular: true }
+        });
+
+        if (!group || activeCount >= group.capacityRegular) {
+          return {
+            ok: false as const,
+            error: "GROUP_FULL" as const
+          };
+        }
+      }
+
+      const nextPaymentDueAt = payment.periodEnd;
+      const graceUntil = addDays(
+        nextPaymentDueAt,
+        subscriptionGraceDays()
+      );
+
+      const enrollment = await tx.studentEnrollment.update({
+        where: { id: payment.enrollmentId },
+        data: {
+          status: StudentEnrollmentStatus.ACTIVE,
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: payment.periodStart,
+          currentPeriodEnd: payment.periodEnd,
+          nextPaymentDueAt,
+          graceUntil,
+          pausedAt: null,
+          endDate: null
+        }
+      });
+
+      const updatedPayment = await tx.subscriptionPayment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.PAID,
+          paidAt: now,
+          reviewedAt: now,
+          reviewedBy: input.reviewedBy,
+          rejectionReason: null
+        }
+      });
+
+      return {
+        ok: true as const,
+        alreadyProcessed: false as const,
+        approved: true as const,
+        renewal: true as const,
+        payment: updatedPayment,
+        enrollment,
+        conversion
       };
     }
 
@@ -707,6 +816,7 @@ export async function reviewSubscriptionPayment(input: {
       ok: true as const,
       alreadyProcessed: false as const,
       approved: true as const,
+      renewal: false as const,
       payment: updatedPayment,
       enrollment,
       conversion: {
