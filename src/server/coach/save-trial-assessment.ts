@@ -1,5 +1,6 @@
 import { TrialBookingStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { notifyAdminTrialOutcomeIfReady } from "@/server/feedback/trial-feedback";
 
 export type TrialAssessmentInput = {
   coachId: string;
@@ -85,6 +86,8 @@ export async function saveTrialAssessment(input: TrialAssessmentInput) {
       recommendation: cleanOptional(input.recommendation, 500)
     }
   });
+
+  await notifyAdminTrialOutcomeIfReady(booking.id);
 
   return {
     ok: true as const,

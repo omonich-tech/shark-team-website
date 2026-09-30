@@ -1,10 +1,12 @@
 import "dotenv/config";
-import { TrialBookingStatus } from "../src/generated/prisma/client";
+import { NotificationStatus, NotificationType, TrialBookingStatus } from "../src/generated/prisma/client";
 import { getPrisma } from "../src/lib/prisma";
 
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const username = process.env.COACH_SMOKE_USERNAME;
 const password = process.env.COACH_SMOKE_PASSWORD;
+const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+const cronSecret = process.env.CRON_SECRET;
 const prisma = getPrisma();
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -18,8 +20,8 @@ function cookieFrom(response: Response) {
 }
 
 async function main() {
-  if (!username || !password) {
-    throw new Error("Coach smoke credentials are not configured");
+  if (!username || !password || !webhookSecret || !cronSecret) {
+    throw new Error("Coach/Telegram smoke configuration is missing");
   }
 
   const booking = await prisma.trialBooking.findFirst({
@@ -175,6 +177,119 @@ async function main() {
   assert(
     saved?.coachComment === "CI coach assessment",
     "Saved coach comment is incorrect"
+  );
+
+  await prisma.notification.upsert({
+    where: {
+      dedupeKey: "ci:trial-feedback:" + booking.id
+    },
+    update: {
+      type: NotificationType.POST_TRIAL_FEEDBACK,
+      leadId: booking.leadId,
+      parentId: booking.lead.parentId,
+      trialBookingId: booking.id,
+      status: NotificationStatus.PENDING,
+      scheduledAt: new Date(Date.now() - 1000),
+      attempts: 0,
+      lastError: null
+    },
+    create: {
+      type: NotificationType.POST_TRIAL_FEEDBACK,
+      leadId: booking.leadId,
+      parentId: booking.lead.parentId,
+      trialBookingId: booking.id,
+      status: NotificationStatus.PENDING,
+      scheduledAt: new Date(Date.now() - 1000),
+      dedupeKey: "ci:trial-feedback:" + booking.id
+    }
+  });
+
+  const worker = await fetch(`${baseUrl}/api/jobs/notifications`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${cronSecret}`
+    }
+  });
+  const workerPayload = await worker.json();
+
+  assert(
+    worker.ok && workerPayload.ok,
+    "Post-trial feedback notification worker failed"
+  );
+
+  const ratingCallback = await fetch(`${baseUrl}/api/telegram/webhook`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-telegram-bot-api-secret-token": webhookSecret
+    },
+    body: JSON.stringify({
+      update_id: 901,
+      callback_query: {
+        id: "ci-feedback-rating",
+        data: "feedback:5:" + booking.id,
+        from: {
+          id: 777001,
+          username: "ci_parent"
+        },
+        message: {
+          message_id: 30,
+          chat: {
+            id: 777001,
+            type: "private"
+          }
+        }
+      }
+    })
+  });
+
+  assert(ratingCallback.ok, "Parent feedback rating callback failed");
+
+  const afterRating = await prisma.trialFeedback.findUnique({
+    where: { trialBookingId: booking.id }
+  });
+
+  assert(afterRating?.rating === 5, "Parent feedback rating was not stored");
+  assert(
+    !afterRating.completedAt,
+    "Feedback must wait for comment or skip after rating"
+  );
+
+  const commentWebhook = await fetch(`${baseUrl}/api/telegram/webhook`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-telegram-bot-api-secret-token": webhookSecret
+    },
+    body: JSON.stringify({
+      update_id: 902,
+      message: {
+        text: "Очень понравилось занятие и тренер.",
+        chat: { id: 777001, type: "private" },
+        from: {
+          id: 777001,
+          username: "ci_parent",
+          first_name: "CI Parent",
+          language_code: "ru"
+        }
+      }
+    })
+  });
+
+  assert(commentWebhook.ok, "Parent feedback comment webhook failed");
+
+  const completedFeedback = await prisma.trialFeedback.findUnique({
+    where: { trialBookingId: booking.id }
+  });
+
+  assert(
+    completedFeedback?.comment === "Очень понравилось занятие и тренер.",
+    "Parent feedback comment was not stored"
+  );
+  assert(completedFeedback.completedAt, "Parent feedback was not completed");
+  assert(
+    completedFeedback.adminNotifiedAt,
+    "Combined trial outcome was not sent to admin"
   );
 
   const logout = await fetch(`${baseUrl}/api/coach/logout`, {

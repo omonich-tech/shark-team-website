@@ -2,6 +2,11 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import {
+  completeParentTrialFeedbackComment,
+  skipParentTrialFeedbackComment,
+  startParentTrialFeedback
+} from "@/server/feedback/trial-feedback";
+import {
   reviewManualCardPayment,
   submitManualCardReceipt
 } from "@/server/payments/manual-card";
@@ -251,6 +256,96 @@ async function sendPaymentReviewToAdmin(
   }
 }
 
+async function handleFeedbackCallback(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+  const telegramUserId = callback.from?.id;
+  const chatId = callback.message?.chat?.id;
+
+  if (!callbackId || !telegramUserId) {
+    return false;
+  }
+
+  if (data.startsWith("feedback-skip:")) {
+    const bookingId = data.slice("feedback-skip:".length);
+
+    if (!bookingId) {
+      return false;
+    }
+
+    const result = await skipParentTrialFeedbackComment({
+      telegramUserId: BigInt(telegramUserId),
+      trialBookingId: bookingId
+    });
+
+    await answerTelegramCallbackQuery({
+      callbackQueryId: callbackId,
+      text: result.ok ? "Спасибо за обратную связь." : "Не удалось сохранить."
+    });
+
+    if (result.ok && chatId !== undefined) {
+      await sendTelegramMessage({
+        chatId: BigInt(chatId),
+        text:
+          result.locale === "uz"
+            ? "✅ Rahmat. Fikringiz saqlandi."
+            : "✅ Спасибо. Ваш отзыв сохранён."
+      });
+    }
+
+    return true;
+  }
+
+  if (!data.startsWith("feedback:")) {
+    return false;
+  }
+
+  const [, ratingRaw, bookingId] = data.split(":");
+  const rating = Number(ratingRaw);
+
+  if (!bookingId || !Number.isInteger(rating)) {
+    return false;
+  }
+
+  const result = await startParentTrialFeedback({
+    telegramUserId: BigInt(telegramUserId),
+    trialBookingId: bookingId,
+    rating
+  });
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.ok ? "Оценка сохранена." : "Не удалось сохранить оценку."
+  });
+
+  if (result.ok && chatId !== undefined) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text:
+        result.locale === "uz"
+          ? "Rahmat. Endi xohlasangiz bir xabarda taassurotingizni yozing: nimalar yoqdi yoki nimani yaxshilash kerak?"
+          : "Спасибо. Теперь при желании напишите одним сообщением: что понравилось и что можно улучшить?",
+      replyMarkup: {
+        inline_keyboard: [
+          [
+            {
+              text:
+                result.locale === "uz"
+                  ? "Izohsiz yakunlash"
+                  : "Без комментария",
+              callback_data: "feedback-skip:" + bookingId
+            }
+          ]
+        ]
+      }
+    });
+  }
+
+  return true;
+}
+
 async function handlePaymentCallback(
   callback: NonNullable<TelegramUpdate["callback_query"]>
 ) {
@@ -411,7 +506,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (update.callback_query) {
-    await handlePaymentCallback(update.callback_query);
+    const feedbackHandled = await handleFeedbackCallback(
+      update.callback_query
+    );
+
+    if (!feedbackHandled) {
+      await handlePaymentCallback(update.callback_query);
+    }
+
     return NextResponse.json({ ok: true });
   }
 
@@ -598,6 +700,23 @@ export async function POST(request: NextRequest) {
   }
 
   if (!text) {
+    return NextResponse.json({ ok: true });
+  }
+
+  const feedback = await completeParentTrialFeedbackComment({
+    telegramUserId: BigInt(telegramUserId),
+    comment: text
+  });
+
+  if (feedback.ok) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text:
+        feedback.locale === "uz"
+          ? "✅ Rahmat. Fikringiz saqlandi. Administrator va murabbiy natijalarni ko‘rib chiqadi."
+          : "✅ Спасибо. Ваш отзыв сохранён. Администратор увидит его вместе с оценкой тренера."
+    });
+
     return NextResponse.json({ ok: true });
   }
 

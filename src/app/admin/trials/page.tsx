@@ -63,6 +63,7 @@ export default async function AdminTrialsPage() {
       payment: true,
       attendance: true,
       assessment: true,
+      feedback: true,
       session: {
         include: {
           group: {
@@ -86,9 +87,9 @@ export default async function AdminTrialsPage() {
   const attended = trials.filter(
     (trial) => trial.status === TrialBookingStatus.ATTENDED
   ).length;
-  const pendingAssessment = trials.filter(
+  const readyForAdmin = trials.filter(
     (trial) =>
-      trial.status === TrialBookingStatus.ATTENDED && !trial.assessment
+      Boolean(trial.assessment) && Boolean(trial.feedback?.completedAt)
   ).length;
 
   return (
@@ -111,8 +112,8 @@ export default async function AdminTrialsPage() {
           <strong>{attended}</strong>
         </div>
         <div className="admin-metric">
-          <span>Ждут оценку тренера</span>
-          <strong>{pendingAssessment}</strong>
+          <span>Готовы к обработке</span>
+          <strong>{readyForAdmin}</strong>
         </div>
       </section>
 
@@ -120,7 +121,7 @@ export default async function AdminTrialsPage() {
         <div className="admin-panel-head">
           <h2>Операционный список</h2>
           <small>
-            Оплата, посещаемость и оценка тренера в одной таблице.
+            Оплата, посещаемость, оценка тренера и мнение родителя в одной таблице.
           </small>
         </div>
 
@@ -134,7 +135,8 @@ export default async function AdminTrialsPage() {
                 <th>Тренер</th>
                 <th>Оплата</th>
                 <th>Посещение</th>
-                <th>Оценка</th>
+                <th>Тренер</th>
+                <th>Родитель</th>
                 <th></th>
               </tr>
             </thead>
@@ -197,6 +199,23 @@ export default async function AdminTrialsPage() {
                       )}
                     </td>
                     <td>
+                      {trial.feedback?.completedAt ? (
+                        <>
+                          <strong>{trial.feedback.rating} / 5</strong>
+                          <br />
+                          <small>
+                            {trial.feedback.comment
+                              ? "есть комментарий"
+                              : "без комментария"}
+                          </small>
+                        </>
+                      ) : trial.status === TrialBookingStatus.ATTENDED ? (
+                        <span className="admin-attention">Ждём отзыв</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
                       <Link
                         className="admin-row-link"
                         href={"/admin/trials/" + trial.id}
@@ -209,7 +228,7 @@ export default async function AdminTrialsPage() {
               })}
               {trials.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>Пробных записей пока нет.</td>
+                  <td colSpan={9}>Пробных записей пока нет.</td>
                 </tr>
               ) : null}
             </tbody>

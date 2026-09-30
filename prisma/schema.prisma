@@ -426,6 +426,7 @@ model TrialBooking {
   payment       Payment?
   attendance    Attendance?
   assessment    TrialAssessment?
+  feedback      TrialFeedback?
   notifications Notification[]
 
   @@unique([leadId, sessionId])
@@ -495,6 +496,7 @@ model Parent {
   leads            Lead[]
   telegramContacts TelegramContact[]
   notifications    Notification[]
+  trialFeedbacks   TrialFeedback[]
 
   @@index([createdAt])
 }
@@ -589,6 +591,24 @@ model TrialAssessment {
   coach        Coach        @relation(fields: [coachId], references: [id], onDelete: Restrict)
 
   @@index([coachId, createdAt])
+}
+
+model TrialFeedback {
+  id              String   @id @default(cuid())
+  trialBookingId  String   @unique
+  parentId        String
+  rating          Int
+  comment         String?
+  completedAt     DateTime?
+  adminNotifiedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  trialBooking TrialBooking @relation(fields: [trialBookingId], references: [id], onDelete: Cascade)
+  parent       Parent       @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId, createdAt])
+  @@index([completedAt, adminNotifiedAt])
 }
 
 model TelegramContact {

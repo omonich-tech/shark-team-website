@@ -35,6 +35,7 @@ export default async function AdminTrialDetailsPage({
       lead: true,
       payment: true,
       attendance: true,
+      feedback: true,
       assessment: {
         include: {
           coach: true
@@ -171,6 +172,56 @@ export default async function AdminTrialDetailsPage({
             <small>Источник: {trial.lead.source}</small>
           </div>
         </div>
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <h2>Мнение родителя</h2>
+          <small>
+            {trial.feedback?.completedAt
+              ? "Получено " + formatAdminDate(trial.feedback.completedAt)
+              : trial.feedback
+                ? "Оценка выбрана, ждём комментарий или завершение."
+                : trial.status === "ATTENDED"
+                  ? "Запрос обратной связи будет отправлен в Telegram."
+                  : "Обратная связь доступна после посещения пробного."}
+          </small>
+        </div>
+
+        {trial.feedback ? (
+          <div className="admin-assessment">
+            <div className="admin-assessment-score">
+              <span>Оценка родителя</span>
+              <strong>{trial.feedback.rating} / 5</strong>
+            </div>
+
+            <div className="admin-assessment-text">
+              <div>
+                <span>Комментарий</span>
+                <p>
+                  {trial.feedback.comment ||
+                    (trial.feedback.completedAt
+                      ? "Родитель завершил отзыв без комментария."
+                      : "Ожидаем комментарий.")}
+                </p>
+              </div>
+              <div>
+                <span>Готовность к обработке</span>
+                <p>
+                  {trial.feedback.completedAt && trial.assessment
+                    ? "Готово: есть мнение родителя и оценка тренера."
+                    : trial.feedback.completedAt
+                      ? "Ждём оценку тренера."
+                      : "Ждём завершение отзыва родителя."}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="admin-empty-panel">
+            Отзыв родителя пока не получен.
+          </div>
+        )}
       </section>
 
       <section className="admin-panel">
