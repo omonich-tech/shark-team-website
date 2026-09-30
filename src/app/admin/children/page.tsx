@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatAdminDate } from "@/lib/admin-format";
 import { getPrisma } from "@/lib/prisma";
 
@@ -61,7 +62,7 @@ export default async function AdminChildrenPage() {
             <tbody>
               {children.map((child) => (
                 <tr key={child.id}>
-                  <td>{child.name}</td>
+                  <td><Link href={"/admin/children/" + child.id}><strong>{child.name}</strong></Link></td>
                   <td>{child.ageAtRegistration}</td>
                   <td>{child.parent.name}</td>
                   <td>{child.parent.phone}</td>

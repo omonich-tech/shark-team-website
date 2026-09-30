@@ -19,7 +19,7 @@ const nav = [
   ["/admin/leads", "Лиды"],
   ["/admin/trials", "Пробные"],
   ["/admin/parents", "Родители"],
-  ["/admin/children", "Дети"],
+  ["/admin/children", "Ученики"],
   ["/admin/payments", "Оплаты"],
   ["/admin/subscriptions", "Абонементы"],
   ["/admin/attendance", "Посещаемость"],

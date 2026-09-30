@@ -52,6 +52,7 @@ export default async function CoachGroupsPage() {
             <strong>
               {group.enrollments.length} / {group.capacityRegular}
             </strong>
+            <p><Link className="coach-student-link" href={"/coach/groups/" + group.id}>Открыть группу</Link></p>
 
             {group.enrollments.length > 0 ? (
               <div className="coach-group-students">
