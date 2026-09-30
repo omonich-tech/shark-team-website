@@ -53,7 +53,9 @@ export function TrialConversionPanel({
             "Не настроена актуальная цена абонемента.",
           MANUAL_CARD_NOT_CONFIGURED:
             "Не настроена карта для временной оплаты.",
-          ALREADY_ENROLLED: "Ребёнок уже зачислен в группу."
+          ALREADY_ENROLLED: "Ребёнок уже зачислен в группу.",
+          PAYMENT_UNDER_REVIEW:
+            "Чек уже находится на проверке. Сначала обработайте текущую оплату."
         };
 
         setState("error");
