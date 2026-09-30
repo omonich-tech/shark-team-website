@@ -66,7 +66,10 @@ export default async function AdminTrialsPage() {
       feedback: true,
       conversion: {
         include: {
-          payment: true
+          payments: {
+            orderBy: { sequence: "desc" },
+            take: 1
+          }
         }
       },
       session: {
@@ -231,11 +234,11 @@ export default async function AdminTrialsPage() {
                           <span className="admin-status">
                             {trial.conversion.status}
                           </span>
-                          {trial.conversion.payment ? (
+                          {trial.conversion.payments[0] ? (
                             <>
                               <br />
                               <small>
-                                оплата: {trial.conversion.payment.status}
+                                оплата: {trial.conversion.payments[0].status}
                               </small>
                             </>
                           ) : null}
