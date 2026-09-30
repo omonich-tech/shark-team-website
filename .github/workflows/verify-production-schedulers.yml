@@ -1,0 +1,49 @@
+name: Verify Production Schedulers
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/verify-production-schedulers.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PRODUCTION_APP_URL: https://shark-team-website.vercel.app
+      CRON_SECRET: ${{ secrets.PRODUCTION_CRON_SECRET }}
+
+    steps:
+      - name: Check scheduler secret
+        shell: bash
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "PRODUCTION_CRON_SECRET is missing"
+            exit 1
+          fi
+
+      - name: Trigger notifications worker
+        shell: bash
+        run: |
+          URL="${PRODUCTION_APP_URL%/}/api/jobs/notifications"
+          BODY="$(mktemp)"
+          CODE=$(curl --silent --show-error --location --max-time 45             --output "$BODY" --write-out "%{http_code}"             --request POST             --header "Authorization: Bearer $CRON_SECRET"             "$URL")
+          cat "$BODY"
+          echo
+          test "$CODE" -ge 200 -a "$CODE" -lt 300
+          grep -q '"ok":true' "$BODY"
+
+      - name: Trigger maintenance worker
+        shell: bash
+        run: |
+          URL="${PRODUCTION_APP_URL%/}/api/jobs/maintenance"
+          BODY="$(mktemp)"
+          CODE=$(curl --silent --show-error --location --max-time 90             --output "$BODY" --write-out "%{http_code}"             --request POST             --header "Authorization: Bearer $CRON_SECRET"             "$URL")
+          cat "$BODY"
+          echo
+          test "$CODE" -ge 200 -a "$CODE" -lt 300
+          grep -q '"ok":true' "$BODY"
