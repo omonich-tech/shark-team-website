@@ -749,3 +749,86 @@ export async function backfillReadyTrialConversions(limit = 200) {
 
   return created;
 }
+
+
+export async function backfillEnrollmentBillingPeriods(limit = 200) {
+  const prisma = getPrisma();
+
+  const paid = await prisma.subscriptionPayment.findMany({
+    where: {
+      status: PaymentStatus.PAID,
+      enrollmentId: null,
+      trialConversion: {
+        status: TrialConversionStatus.ENROLLED
+      }
+    },
+    include: {
+      trialConversion: true
+    },
+    orderBy: {
+      paidAt: "asc"
+    },
+    take: limit
+  });
+
+  let repaired = 0;
+
+  for (const payment of paid) {
+    const paidAt = payment.paidAt ?? payment.reviewedAt;
+    if (!paidAt) continue;
+
+    const enrollment = await prisma.studentEnrollment.findFirst({
+      where: {
+        childId: payment.trialConversion.childId,
+        groupId: payment.trialConversion.groupId,
+        status: {
+          in: [
+            StudentEnrollmentStatus.ACTIVE,
+            StudentEnrollmentStatus.PAUSED
+          ]
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
+    if (!enrollment) continue;
+
+    const periodEnd = addSubscriptionMonth(paidAt);
+    const nextPaymentDueAt = periodEnd;
+    const graceUntil = addDays(
+      nextPaymentDueAt,
+      subscriptionGraceDays()
+    );
+
+    await prisma.$transaction([
+      prisma.studentEnrollment.update({
+        where: { id: enrollment.id },
+        data: {
+          status: StudentEnrollmentStatus.ACTIVE,
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: paidAt,
+          currentPeriodEnd: periodEnd,
+          nextPaymentDueAt,
+          graceUntil,
+          pausedAt: null
+        }
+      }),
+      prisma.subscriptionPayment.update({
+        where: { id: payment.id },
+        data: {
+          enrollmentId: enrollment.id,
+          sequence: 1,
+          periodStart: paidAt,
+          periodEnd,
+          dueAt: paidAt
+        }
+      })
+    ]);
+
+    repaired += 1;
+  }
+
+  return repaired;
+}
