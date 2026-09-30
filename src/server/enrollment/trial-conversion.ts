@@ -246,7 +246,10 @@ export async function offerTrialSubscription(input: {
           }
         }
       },
-      payment: true
+      payments: {
+        orderBy: { sequence: "desc" },
+        take: 1
+      }
     }
   });
 
@@ -274,9 +277,11 @@ export async function offerTrialSubscription(input: {
     return { ok: false as const, error: "ALREADY_ENROLLED" as const };
   }
 
+  const latestPayment = conversion.payments[0];
+
   if (
     conversion.status === TrialConversionStatus.PAYMENT_PENDING ||
-    conversion.payment?.status === PaymentStatus.UNDER_REVIEW
+    latestPayment?.status === PaymentStatus.UNDER_REVIEW
   ) {
     return {
       ok: false as const,
@@ -301,41 +306,58 @@ export async function offerTrialSubscription(input: {
   }
 
   const now = new Date();
-  const updated = await prisma.trialConversion.update({
-    where: { id: conversion.id },
-    data: {
-      status: TrialConversionStatus.OFFERED,
-      amountUzs: price.amount,
-      currency: price.currency,
-      offeredAt: now,
-      declinedAt: null,
-      adminNote: input.adminNote?.trim().slice(0, 1000) || conversion.adminNote,
-      payment: {
-        upsert: {
-          create: {
-            provider: PaymentProvider.MANUAL_CARD,
-            status: PaymentStatus.PENDING,
-            amountUzs: price.amount,
-            currency: price.currency
-          },
-          update: {
-            provider: PaymentProvider.MANUAL_CARD,
-            status: PaymentStatus.PENDING,
-            amountUzs: price.amount,
-            currency: price.currency,
-            receiptMimeType: null,
-            receiptSize: null,
-            receiptTelegramFileId: null,
-            submittedAt: null,
-            reviewedAt: null,
-            reviewedBy: null,
-            rejectionReason: null,
-            paidAt: null
-          }
-        }
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedConversion = await tx.trialConversion.update({
+      where: { id: conversion.id },
+      data: {
+        status: TrialConversionStatus.OFFERED,
+        amountUzs: price.amount,
+        currency: price.currency,
+        offeredAt: now,
+        declinedAt: null,
+        adminNote: input.adminNote?.trim().slice(0, 1000) || conversion.adminNote
       }
-    },
-    include: { payment: true }
+    });
+
+    const payment = await tx.subscriptionPayment.upsert({
+      where: {
+        trialConversionId_sequence: {
+          trialConversionId: conversion.id,
+          sequence: 1
+        }
+      },
+      create: {
+        trialConversionId: conversion.id,
+        sequence: 1,
+        provider: PaymentProvider.MANUAL_CARD,
+        status: PaymentStatus.PENDING,
+        amountUzs: price.amount,
+        currency: price.currency
+      },
+      update: {
+        provider: PaymentProvider.MANUAL_CARD,
+        status: PaymentStatus.PENDING,
+        amountUzs: price.amount,
+        currency: price.currency,
+        enrollmentId: null,
+        periodStart: null,
+        periodEnd: null,
+        dueAt: null,
+        receiptMimeType: null,
+        receiptSize: null,
+        receiptTelegramFileId: null,
+        submittedAt: null,
+        reviewedAt: null,
+        reviewedBy: null,
+        rejectionReason: null,
+        paidAt: null
+      }
+    });
+
+    return {
+      ...updatedConversion,
+      payment
+    };
   });
 
   const contact = await prisma.telegramContact.findFirst({
