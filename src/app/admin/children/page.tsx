@@ -13,6 +13,19 @@ export default async function AdminChildrenPage() {
     },
     include: {
       parent: true,
+      enrollments: {
+        include: {
+          group: {
+            include: {
+              branch: true,
+              sport: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        }
+      },
       _count: {
         select: {
           leads: true
@@ -41,6 +54,7 @@ export default async function AdminChildrenPage() {
                 <th>Родитель</th>
                 <th>Телефон</th>
                 <th>Связанных лидов</th>
+                <th>Постоянная группа</th>
                 <th>Создан</th>
               </tr>
             </thead>
@@ -52,11 +66,27 @@ export default async function AdminChildrenPage() {
                   <td>{child.parent.name}</td>
                   <td>{child.parent.phone}</td>
                   <td>{child._count.leads}</td>
+                  <td>
+                    {child.enrollments.length > 0 ? (
+                      child.enrollments.map((enrollment) => (
+                        <div key={enrollment.id}>
+                          <strong>{enrollment.group.internalName}</strong>
+                          <br />
+                          <small>
+                            {enrollment.group.sport.nameRu} ·{" "}
+                            {enrollment.status}
+                          </small>
+                        </div>
+                      ))
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td>{formatAdminDate(child.createdAt)}</td>
                 </tr>
               ))}
               {children.length === 0 ? (
-                <tr><td colSpan={6}>Подтверждённых детей пока нет.</td></tr>
+                <tr><td colSpan={7}>Подтверждённых детей пока нет.</td></tr>
               ) : null}
             </tbody>
           </table>
