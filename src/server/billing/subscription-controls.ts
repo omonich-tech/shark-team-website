@@ -122,11 +122,15 @@ export async function freezeEnrollmentSubscription(input: {
   );
   const graceUntil = shiftDate(enrollment.graceUntil, extensionMs);
 
-  const currentPaid = enrollment.payments.find(
-    (payment) =>
-      payment.status === PaymentStatus.PAID &&
-      payment.periodEnd?.getTime() === enrollment.currentPeriodEnd?.getTime()
-  );
+  const currentPaid =
+    enrollment.payments.find(
+      (payment) =>
+        payment.status === PaymentStatus.PAID &&
+        payment.periodEnd?.getTime() === enrollment.currentPeriodEnd?.getTime()
+    ) ??
+    enrollment.payments.find(
+      (payment) => payment.status === PaymentStatus.PAID
+    );
 
   const futureUnpaid = enrollment.payments.filter(
     (payment) =>
