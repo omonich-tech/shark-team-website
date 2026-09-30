@@ -2132,3 +2132,136 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+
+.coach-student-link {
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #175cd3;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.coach-student-link:hover {
+  background: #e8f1ff;
+}
+
+.progress-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-overview > div,
+.progress-score-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+.progress-overview span,
+.progress-score-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.progress-overview strong,
+.progress-score-card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--navy);
+  font-size: 20px;
+}
+
+.progress-form {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--white);
+}
+
+.progress-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-form label span {
+  display: block;
+  margin-bottom: 7px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.progress-form select,
+.progress-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.progress-form select {
+  min-height: 42px;
+  padding: 0 10px;
+}
+
+.progress-form textarea {
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.progress-history {
+  display: grid;
+  gap: 12px;
+}
+
+.progress-history-card {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--white);
+}
+
+.progress-history-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-history-card .progress-score-grid {
+  margin-top: 14px;
+}
+
+.progress-delta-up {
+  color: #087443;
+}
+
+.progress-delta-down {
+  color: #b42318;
+}
+
+@media (max-width: 800px) {
+  .progress-overview,
+  .progress-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 540px) {
+  .progress-overview,
+  .progress-score-grid {
+    grid-template-columns: 1fr;
+  }
+}
