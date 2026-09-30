@@ -179,6 +179,12 @@ jobs:
           TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
           TELEGRAM_ADMIN_USER_IDS: "999001"
 
+      - name: Verify manual payment rejection and expiry
+        run: npm run verify:manual-payment-states
+        env:
+          TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
+          TELEGRAM_ADMIN_USER_IDS: "999001"
+
       - name: Smoke test Payme Merchant API
         run: npm run smoke:payme
 
