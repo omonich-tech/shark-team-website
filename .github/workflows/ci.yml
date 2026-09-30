@@ -209,6 +209,9 @@ jobs:
       - name: Verify student progress workflow
         run: npm run verify:student-progress
 
+      - name: Smoke test student management
+        run: npm run smoke:student-management
+
       - name: Smoke test protected CRM
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/admin)
