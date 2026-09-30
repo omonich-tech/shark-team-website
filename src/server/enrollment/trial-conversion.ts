@@ -448,7 +448,11 @@ export async function submitSubscriptionReceipt(input: {
       }
     },
     include: {
-      payment: true,
+      payments: {
+        where: { sequence: 1 },
+        orderBy: { createdAt: "desc" },
+        take: 1
+      },
       child: { include: { parent: true } },
       group: {
         include: {
@@ -471,23 +475,25 @@ export async function submitSubscriptionReceipt(input: {
   }
 
   const conversion = conversions[0];
-  if (!conversion.payment) {
+  const payment = conversion.payments[0];
+
+  if (!payment) {
     return { ok: false as const, error: "PAYMENT_NOT_FOUND" as const };
   }
 
-  if (conversion.payment.status === PaymentStatus.PAID) {
+  if (payment.status === PaymentStatus.PAID) {
     return {
       ok: true as const,
       alreadyPaid: true as const,
       conversion,
-      payment: conversion.payment
+      payment
     };
   }
 
   const now = new Date();
-  const [payment] = await prisma.$transaction([
+  const [updatedPayment] = await prisma.$transaction([
     prisma.subscriptionPayment.update({
-      where: { id: conversion.payment.id },
+      where: { id: payment.id },
       data: {
         status: PaymentStatus.UNDER_REVIEW,
         receiptTelegramFileId: input.telegramFileId,
@@ -509,7 +515,7 @@ export async function submitSubscriptionReceipt(input: {
     ok: true as const,
     alreadyPaid: false as const,
     conversion,
-    payment
+    payment: updatedPayment
   };
 }
 
