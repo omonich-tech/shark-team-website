@@ -1,5 +1,6 @@
 import { TrialBookingStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { ensureTrialConversionReady } from "@/server/enrollment/trial-conversion";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
 
 function escapeHtml(value: string) {
@@ -235,6 +236,8 @@ export async function skipParentTrialFeedbackComment(input: {
 export async function notifyAdminTrialOutcomeIfReady(
   trialBookingId: string
 ) {
+  await ensureTrialConversionReady(trialBookingId);
+
   const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
 
   if (!chatId) {

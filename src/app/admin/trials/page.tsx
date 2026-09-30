@@ -64,6 +64,11 @@ export default async function AdminTrialsPage() {
       attendance: true,
       assessment: true,
       feedback: true,
+      conversion: {
+        include: {
+          payment: true
+        }
+      },
       session: {
         include: {
           group: {
@@ -89,7 +94,11 @@ export default async function AdminTrialsPage() {
   ).length;
   const readyForAdmin = trials.filter(
     (trial) =>
-      Boolean(trial.assessment) && Boolean(trial.feedback?.completedAt)
+      Boolean(trial.assessment) &&
+      Boolean(trial.feedback?.completedAt) &&
+      (!trial.conversion ||
+        trial.conversion.status === "READY" ||
+        trial.conversion.status === "THINKING")
   ).length;
 
   return (
@@ -137,6 +146,7 @@ export default async function AdminTrialsPage() {
                 <th>Посещение</th>
                 <th>Тренер</th>
                 <th>Родитель</th>
+                <th>Конверсия</th>
                 <th></th>
               </tr>
             </thead>
@@ -216,6 +226,28 @@ export default async function AdminTrialsPage() {
                       )}
                     </td>
                     <td>
+                      {trial.conversion ? (
+                        <>
+                          <span className="admin-status">
+                            {trial.conversion.status}
+                          </span>
+                          {trial.conversion.payment ? (
+                            <>
+                              <br />
+                              <small>
+                                оплата: {trial.conversion.payment.status}
+                              </small>
+                            </>
+                          ) : null}
+                        </>
+                      ) : trial.assessment &&
+                        trial.feedback?.completedAt ? (
+                        <span className="admin-attention">READY</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
                       <Link
                         className="admin-row-link"
                         href={"/admin/trials/" + trial.id}
@@ -228,7 +260,7 @@ export default async function AdminTrialsPage() {
               })}
               {trials.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>Пробных записей пока нет.</td>
+                  <td colSpan={10}>Пробных записей пока нет.</td>
                 </tr>
               ) : null}
             </tbody>

@@ -17,7 +17,9 @@ export default async function AdminDashboardPage() {
     confirmedTrials,
     parents,
     children,
-    paid,
+    activeStudents,
+    paidTrials,
+    paidSubscriptions,
     recentLeads
   ] = await Promise.all([
     prisma.lead.count(),
@@ -41,7 +43,19 @@ export default async function AdminDashboardPage() {
     }),
     prisma.parent.count(),
     prisma.child.count(),
+    prisma.studentEnrollment.count({
+      where: { status: "ACTIVE" }
+    }),
     prisma.payment.aggregate({
+      where: {
+        status: PaymentStatus.PAID
+      },
+      _sum: {
+        amountUzs: true
+      },
+      _count: true
+    }),
+    prisma.subscriptionPayment.aggregate({
       where: {
         status: PaymentStatus.PAID
       },
@@ -64,7 +78,9 @@ export default async function AdminDashboardPage() {
     ["Подтверждённые пробные", confirmedTrials],
     ["Родители", parents],
     ["Дети", children],
-    ["Оплачено пробных", paid._count]
+    ["Постоянные ученики", activeStudents],
+    ["Оплачено пробных", paidTrials._count],
+    ["Оплачено абонементов", paidSubscriptions._count]
   ] as const;
 
   return (
@@ -76,7 +92,12 @@ export default async function AdminDashboardPage() {
         </div>
         <div className="admin-revenue">
           <span>Оплачено</span>
-          <strong>{formatAdminMoney(paid._sum.amountUzs ?? 0)}</strong>
+          <strong>
+            {formatAdminMoney(
+              (paidTrials._sum.amountUzs ?? 0) +
+                (paidSubscriptions._sum.amountUzs ?? 0)
+            )}
+          </strong>
         </div>
       </div>
 

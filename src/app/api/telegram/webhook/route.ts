@@ -7,6 +7,10 @@ import {
   startParentTrialFeedback
 } from "@/server/feedback/trial-feedback";
 import {
+  reviewSubscriptionPayment,
+  submitSubscriptionReceipt
+} from "@/server/enrollment/trial-conversion";
+import {
   reviewManualCardPayment,
   submitManualCardReceipt
 } from "@/server/payments/manual-card";
@@ -256,6 +260,81 @@ async function sendPaymentReviewToAdmin(
   }
 }
 
+async function sendSubscriptionPaymentReviewToAdmin(
+  result: Awaited<ReturnType<typeof submitSubscriptionReceipt>>
+) {
+  if (!result.ok || result.alreadyPaid) return;
+
+  const chatId = adminChatId();
+  if (!chatId) return;
+
+  const conversion = result.conversion;
+  const group = conversion.group;
+  const coach = [group.primaryCoach.firstName, group.primaryCoach.lastName]
+    .filter(Boolean)
+    .join(" ");
+
+  const caption = [
+    "<b>💳 Оплата абонемента — SHARK TEAM</b>",
+    "",
+    "Ребёнок: " + escapeHtml(conversion.child.name),
+    "Родитель: " + escapeHtml(conversion.child.parent.name),
+    "Телефон: " + escapeHtml(conversion.child.parent.phone),
+    "Филиал: " + escapeHtml(group.branch.publicNameRu),
+    "Направление: " + escapeHtml(group.sport.nameRu),
+    "Группа: " + escapeHtml(group.internalName),
+    "Тренер: " + escapeHtml(coach || "—"),
+    "Сумма: <b>" + formatMoney(result.payment.amountUzs) + " сум</b>",
+    "ID: <code>" + escapeHtml(result.payment.id) + "</code>"
+  ].join("\n");
+
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        {
+          text: "✅ Подтвердить абонемент",
+          callback_data: "subscription:approve:" + result.payment.id
+        }
+      ],
+      [
+        {
+          text: "❌ Платёж не найден",
+          callback_data: "subscription:not_found:" + result.payment.id
+        },
+        {
+          text: "❌ Неверная сумма",
+          callback_data: "subscription:wrong_amount:" + result.payment.id
+        }
+      ],
+      [
+        {
+          text: "❌ Чек не читается",
+          callback_data: "subscription:bad_receipt:" + result.payment.id
+        }
+      ]
+    ]
+  };
+
+  const fileId = result.payment.receiptTelegramFileId;
+  if (!fileId) return;
+
+  if (result.payment.receiptMimeType?.startsWith("document:")) {
+    await sendTelegramDocument({
+      chatId,
+      document: fileId,
+      caption,
+      replyMarkup
+    });
+  } else {
+    await sendTelegramPhoto({
+      chatId,
+      photo: fileId,
+      caption,
+      replyMarkup
+    });
+  }
+}
+
 async function handleFeedbackCallback(
   callback: NonNullable<TelegramUpdate["callback_query"]>
 ) {
@@ -340,6 +419,156 @@ async function handleFeedbackCallback(
           ]
         ]
       }
+    });
+  }
+
+  return true;
+}
+
+async function handleSubscriptionPaymentCallback(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+
+  if (!callbackId || !data.startsWith("subscription:")) {
+    return false;
+  }
+
+  if (!callbackAllowed(callback)) {
+    await answerTelegramCallbackQuery({
+      callbackQueryId: callbackId,
+      text: "Нет доступа.",
+      showAlert: true
+    });
+    return true;
+  }
+
+  const parts = data.split(":");
+  const action = parts[1];
+  const paymentId = parts[2];
+
+  if (!action || !paymentId) {
+    await answerTelegramCallbackQuery({
+      callbackQueryId: callbackId,
+      text: "Некорректная команда.",
+      showAlert: true
+    });
+    return true;
+  }
+
+  const approve = action === "approve";
+  const reason = approve ? null : rejectionReason(action);
+  const reviewedBy = callback.from?.id
+    ? "telegram:" + callback.from.id
+    : "telegram:unknown";
+
+  const result = await reviewSubscriptionPayment({
+    paymentId,
+    approve,
+    reviewedBy,
+    rejectionReason: reason
+  });
+
+  if (!result.ok) {
+    await answerTelegramCallbackQuery({
+      callbackQueryId: callbackId,
+      text:
+        result.error === "GROUP_FULL"
+          ? "Группа заполнена. Оплату нельзя подтвердить до решения администратора."
+          : result.error === "PAYMENT_NOT_UNDER_REVIEW"
+            ? "Оплата уже обработана или не ожидает проверки."
+            : "Не удалось обработать оплату.",
+      showAlert: true
+    });
+    return true;
+  }
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.approved
+      ? "Абонемент подтверждён."
+      : "Оплата абонемента отклонена."
+  });
+
+  if (result.alreadyProcessed) {
+    return true;
+  }
+
+  const prisma = getPrisma();
+  const conversion = result.conversion;
+  const contact = await prisma.telegramContact.findFirst({
+    where: {
+      parentId: conversion.child.parentId
+    },
+    orderBy: {
+      verifiedAt: "desc"
+    }
+  });
+
+  const locale: "ru" | "uz" =
+    contact?.locale === "uz" ? "uz" : "ru";
+
+  if (contact) {
+    if (result.approved) {
+      const group = conversion.group;
+      const coach = [
+        group.primaryCoach.firstName,
+        group.primaryCoach.lastName
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      const text =
+        locale === "uz"
+          ? [
+              "✅ <b>Abonement to‘lovi tasdiqlandi</b>",
+              "",
+              "Bola: " + escapeHtml(conversion.child.name),
+              "Guruh: " + escapeHtml(group.internalName),
+              "Filial: " + escapeHtml(group.branch.publicNameUz),
+              "Sport: " + escapeHtml(group.sport.nameUz),
+              "Murabbiy: " + escapeHtml(coach || "—"),
+              "",
+              "Bola guruhga doimiy o‘quvchi sifatida qo‘shildi."
+            ].join("\n")
+          : [
+              "✅ <b>Оплата абонемента подтверждена</b>",
+              "",
+              "Ребёнок: " + escapeHtml(conversion.child.name),
+              "Группа: " + escapeHtml(group.internalName),
+              "Филиал: " + escapeHtml(group.branch.publicNameRu),
+              "Направление: " + escapeHtml(group.sport.nameRu),
+              "Тренер: " + escapeHtml(coach || "—"),
+              "",
+              "Ребёнок зачислен в группу как постоянный ученик."
+            ].join("\n");
+
+      await sendTelegramMessage({
+        chatId: contact.chatId,
+        text
+      });
+    } else {
+      await sendTelegramMessage({
+        chatId: contact.chatId,
+        text: rejectionText(reason ?? "NOT_VERIFIED", locale)
+      });
+    }
+  }
+
+  const chatId = adminChatId();
+  if (chatId) {
+    await sendTelegramMessage({
+      chatId,
+      text: result.approved
+        ? "✅ Абонемент <code>" +
+          escapeHtml(paymentId) +
+          "</code> подтверждён. Ребёнок зачислен в группу."
+        : "❌ Оплата абонемента <code>" +
+          escapeHtml(paymentId) +
+          "</code> отклонена: " +
+          escapeHtml(reason ?? "NOT_VERIFIED") +
+          "."
     });
   }
 
@@ -510,7 +739,11 @@ export async function POST(request: NextRequest) {
       update.callback_query
     );
 
-    if (!feedbackHandled) {
+    const subscriptionHandled = feedbackHandled
+      ? true
+      : await handleSubscriptionPaymentCallback(update.callback_query);
+
+    if (!subscriptionHandled) {
       await handlePaymentCallback(update.callback_query);
     }
 
@@ -634,6 +867,64 @@ export async function POST(request: NextRequest) {
     const receiptSize = photo?.file_size ?? document?.file_size ?? null;
 
     if (!fileId) {
+      return NextResponse.json({ ok: true });
+    }
+
+    const subscriptionResult = await submitSubscriptionReceipt({
+      telegramUserId: BigInt(telegramUserId),
+      telegramFileId: fileId,
+      receiptMimeType,
+      receiptSize
+    });
+
+    if (subscriptionResult.ok) {
+      if (subscriptionResult.alreadyPaid) {
+        await sendTelegramMessage({
+          chatId: BigInt(chatId),
+          text:
+            contact.locale === "uz"
+              ? "✅ Abonement to‘lovi allaqachon tasdiqlangan."
+              : "✅ Оплата абонемента уже подтверждена."
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      await sendTelegramMessage({
+        chatId: BigInt(chatId),
+        text:
+          contact.locale === "uz"
+            ? "✅ Abonement cheki qabul qilindi va administrator tekshiruviga yuborildi."
+            : "✅ Чек за абонемент получен и отправлен администратору на проверку."
+      });
+
+      await sendSubscriptionPaymentReviewToAdmin(subscriptionResult);
+
+      return NextResponse.json({ ok: true });
+    }
+
+    if (
+      subscriptionResult.error === "MULTIPLE_ACTIVE_SUBSCRIPTIONS"
+    ) {
+      await sendTelegramMessage({
+        chatId: BigInt(chatId),
+        text:
+          contact.locale === "uz"
+            ? "Bir nechta faol abonement taklifi bor. Qaysi bola uchun to‘lov qilganingizni administratorga yozing."
+            : "У вас несколько активных предложений абонемента. Напишите администратору, за какого ребёнка выполнена оплата."
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (
+      subscriptionResult.error !== "NO_ACTIVE_SUBSCRIPTION"
+    ) {
+      await sendTelegramMessage({
+        chatId: BigInt(chatId),
+        text:
+          contact.locale === "uz"
+            ? "Abonement to‘lovini aniqlab bo‘lmadi. Administrator bilan bog‘laning."
+            : "Не удалось определить оплату абонемента. Свяжитесь с администратором."
+      });
       return NextResponse.json({ ok: true });
     }
 

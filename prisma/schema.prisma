@@ -80,6 +80,15 @@ enum StudentEnrollmentStatus {
   ENDED
 }
 
+enum TrialConversionStatus {
+  READY
+  THINKING
+  OFFERED
+  PAYMENT_PENDING
+  ENROLLED
+  DECLINED
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -292,6 +301,7 @@ model TrainingGroup {
   prices        Price[]
   leads         Lead[]
   enrollments   StudentEnrollment[]
+  trialConversions TrialConversion[]
 
   @@index([branchId, sportId, status])
   @@index([primaryCoachId, status])
@@ -427,6 +437,7 @@ model TrialBooking {
   attendance    Attendance?
   assessment    TrialAssessment?
   feedback      TrialFeedback?
+  conversion    TrialConversion?
   notifications Notification[]
 
   @@unique([leadId, sessionId])
@@ -514,6 +525,7 @@ model Child {
   leads       Lead[]
   enrollments StudentEnrollment[]
   attendances Attendance[]
+  trialConversions TrialConversion[]
 
   @@index([parentId])
   @@index([createdAt])
@@ -549,6 +561,55 @@ model StudentEnrollment {
 
   @@index([childId, status])
   @@index([groupId, status])
+}
+
+model TrialConversion {
+  id             String                @id @default(cuid())
+  trialBookingId String                @unique
+  childId        String
+  groupId        String
+  status         TrialConversionStatus @default(READY)
+  amountUzs      Int?
+  currency       String                @default("UZS")
+  offeredAt      DateTime?
+  enrolledAt     DateTime?
+  declinedAt     DateTime?
+  adminNote      String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  trialBooking TrialBooking        @relation(fields: [trialBookingId], references: [id], onDelete: Cascade)
+  child        Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  group        TrainingGroup       @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  payment      SubscriptionPayment?
+
+  @@index([status, updatedAt])
+  @@index([childId, status])
+  @@index([groupId, status])
+}
+
+model SubscriptionPayment {
+  id                      String          @id @default(cuid())
+  trialConversionId       String          @unique
+  provider                PaymentProvider @default(MANUAL_CARD)
+  status                  PaymentStatus   @default(PENDING)
+  amountUzs               Int
+  currency                String          @default("UZS")
+  receiptMimeType         String?
+  receiptSize             Int?
+  receiptTelegramFileId   String?
+  submittedAt             DateTime?
+  reviewedAt              DateTime?
+  reviewedBy              String?
+  rejectionReason         String?
+  paidAt                  DateTime?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  trialConversion TrialConversion @relation(fields: [trialConversionId], references: [id], onDelete: Cascade)
+
+  @@index([provider, status])
+  @@index([status, submittedAt])
 }
 
 model Attendance {

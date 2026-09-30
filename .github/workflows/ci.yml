@@ -193,6 +193,9 @@ jobs:
 
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
+        env:
+          TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
+          TELEGRAM_ADMIN_USER_IDS: "999001"
 
       - name: Smoke test protected CRM
         run: |
