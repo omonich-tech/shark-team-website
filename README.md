@@ -4,7 +4,7 @@ Digital platform for SHARK TEAM children's sports sections in Tashkent.
 
 ## Current status
 
-Clean MVP rebuild.
+Production pilot: trial booking, manual-card payments, coach and parent feedback, trial-to-enrollment conversion, and monthly subscription lifecycle.
 
 The previous prototype is preserved in:
 
