@@ -44,3 +44,6 @@ npm run build
 Basketball at School No. 117 in Yunusabad, Tashkent.
 
 See `docs/architecture.md` for the baseline architecture.
+
+
+Attendance and progress tracking are part of the production pilot.
