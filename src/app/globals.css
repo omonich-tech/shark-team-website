@@ -2317,3 +2317,28 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Group operations */
+.group-member-manager {
+  padding: 20px 22px 22px;
+}
+
+.group-member-candidate-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.group-member-remove {
+  display: grid;
+  gap: 6px;
+  min-width: 130px;
+}
+
+.group-member-remove .admin-danger-link {
+  text-align: left;
+}
