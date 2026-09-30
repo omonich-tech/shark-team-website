@@ -487,7 +487,7 @@ async function main() {
     "Converted lead was not closed"
   );
 
-  const logout = await fetch(\`\${baseUrl}/api/coach/logout\`, {
+  const logout = await fetch(`${baseUrl}/api/coach/logout`, {
     method: "POST",
     headers
   });
