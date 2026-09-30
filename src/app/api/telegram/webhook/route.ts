@@ -739,7 +739,11 @@ export async function POST(request: NextRequest) {
       update.callback_query
     );
 
-    if (!feedbackHandled) {
+    const subscriptionHandled = feedbackHandled
+      ? true
+      : await handleSubscriptionPaymentCallback(update.callback_query);
+
+    if (!subscriptionHandled) {
       await handlePaymentCallback(update.callback_query);
     }
 
