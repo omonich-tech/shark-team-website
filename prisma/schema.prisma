@@ -560,9 +560,23 @@ model Child {
   attendances Attendance[]
   trialConversions TrialConversion[]
   progressAssessments StudentProgressAssessment[]
+  adminNotes StudentAdminNote[]
 
   @@index([parentId])
   @@index([createdAt])
+}
+
+model StudentAdminNote {
+  id        String   @id @default(cuid())
+  childId   String
+  authorId  String?
+  note      String
+  createdAt DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([childId, createdAt])
+  @@index([authorId, createdAt])
 }
 
 model CoachAccount {
