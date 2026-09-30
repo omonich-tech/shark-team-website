@@ -94,7 +94,11 @@ export default async function AdminTrialsPage() {
   ).length;
   const readyForAdmin = trials.filter(
     (trial) =>
-      Boolean(trial.assessment) && Boolean(trial.feedback?.completedAt)
+      Boolean(trial.assessment) &&
+      Boolean(trial.feedback?.completedAt) &&
+      (!trial.conversion ||
+        trial.conversion.status === "READY" ||
+        trial.conversion.status === "THINKING")
   ).length;
 
   return (
