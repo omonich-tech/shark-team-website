@@ -291,7 +291,6 @@ model Coach {
   attendances   Attendance[]
   assessments   TrialAssessment[]
   progressAssessments StudentProgressAssessment[]
-  operationalAlerts OperationalAlert[]
 
   @@index([status])
 }
@@ -347,6 +346,7 @@ model TrainingGroup {
   enrollments   StudentEnrollment[]
   trialConversions TrialConversion[]
   progressAssessments StudentProgressAssessment[]
+  operationalAlerts OperationalAlert[]
 
   @@index([branchId, sportId, status])
   @@index([primaryCoachId, status])
