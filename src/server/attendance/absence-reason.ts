@@ -47,10 +47,17 @@ export async function queueRegularAbsenceNotice(input: {
   const prisma = getPrisma();
   const scheduledAt = input.scheduledAt ?? new Date();
 
+  const dedupeKey = "attendance:" + input.attendanceId + ":absence";
+  const existing = await prisma.notification.findUnique({
+    where: { dedupeKey }
+  });
+
+  if (existing?.status === NotificationStatus.SENT) {
+    return existing;
+  }
+
   return prisma.notification.upsert({
-    where: {
-      dedupeKey: "attendance:" + input.attendanceId + ":absence"
-    },
+    where: { dedupeKey },
     update: {
       type: NotificationType.REGULAR_ABSENCE_NOTICE,
       parentId: input.parentId,
@@ -66,7 +73,7 @@ export async function queueRegularAbsenceNotice(input: {
       parentId: input.parentId,
       attendanceId: input.attendanceId,
       scheduledAt,
-      dedupeKey: "attendance:" + input.attendanceId + ":absence"
+      dedupeKey
     }
   });
 }
