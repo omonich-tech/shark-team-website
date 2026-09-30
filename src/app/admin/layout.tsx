@@ -22,6 +22,7 @@ const nav = [
   ["/admin/children", "Дети"],
   ["/admin/payments", "Оплаты"],
   ["/admin/subscriptions", "Абонементы"],
+  ["/admin/attendance", "Посещаемость"],
   ["/admin/sports", "Виды спорта"],
   ["/admin/branches", "Филиалы"],
   ["/admin/coaches", "Тренеры"],
