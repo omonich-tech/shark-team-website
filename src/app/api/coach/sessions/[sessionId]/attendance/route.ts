@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AttendanceStatus } from "@/generated/prisma/client";
+import {
+  AbsenceReason,
+  AttendanceStatus
+} from "@/generated/prisma/client";
 import { getCoachSession } from "@/server/coach/auth";
 import { markCoachAttendance } from "@/server/coach/mark-attendance";
 
@@ -20,6 +23,13 @@ export async function POST(
   const body = await request.json();
   const childId = String(body.childId ?? "");
   const status = String(body.status ?? "") as AttendanceStatus;
+  const absenceReasonRaw =
+    typeof body.absenceReason === "string" ? body.absenceReason : "";
+  const absenceReason = absenceReasonRaw
+    ? (absenceReasonRaw as AbsenceReason)
+    : null;
+  const absenceNote =
+    typeof body.absenceNote === "string" ? body.absenceNote : null;
 
   if (!Object.values(AttendanceStatus).includes(status)) {
     return NextResponse.json(
@@ -28,11 +38,23 @@ export async function POST(
     );
   }
 
+  if (
+    absenceReason &&
+    !Object.values(AbsenceReason).includes(absenceReason)
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_ABSENCE_REASON" },
+      { status: 400 }
+    );
+  }
+
   const result = await markCoachAttendance({
     coachId: coach.coachId,
     sessionId,
     childId,
-    status
+    status,
+    absenceReason,
+    absenceNote
   });
 
   return NextResponse.json(result, {
