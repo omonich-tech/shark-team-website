@@ -12,6 +12,13 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function formatCard(value: string) {
   const digits = value.replace(/\s+/g, "");
   return digits.replace(/(.{4})/g, "$1 ").trim();
@@ -163,8 +170,21 @@ export async function offerTrialSubscription(input: {
     }
   });
 
+  if (existingEnrollment) {
+    return { ok: false as const, error: "ALREADY_ENROLLED" as const };
+  }
+
   if (
-    !existingEnrollment &&
+    conversion.status === TrialConversionStatus.PAYMENT_PENDING ||
+    conversion.payment?.status === PaymentStatus.UNDER_REVIEW
+  ) {
+    return {
+      ok: false as const,
+      error: "PAYMENT_UNDER_REVIEW" as const
+    };
+  }
+
+  if (
     conversion.group.enrollments.length >= conversion.group.capacityRegular
   ) {
     return { ok: false as const, error: "GROUP_FULL" as const };
@@ -242,28 +262,28 @@ export async function offerTrialSubscription(input: {
       ? [
           "🏀 <b>SHARK TEAM abonementi</b>",
           "",
-          "Bola: <b>" + conversion.child.name + "</b>",
-          "Guruh: " + conversion.group.internalName,
-          "Murabbiy: " + (coachName || "—"),
-          "Filial: " + conversion.group.branch.publicNameUz,
+          "Bola: <b>" + escapeHtml(conversion.child.name) + "</b>",
+          "Guruh: " + escapeHtml(conversion.group.internalName),
+          "Murabbiy: " + escapeHtml(coachName || "—"),
+          "Filial: " + escapeHtml(conversion.group.branch.publicNameUz),
           "",
           "1 oylik abonement: <b>" + formatMoney(price.amount) + " so‘m</b>",
           "Karta: <code>" + card + "</code>",
-          holder ? "Karta egasi: " + holder : "",
+          holder ? "Karta egasi: " + escapeHtml(holder) : "",
           "",
           "To‘lovdan so‘ng chek yoki skrinshotni shu chatga yuboring. To‘lov tasdiqlangach, bola guruhga qo‘shiladi."
         ].filter(Boolean).join("\n")
       : [
           "🏀 <b>Абонемент SHARK TEAM</b>",
           "",
-          "Ребёнок: <b>" + conversion.child.name + "</b>",
-          "Группа: " + conversion.group.internalName,
-          "Тренер: " + (coachName || "—"),
-          "Филиал: " + conversion.group.branch.publicNameRu,
+          "Ребёнок: <b>" + escapeHtml(conversion.child.name) + "</b>",
+          "Группа: " + escapeHtml(conversion.group.internalName),
+          "Тренер: " + escapeHtml(coachName || "—"),
+          "Филиал: " + escapeHtml(conversion.group.branch.publicNameRu),
           "",
           "Абонемент на месяц: <b>" + formatMoney(price.amount) + " сум</b>",
           "Карта: <code>" + card + "</code>",
-          holder ? "Получатель: " + holder : "",
+          holder ? "Получатель: " + escapeHtml(holder) : "",
           "",
           "После перевода отправьте чек или скриншот прямо сюда. После подтверждения оплаты ребёнок будет зачислен в группу."
         ].filter(Boolean).join("\n");
@@ -378,6 +398,11 @@ export async function reviewSubscriptionPayment(input: {
   const now = new Date();
 
   return prisma.$transaction(async (tx) => {
+    await tx.$queryRawUnsafe(
+      'SELECT "id" FROM "SubscriptionPayment" WHERE "id" = $1 FOR UPDATE',
+      input.paymentId
+    );
+
     const payment = await tx.subscriptionPayment.findUnique({
       where: { id: input.paymentId },
       include: {
