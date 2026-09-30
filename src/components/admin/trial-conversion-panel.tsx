@@ -55,7 +55,9 @@ export function TrialConversionPanel({
             "Не настроена карта для временной оплаты.",
           ALREADY_ENROLLED: "Ребёнок уже зачислен в группу.",
           PAYMENT_UNDER_REVIEW:
-            "Чек уже находится на проверке. Сначала обработайте текущую оплату."
+            "Чек уже находится на проверке. Сначала обработайте текущую оплату.",
+          OFFER_ALREADY_SENT:
+            "Предложение уже отправлено родителю. Можно дождаться оплаты или отметить отказ."
         };
 
         setState("error");
@@ -120,7 +122,8 @@ export function TrialConversionPanel({
             !ready ||
             state === "saving" ||
             conversion.status === "ENROLLED" ||
-            conversion.status === "PAYMENT_PENDING"
+            conversion.status === "PAYMENT_PENDING" ||
+            conversion.status === "OFFERED"
           }
           onClick={() => act("thinking")}
         >
