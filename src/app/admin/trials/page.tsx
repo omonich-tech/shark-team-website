@@ -77,12 +77,11 @@ export default async function AdminTrialsPage() {
     }
   });
 
-  const confirmed = trials.filter((trial) =>
-    [
-      TrialBookingStatus.CONFIRMED,
-      TrialBookingStatus.ATTENDED,
-      TrialBookingStatus.NO_SHOW
-    ].includes(trial.status)
+  const confirmed = trials.filter(
+    (trial) =>
+      trial.status === TrialBookingStatus.CONFIRMED ||
+      trial.status === TrialBookingStatus.ATTENDED ||
+      trial.status === TrialBookingStatus.NO_SHOW
   ).length;
   const attended = trials.filter(
     (trial) => trial.status === TrialBookingStatus.ATTENDED
