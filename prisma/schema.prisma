@@ -182,6 +182,17 @@ enum AuditActorType {
   SYSTEM
 }
 
+enum OperationalAlertType {
+  ATTENDANCE_RISK
+  PROGRESS_OVERDUE
+  PAYMENT_ATTENTION
+}
+
+enum OperationalAlertStatus {
+  OPEN
+  RESOLVED
+}
+
 model Sport {
   id                 String          @id
   slug               String          @unique
@@ -280,6 +291,7 @@ model Coach {
   attendances   Attendance[]
   assessments   TrialAssessment[]
   progressAssessments StudentProgressAssessment[]
+  operationalAlerts OperationalAlert[]
 
   @@index([status])
 }
@@ -561,9 +573,36 @@ model Child {
   trialConversions TrialConversion[]
   progressAssessments StudentProgressAssessment[]
   adminNotes StudentAdminNote[]
+  operationalAlerts OperationalAlert[]
 
   @@index([parentId])
   @@index([createdAt])
+}
+
+model OperationalAlert {
+  id           String                 @id @default(cuid())
+  type         OperationalAlertType
+  status       OperationalAlertStatus @default(OPEN)
+  severity     String                 @default("warning")
+  childId      String?
+  enrollmentId String?
+  groupId      String?
+  title        String
+  details      String?
+  dedupeKey    String                 @unique
+  openedAt     DateTime               @default(now())
+  resolvedAt   DateTime?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  child      Child?             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  enrollment StudentEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  group      TrainingGroup?     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([status, type, openedAt])
+  @@index([childId, status])
+  @@index([groupId, status])
+  @@index([enrollmentId, status])
 }
 
 model StudentAdminNote {
@@ -618,6 +657,7 @@ model StudentEnrollment {
   group    TrainingGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
   payments      SubscriptionPayment[]
   notifications Notification[]
+  operationalAlerts OperationalAlert[]
 
   @@index([childId, status])
   @@index([groupId, status])
