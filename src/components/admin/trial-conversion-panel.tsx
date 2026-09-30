@@ -132,7 +132,8 @@ export function TrialConversionPanel({
           disabled={
             !ready ||
             state === "saving" ||
-            conversion.status === "ENROLLED"
+            conversion.status === "ENROLLED" ||
+            conversion.status === "PAYMENT_PENDING"
           }
           onClick={() => act("offer")}
         >
