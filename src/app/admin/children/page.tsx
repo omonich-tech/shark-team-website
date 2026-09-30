@@ -88,6 +88,26 @@ export default async function AdminChildrenPage() {
                               </small>
                             </>
                           ) : null}
+                          {enrollment.nextPaymentDueAt ? (
+                            <>
+                              <br />
+                              <small>
+                                Следующая оплата:{" "}
+                                {formatAdminDate(enrollment.nextPaymentDueAt)}
+                              </small>
+                            </>
+                          ) : null}
+                          {enrollment.graceUntil &&
+                          (enrollment.subscriptionStatus === "PAST_DUE" ||
+                            enrollment.subscriptionStatus === "PAYMENT_DUE") ? (
+                            <>
+                              <br />
+                              <small>
+                                Льготный период до:{" "}
+                                {formatAdminDate(enrollment.graceUntil)}
+                              </small>
+                            </>
+                          ) : null}
                         </div>
                       ))
                     ) : (
