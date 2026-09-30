@@ -1,6 +1,7 @@
 import { getPrisma } from "@/lib/prisma";
 import { dateKeyInTimeZone } from "@/lib/timezone";
 import { generateTrainingSessions } from "@/server/sessions/generate-training-sessions";
+import { backfillConfirmedTrialFamilies } from "@/server/trial/backfill-confirmed-trial-families";
 import { expireTrialBookings } from "@/server/trial/expire-trial-bookings";
 
 function addDays(dateKey: string, amount: number) {
@@ -30,6 +31,7 @@ export async function runMaintenance(now = new Date()) {
   );
 
   const expiredHolds = await expireTrialBookings(now);
+  const familyLinksRepaired = await backfillConfirmedTrialFamilies();
   const sessions = await generateTrainingSessions(prisma, {
     from,
     to
@@ -56,6 +58,7 @@ export async function runMaintenance(now = new Date()) {
     now: now.toISOString(),
     range: { from, to },
     expiredHolds,
+    familyLinksRepaired,
     sessions,
     cleanup: {
       rateLimitBuckets: oldRateLimits.count,
