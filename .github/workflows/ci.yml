@@ -206,6 +206,9 @@ jobs:
       - name: Verify regular attendance workflow
         run: npm run verify:regular-attendance
 
+      - name: Verify attendance risk alerts
+        run: npm run verify:attendance-alerts
+
       - name: Verify student progress workflow
         run: npm run verify:student-progress
 
