@@ -758,13 +758,19 @@ export async function processDueTelegramNotifications(
               inline_keyboard: [
                 [
                   {
-                    text: "🤒 Болезнь",
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "🤒 Kasallik"
+                        : "🤒 Болезнь",
                     callback_data:
                       "attendance-reason:ILLNESS:" +
                       notification.attendanceId
                   },
                   {
-                    text: "👨‍👩‍👧 Семья",
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "👨‍👩‍👧 Oila"
+                        : "👨‍👩‍👧 Семья",
                     callback_data:
                       "attendance-reason:FAMILY:" +
                       notification.attendanceId
@@ -772,13 +778,19 @@ export async function processDueTelegramNotifications(
                 ],
                 [
                   {
-                    text: "✈️ Поездка",
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "✈️ Safar"
+                        : "✈️ Поездка",
                     callback_data:
                       "attendance-reason:TRAVEL:" +
                       notification.attendanceId
                   },
                   {
-                    text: "📚 Учёба",
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "📚 O‘qish"
+                        : "📚 Учёба",
                     callback_data:
                       "attendance-reason:SCHOOL:" +
                       notification.attendanceId
@@ -786,7 +798,10 @@ export async function processDueTelegramNotifications(
                 ],
                 [
                   {
-                    text: "Другая причина",
+                    text:
+                      notification.parent?.locale === "uz"
+                        ? "Boshqa sabab"
+                        : "Другая причина",
                     callback_data:
                       "attendance-reason:OTHER:" +
                       notification.attendanceId
