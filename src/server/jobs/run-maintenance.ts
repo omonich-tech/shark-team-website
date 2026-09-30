@@ -8,6 +8,7 @@ import {
 } from "@/server/enrollment/trial-conversion";
 import { backfillConfirmedTrialFamilies } from "@/server/trial/backfill-confirmed-trial-families";
 import { expireTrialBookings } from "@/server/trial/expire-trial-bookings";
+import { refreshAllAttendanceRiskAlerts } from "@/server/attendance/risk-alerts";
 
 function addDays(dateKey: string, amount: number) {
   const [year, month, day] = dateKey.split("-").map(Number);
@@ -42,6 +43,7 @@ export async function runMaintenance(now = new Date()) {
     await backfillEnrollmentBillingPeriods();
   const subscriptionLifecycle =
     await advanceSubscriptionLifecycle(now);
+  const attendanceRisks = await refreshAllAttendanceRiskAlerts(now);
   const sessions = await generateTrainingSessions(prisma, {
     from,
     to
@@ -72,6 +74,7 @@ export async function runMaintenance(now = new Date()) {
     readyConversionsCreated,
     enrollmentBillingPeriodsRepaired,
     subscriptionLifecycle,
+    attendanceRisks,
     sessions,
     cleanup: {
       rateLimitBuckets: oldRateLimits.count,
