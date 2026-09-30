@@ -203,6 +203,9 @@ jobs:
           TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
           TELEGRAM_ADMIN_USER_IDS: "999001"
 
+      - name: Verify regular attendance workflow
+        run: npm run verify:regular-attendance
+
       - name: Smoke test protected CRM
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/admin)
@@ -226,6 +229,7 @@ jobs:
           curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/parents | grep -q "Payme Parent"
           curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/children | grep -q "Payme Child"
           curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/payments | grep -q "REFUNDED"
+          curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/attendance | grep -q "Посещаемость"
 
           curl -fsS -b /tmp/admin-cookies.txt -c /tmp/admin-cookies.txt -X POST http://127.0.0.1:3000/api/admin/logout | grep -q '"ok":true'
 
