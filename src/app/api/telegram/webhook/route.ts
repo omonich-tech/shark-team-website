@@ -870,6 +870,64 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    const subscriptionResult = await submitSubscriptionReceipt({
+      telegramUserId: BigInt(telegramUserId),
+      telegramFileId: fileId,
+      receiptMimeType,
+      receiptSize
+    });
+
+    if (subscriptionResult.ok) {
+      if (subscriptionResult.alreadyPaid) {
+        await sendTelegramMessage({
+          chatId: BigInt(chatId),
+          text:
+            contact.locale === "uz"
+              ? "✅ Abonement to‘lovi allaqachon tasdiqlangan."
+              : "✅ Оплата абонемента уже подтверждена."
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      await sendTelegramMessage({
+        chatId: BigInt(chatId),
+        text:
+          contact.locale === "uz"
+            ? "✅ Abonement cheki qabul qilindi va administrator tekshiruviga yuborildi."
+            : "✅ Чек за абонемент получен и отправлен администратору на проверку."
+      });
+
+      await sendSubscriptionPaymentReviewToAdmin(subscriptionResult);
+
+      return NextResponse.json({ ok: true });
+    }
+
+    if (
+      subscriptionResult.error === "MULTIPLE_ACTIVE_SUBSCRIPTIONS"
+    ) {
+      await sendTelegramMessage({
+        chatId: BigInt(chatId),
+        text:
+          contact.locale === "uz"
+            ? "Bir nechta faol abonement taklifi bor. Qaysi bola uchun to‘lov qilganingizni administratorga yozing."
+            : "У вас несколько активных предложений абонемента. Напишите администратору, за какого ребёнка выполнена оплата."
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (
+      subscriptionResult.error !== "NO_ACTIVE_SUBSCRIPTION"
+    ) {
+      await sendTelegramMessage({
+        chatId: BigInt(chatId),
+        text:
+          contact.locale === "uz"
+            ? "Abonement to‘lovini aniqlab bo‘lmadi. Administrator bilan bog‘laning."
+            : "Не удалось определить оплату абонемента. Свяжитесь с администратором."
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     const result = await submitManualCardReceipt({
       telegramUserId: BigInt(telegramUserId),
       telegramFileId: fileId,
