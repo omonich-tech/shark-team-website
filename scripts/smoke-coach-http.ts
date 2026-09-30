@@ -1,5 +1,12 @@
 import "dotenv/config";
-import { NotificationStatus, NotificationType, TrialBookingStatus } from "../src/generated/prisma/client";
+import {
+  NotificationStatus,
+  NotificationType,
+  PaymentStatus,
+  StudentEnrollmentStatus,
+  TrialBookingStatus,
+  TrialConversionStatus
+} from "../src/generated/prisma/client";
 import { getPrisma } from "../src/lib/prisma";
 
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
@@ -7,6 +14,12 @@ const username = process.env.COACH_SMOKE_USERNAME;
 const password = process.env.COACH_SMOKE_PASSWORD;
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
 const cronSecret = process.env.CRON_SECRET;
+const adminUsername = process.env.ADMIN_USERNAME;
+const adminPassword = process.env.ADMIN_PASSWORD;
+const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+const adminUserId = Number(
+  (process.env.TELEGRAM_ADMIN_USER_IDS ?? "").split(",")[0]
+);
 const prisma = getPrisma();
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -20,8 +33,17 @@ function cookieFrom(response: Response) {
 }
 
 async function main() {
-  if (!username || !password || !webhookSecret || !cronSecret) {
-    throw new Error("Coach/Telegram smoke configuration is missing");
+  if (
+    !username ||
+    !password ||
+    !webhookSecret ||
+    !cronSecret ||
+    !adminUsername ||
+    !adminPassword ||
+    !adminChatId ||
+    !Number.isInteger(adminUserId)
+  ) {
+    throw new Error("Coach/Telegram/Admin smoke configuration is missing");
   }
 
   const booking = await prisma.trialBooking.findFirst({
@@ -292,7 +314,180 @@ async function main() {
     "Combined trial outcome was not sent to admin"
   );
 
-  const logout = await fetch(`${baseUrl}/api/coach/logout`, {
+  const readyConversion = await prisma.trialConversion.findUnique({
+    where: { trialBookingId: booking.id }
+  });
+
+  assert(readyConversion, "Ready trial conversion was not created");
+  assert(
+    readyConversion.status === TrialConversionStatus.READY,
+    "Completed trial must enter READY conversion state"
+  );
+
+  const adminLogin = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: adminUsername,
+      password: adminPassword
+    })
+  });
+
+  assert(adminLogin.ok, "Admin login for conversion flow failed");
+  const adminCookie = cookieFrom(adminLogin);
+
+  const offerResponse = await fetch(
+    baseUrl + "/api/admin/trials/" + booking.id + "/conversion",
+    {
+      method: "POST",
+      headers: {
+        Cookie: adminCookie,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "offer",
+        adminNote: "CI subscription offer"
+      })
+    }
+  );
+  const offerPayload = await offerResponse.json();
+
+  assert(
+    offerResponse.ok && offerPayload.ok,
+    "Subscription offer creation failed"
+  );
+
+  const offeredConversion = await prisma.trialConversion.findUnique({
+    where: { trialBookingId: booking.id },
+    include: { payment: true }
+  });
+
+  assert(
+    offeredConversion?.status === TrialConversionStatus.OFFERED,
+    "Conversion did not move to OFFERED"
+  );
+  assert(
+    offeredConversion.payment?.status === PaymentStatus.PENDING,
+    "Subscription payment was not created"
+  );
+  assert(
+    offeredConversion.payment?.amountUzs === 500000,
+    "Unexpected subscription amount"
+  );
+
+  const subscriptionReceipt = await fetch(
+    baseUrl + "/api/telegram/webhook",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-telegram-bot-api-secret-token": webhookSecret
+      },
+      body: JSON.stringify({
+        update_id: 903,
+        message: {
+          message_id: 31,
+          chat: { id: 777001, type: "private" },
+          from: {
+            id: 777001,
+            username: "ci_parent",
+            first_name: "CI Parent",
+            language_code: "ru"
+          },
+          document: {
+            file_id: "ci-subscription-receipt",
+            file_name: "subscription-receipt.pdf",
+            mime_type: "application/pdf",
+            file_size: 22000
+          }
+        }
+      })
+    }
+  );
+
+  assert(subscriptionReceipt.ok, "Subscription receipt webhook failed");
+
+  const underReview = await prisma.subscriptionPayment.findUnique({
+    where: {
+      trialConversionId: readyConversion.id
+    }
+  });
+
+  assert(
+    underReview?.status === PaymentStatus.UNDER_REVIEW,
+    "Subscription receipt did not move payment UNDER_REVIEW"
+  );
+
+  const subscriptionCallback = await fetch(
+    baseUrl + "/api/telegram/webhook",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-telegram-bot-api-secret-token": webhookSecret
+      },
+      body: JSON.stringify({
+        update_id: 904,
+        callback_query: {
+          id: "ci-subscription-approve",
+          data: "subscription:approve:" + underReview?.id,
+          from: {
+            id: adminUserId,
+            username: "ci_admin"
+          },
+          message: {
+            message_id: 32,
+            chat: {
+              id: Number(adminChatId),
+              type: "supergroup"
+            }
+          }
+        }
+      })
+    }
+  );
+
+  assert(
+    subscriptionCallback.ok,
+    "Subscription approval callback failed"
+  );
+
+  const enrolledConversion = await prisma.trialConversion.findUnique({
+    where: { trialBookingId: booking.id },
+    include: {
+      payment: true
+    }
+  });
+
+  assert(
+    enrolledConversion?.status === TrialConversionStatus.ENROLLED,
+    "Conversion did not move to ENROLLED"
+  );
+  assert(
+    enrolledConversion.payment?.status === PaymentStatus.PAID,
+    "Subscription payment was not marked PAID"
+  );
+
+  const enrollment = await prisma.studentEnrollment.findFirst({
+    where: {
+      childId: booking.lead.childId,
+      groupId: booking.session.groupId,
+      status: StudentEnrollmentStatus.ACTIVE
+    }
+  });
+
+  assert(enrollment, "Child was not enrolled into the regular group");
+
+  const closedLead = await prisma.lead.findUnique({
+    where: { id: booking.leadId }
+  });
+
+  assert(
+    closedLead?.status === "CLOSED",
+    "Converted lead was not closed"
+  );
+
+  const logout = await fetch(\`\${baseUrl}/api/coach/logout\`, {
     method: "POST",
     headers
   });
