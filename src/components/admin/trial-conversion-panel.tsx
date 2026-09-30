@@ -116,7 +116,12 @@ export function TrialConversionPanel({
         <button
           className="button"
           type="button"
-          disabled={!ready || state === "saving"}
+          disabled={
+            !ready ||
+            state === "saving" ||
+            conversion.status === "ENROLLED" ||
+            conversion.status === "PAYMENT_PENDING"
+          }
           onClick={() => act("thinking")}
         >
           Думает
@@ -139,7 +144,8 @@ export function TrialConversionPanel({
           disabled={
             !ready ||
             state === "saving" ||
-            conversion.status === "ENROLLED"
+            conversion.status === "ENROLLED" ||
+            conversion.status === "PAYMENT_PENDING"
           }
           onClick={() => act("decline")}
         >
