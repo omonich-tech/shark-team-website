@@ -559,7 +559,7 @@ model StudentEnrollment {
   childId            String
   groupId            String
   status             StudentEnrollmentStatus @default(ACTIVE)
-  subscriptionStatus SubscriptionStatus?      @default(ACTIVE)
+  subscriptionStatus SubscriptionStatus?
   startDate          DateTime                 @default(now())
   endDate            DateTime?
   currentPeriodStart DateTime?
