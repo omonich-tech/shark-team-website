@@ -110,14 +110,52 @@ export async function setTrialConversionDecision(input: {
   if (!ready.ok) return ready;
 
   const prisma = getPrisma();
-  const conversion = await prisma.trialConversion.update({
+  const current = await prisma.trialConversion.findUnique({
     where: { id: ready.conversion.id },
-    data: {
-      status: TrialConversionStatus[input.status],
-      adminNote: input.adminNote?.trim().slice(0, 1000) || null,
-      declinedAt:
-        input.status === "DECLINED" ? new Date() : null
+    include: { payment: true }
+  });
+
+  if (!current) {
+    return { ok: false as const, error: "CONVERSION_NOT_FOUND" as const };
+  }
+
+  if (current.status === TrialConversionStatus.ENROLLED) {
+    return { ok: false as const, error: "ALREADY_ENROLLED" as const };
+  }
+
+  if (
+    current.status === TrialConversionStatus.PAYMENT_PENDING ||
+    current.payment?.status === PaymentStatus.UNDER_REVIEW
+  ) {
+    return {
+      ok: false as const,
+      error: "PAYMENT_UNDER_REVIEW" as const
+    };
+  }
+
+  const conversion = await prisma.$transaction(async (tx) => {
+    if (
+      input.status === "DECLINED" &&
+      current.payment &&
+      current.payment.status !== PaymentStatus.PAID
+    ) {
+      await tx.subscriptionPayment.update({
+        where: { id: current.payment.id },
+        data: {
+          status: PaymentStatus.CANCELLED
+        }
+      });
     }
+
+    return tx.trialConversion.update({
+      where: { id: ready.conversion.id },
+      data: {
+        status: TrialConversionStatus[input.status],
+        adminNote: input.adminNote?.trim().slice(0, 1000) || null,
+        declinedAt:
+          input.status === "DECLINED" ? new Date() : null
+      }
+    });
   });
 
   return { ok: true as const, conversion };
