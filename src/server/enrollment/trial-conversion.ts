@@ -133,6 +133,16 @@ export async function setTrialConversionDecision(input: {
     };
   }
 
+  if (
+    current.status === TrialConversionStatus.OFFERED &&
+    input.status === "THINKING"
+  ) {
+    return {
+      ok: false as const,
+      error: "OFFER_ALREADY_SENT" as const
+    };
+  }
+
   const conversion = await prisma.$transaction(async (tx) => {
     if (
       input.status === "DECLINED" &&
@@ -261,6 +271,9 @@ export async function offerTrialSubscription(input: {
             status: PaymentStatus.PENDING,
             amountUzs: price.amount,
             currency: price.currency,
+            receiptMimeType: null,
+            receiptSize: null,
+            receiptTelegramFileId: null,
             submittedAt: null,
             reviewedAt: null,
             reviewedBy: null,
