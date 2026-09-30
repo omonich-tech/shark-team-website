@@ -2265,3 +2265,55 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Student 360 management */
+.student-enrollment-block {
+  padding: 0 0 24px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.student-enrollment-block:last-child {
+  border-bottom: 0;
+}
+
+.student-admin-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 18px 22px 0;
+}
+
+.student-admin-actions .admin-group-editor {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fbfcfe;
+}
+
+.student-admin-actions .admin-panel-head {
+  padding-top: 0;
+}
+
+.student-admin-actions h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 16px;
+}
+
+.student-subscription-actions {
+  padding: 18px 22px 0;
+}
+
+.admin-wrap-cell {
+  min-width: 320px;
+  max-width: 720px;
+  white-space: normal !important;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .student-admin-actions {
+    grid-template-columns: 1fr;
+  }
+}
