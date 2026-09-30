@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { GroupCreateForm } from "@/components/admin/group-create-form";
 import { GroupEditor } from "@/components/admin/group-editor";
@@ -75,7 +76,7 @@ export default async function AdminGroupsPage() {
           <section className="admin-panel admin-editor-panel" key={group.id}>
             <div className="admin-panel-head">
               <div>
-                <h2>{group.internalName}</h2>
+                <h2><Link href={"/admin/groups/" + group.id}>{group.internalName}</Link></h2>
                 <small>
                   {group.branch.publicNameRu} · {group.sport.nameRu} ·{" "}
                   {[group.primaryCoach.firstName, group.primaryCoach.lastName]
