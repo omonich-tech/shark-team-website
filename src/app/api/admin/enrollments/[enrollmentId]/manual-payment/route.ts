@@ -61,19 +61,21 @@ export async function POST(
   }
 
   const latest = enrollment.payments[0];
-  let trialConversionId = latest?.trialConversionId ?? null;
+  const fallbackConversion = latest
+    ? null
+    : await prisma.trialConversion.findFirst({
+        where: { childId: enrollment.childId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true }
+      });
+  const trialConversionId =
+    latest?.trialConversionId ?? fallbackConversion?.id;
 
   if (!trialConversionId) {
-    const conversion = await prisma.trialConversion.findFirst({
-      where: { childId: enrollment.childId },
-      orderBy: { createdAt: "desc" },
-      select: { id: true }
-    });
-    trialConversionId = conversion?.id ?? null;
-  }
-
-  if (!trialConversionId) {
-    return NextResponse.json({ ok: false, error: "BILLING_HISTORY_MISSING" }, { status: 409 });
+    return NextResponse.json(
+      { ok: false, error: "BILLING_HISTORY_MISSING" },
+      { status: 409 }
+    );
   }
 
   const pending = enrollment.payments.find(
