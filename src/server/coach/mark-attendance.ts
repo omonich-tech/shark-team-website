@@ -1,8 +1,14 @@
 import {
+  AbsenceReason,
+  AttendanceReasonSource,
   AttendanceStatus,
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  queueRegularAbsenceNotice,
+  skipRegularAbsenceNotice
+} from "@/server/attendance/absence-reason";
 import { getCoachSessionParticipants } from "@/server/coach/get-session-participants";
 
 export async function markCoachAttendance(input: {
@@ -10,6 +16,8 @@ export async function markCoachAttendance(input: {
   sessionId: string;
   childId: string;
   status: AttendanceStatus;
+  absenceReason?: AbsenceReason | null;
+  absenceNote?: string | null;
 }) {
   const data = await getCoachSessionParticipants(
     input.coachId,
@@ -31,6 +39,14 @@ export async function markCoachAttendance(input: {
   const prisma = getPrisma();
   const now = new Date();
 
+  const isAbsent =
+    input.status === AttendanceStatus.ABSENT ||
+    input.status === AttendanceStatus.EXCUSED;
+  const reason = isAbsent ? input.absenceReason ?? null : null;
+  const note = isAbsent
+    ? input.absenceNote?.trim().slice(0, 500) || null
+    : null;
+
   const attendance = await prisma.attendance.upsert({
     where: {
       sessionId_childId: {
@@ -42,6 +58,10 @@ export async function markCoachAttendance(input: {
       coachId: input.coachId,
       trialBookingId: participant.trialBookingId,
       status: input.status,
+      absenceReason: reason,
+      absenceNote: note,
+      reasonSource: reason ? AttendanceReasonSource.COACH : null,
+      reasonUpdatedAt: reason ? now : null,
       markedAt: now
     },
     create: {
@@ -50,6 +70,10 @@ export async function markCoachAttendance(input: {
       coachId: input.coachId,
       trialBookingId: participant.trialBookingId,
       status: input.status,
+      absenceReason: reason,
+      absenceNote: note,
+      reasonSource: reason ? AttendanceReasonSource.COACH : null,
+      reasonUpdatedAt: reason ? now : null,
       markedAt: now
     }
   });
@@ -74,11 +98,33 @@ export async function markCoachAttendance(input: {
     }
   }
 
+
+  if (!participant.trialBookingId) {
+    if (input.status === AttendanceStatus.PRESENT) {
+      await skipRegularAbsenceNotice(attendance.id);
+    } else {
+      const child = await prisma.child.findUnique({
+        where: { id: input.childId },
+        select: { parentId: true }
+      });
+
+      if (child?.parentId) {
+        await queueRegularAbsenceNotice({
+          attendanceId: attendance.id,
+          parentId: child.parentId,
+          scheduledAt: now
+        });
+      }
+    }
+  }
+
   return {
     ok: true as const,
     attendance: {
       id: attendance.id,
       status: attendance.status,
+      absenceReason: attendance.absenceReason,
+      absenceNote: attendance.absenceNote,
       markedAt: attendance.markedAt.toISOString()
     }
   };
