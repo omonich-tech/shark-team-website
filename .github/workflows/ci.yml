@@ -206,6 +206,9 @@ jobs:
       - name: Verify regular attendance workflow
         run: npm run verify:regular-attendance
 
+      - name: Verify student progress workflow
+        run: npm run verify:student-progress
+
       - name: Smoke test protected CRM
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/admin)
@@ -230,6 +233,7 @@ jobs:
           curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/children | grep -q "Payme Child"
           curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/payments | grep -q "REFUNDED"
           curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/attendance | grep -q "Посещаемость"
+          curl -fsS -b /tmp/admin-cookies.txt http://127.0.0.1:3000/admin/progress | grep -q "Прогресс"
 
           curl -fsS -b /tmp/admin-cookies.txt -c /tmp/admin-cookies.txt -X POST http://127.0.0.1:3000/api/admin/logout | grep -q '"ok":true'
 
