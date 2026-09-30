@@ -1,4 +1,5 @@
 import { getPrisma } from "@/lib/prisma";
+import { advanceSubscriptionLifecycle } from "@/server/billing/subscription-lifecycle";
 import { dateKeyInTimeZone } from "@/lib/timezone";
 import { generateTrainingSessions } from "@/server/sessions/generate-training-sessions";
 import {
@@ -39,6 +40,8 @@ export async function runMaintenance(now = new Date()) {
   const readyConversionsCreated = await backfillReadyTrialConversions();
   const enrollmentBillingPeriodsRepaired =
     await backfillEnrollmentBillingPeriods();
+  const subscriptionLifecycle =
+    await advanceSubscriptionLifecycle(now);
   const sessions = await generateTrainingSessions(prisma, {
     from,
     to
@@ -68,6 +71,7 @@ export async function runMaintenance(now = new Date()) {
     familyLinksRepaired,
     readyConversionsCreated,
     enrollmentBillingPeriodsRepaired,
+    subscriptionLifecycle,
     sessions,
     cleanup: {
       rateLimitBuckets: oldRateLimits.count,
