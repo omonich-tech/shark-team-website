@@ -428,6 +428,43 @@ export async function processDueTelegramNotifications(
       }
     }
 
+    if (
+      notification.type === NotificationType.SUBSCRIPTION_RENEWAL_REMINDER ||
+      notification.type === NotificationType.SUBSCRIPTION_PAST_DUE ||
+      notification.type === NotificationType.SUBSCRIPTION_PAUSED
+    ) {
+      const enrollment = notification.enrollment;
+      const payment = notification.subscriptionPayment;
+
+      const expectedStatus =
+        notification.type === NotificationType.SUBSCRIPTION_RENEWAL_REMINDER
+          ? "PAYMENT_DUE"
+          : notification.type === NotificationType.SUBSCRIPTION_PAST_DUE
+            ? "PAST_DUE"
+            : "PAUSED";
+
+      if (
+        !enrollment ||
+        !payment ||
+        payment.status === "PAID" ||
+        enrollment.subscriptionStatus !== expectedStatus
+      ) {
+        await prisma.notification.update({
+          where: { id: notification.id },
+          data: {
+            status: NotificationStatus.SKIPPED,
+            lastError: !enrollment || !payment
+              ? "SUBSCRIPTION_CONTEXT_MISSING"
+              : payment.status === "PAID"
+                ? "SUBSCRIPTION_ALREADY_PAID"
+                : "SUBSCRIPTION_STATE_CHANGED"
+          }
+        });
+        skipped += 1;
+        continue;
+      }
+    }
+
     const contact = await prisma.telegramContact.findFirst({
       where: {
         OR: [
