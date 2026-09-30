@@ -5,6 +5,7 @@ import {
   SubscriptionStatus
 } from "@/generated/prisma/client";
 import { ProgressAssessmentForm } from "@/components/coach/progress-assessment-form";
+import { ProgressTrendChart } from "@/components/coach/progress-trend-chart";
 import { formatCoachDate } from "@/lib/coach-format";
 import { getPrisma } from "@/lib/prisma";
 import { requireCoachSession } from "@/server/coach/auth";
@@ -163,6 +164,35 @@ export default async function CoachStudentProgressPage({
           </div>
         </section>
       ) : null}
+
+      <section className="coach-section">
+        <div className="coach-section-head">
+          <h2>Динамика · пробное → М1 → М2 → М3</h2>
+        </div>
+        <ProgressTrendChart
+          baseline={
+            baseline
+              ? {
+                  ability: baseline.ability,
+                  discipline: baseline.discipline,
+                  motivation: baseline.motivation,
+                  coordination: baseline.coordination,
+                  physicalPreparation: baseline.physicalPreparation,
+                  psychologicalReadiness: baseline.psychologicalReadiness
+                }
+              : null
+          }
+          assessments={history.map((item) => ({
+            assessedAt: item.assessedAt,
+            ability: item.ability,
+            discipline: item.discipline,
+            motivation: item.motivation,
+            coordination: item.coordination,
+            physicalPreparation: item.physicalPreparation,
+            psychologicalReadiness: item.psychologicalReadiness
+          }))}
+        />
+      </section>
 
       <section className="coach-section">
         <div className="coach-section-head">
