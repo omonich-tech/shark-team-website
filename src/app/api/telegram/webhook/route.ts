@@ -1,6 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { AbsenceReason } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  absenceReasonLabel,
+  setParentAttendanceReason
+} from "@/server/attendance/absence-reason";
 import {
   completeParentTrialFeedbackComment,
   skipParentTrialFeedbackComment,
@@ -432,6 +437,74 @@ async function handleFeedbackCallback(
   return true;
 }
 
+async function handleAttendanceReasonCallback(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+  const telegramUserId = callback.from?.id;
+  const chatId = callback.message?.chat?.id;
+
+  if (
+    !callbackId ||
+    !telegramUserId ||
+    !data.startsWith("attendance-reason:")
+  ) {
+    return false;
+  }
+
+  const [, reasonRaw, attendanceId] = data.split(":");
+  const reason = reasonRaw as AbsenceReason;
+
+  if (
+    !attendanceId ||
+    !Object.values(AbsenceReason).includes(reason)
+  ) {
+    await answerTelegramCallbackQuery({
+      callbackQueryId: callbackId,
+      text: "Некорректная причина.",
+      showAlert: true
+    });
+    return true;
+  }
+
+  const result = await setParentAttendanceReason({
+    telegramUserId: BigInt(telegramUserId),
+    attendanceId,
+    reason
+  });
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.ok
+      ? result.locale === "uz"
+        ? "Sabab saqlandi."
+        : "Причина сохранена."
+      : "Не удалось сохранить причину.",
+    showAlert: !result.ok
+  });
+
+  if (result.ok && chatId !== undefined) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text:
+        result.locale === "uz"
+          ? "✅ " +
+            escapeHtml(result.childName) +
+            ": " +
+            escapeHtml(absenceReasonLabel(reason, "uz")) +
+            ". Rahmat."
+          : "✅ " +
+            escapeHtml(result.childName) +
+            ": причина — " +
+            escapeHtml(absenceReasonLabel(reason, "ru")) +
+            ". Спасибо."
+    });
+  }
+
+  return true;
+}
+
 async function handleSubscriptionPaymentCallback(
   callback: NonNullable<TelegramUpdate["callback_query"]>
 ) {
@@ -757,7 +830,11 @@ export async function POST(request: NextRequest) {
       update.callback_query
     );
 
-    const subscriptionHandled = feedbackHandled
+    const attendanceHandled = feedbackHandled
+      ? true
+      : await handleAttendanceReasonCallback(update.callback_query);
+
+    const subscriptionHandled = attendanceHandled
       ? true
       : await handleSubscriptionPaymentCallback(update.callback_query);
 
