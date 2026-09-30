@@ -197,6 +197,12 @@ jobs:
           TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
           TELEGRAM_ADMIN_USER_IDS: "999001"
 
+      - name: Verify subscription renewal lifecycle
+        run: npm run verify:subscription-lifecycle
+        env:
+          TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
+          TELEGRAM_ADMIN_USER_IDS: "999001"
+
       - name: Smoke test protected CRM
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/admin)
