@@ -89,8 +89,12 @@ export async function ensureTrialConversionReady(trialBookingId: string) {
     return { ok: true as const, conversion: booking.conversion };
   }
 
-  const conversion = await prisma.trialConversion.create({
-    data: {
+  const conversion = await prisma.trialConversion.upsert({
+    where: {
+      trialBookingId: booking.id
+    },
+    update: {},
+    create: {
       trialBookingId: booking.id,
       childId: booking.lead.childId,
       groupId: booking.session.groupId,
