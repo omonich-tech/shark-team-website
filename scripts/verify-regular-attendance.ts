@@ -43,6 +43,13 @@ async function main() {
       groupId: enrollment.groupId,
       startsAt: {
         gte: enrollment.startDate
+      },
+      trialBookings: {
+        none: {
+          lead: {
+            childId: child.id
+          }
+        }
       }
     },
     orderBy: {
