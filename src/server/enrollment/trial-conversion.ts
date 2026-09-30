@@ -595,22 +595,28 @@ export async function reviewSubscriptionPayment(input: {
       };
     }
 
-    const existingEnrollment = await tx.studentEnrollment.findFirst({
+    await tx.$queryRaw`
+      SELECT "id"
+      FROM "TrainingGroup"
+      WHERE "id" = ${conversion.groupId}
+      FOR UPDATE
+    `;
+
+    let enrollment = await tx.studentEnrollment.findFirst({
       where: {
         childId: conversion.childId,
         groupId: conversion.groupId,
-        status: StudentEnrollmentStatus.ACTIVE
-      }
+        status: {
+          in: [
+            StudentEnrollmentStatus.ACTIVE,
+            StudentEnrollmentStatus.PAUSED
+          ]
+        }
+      },
+      orderBy: { createdAt: "desc" }
     });
 
-    if (!existingEnrollment) {
-      await tx.$queryRaw`
-        SELECT "id"
-        FROM "TrainingGroup"
-        WHERE "id" = ${conversion.groupId}
-        FOR UPDATE
-      `;
-
+    if (!enrollment) {
       const group = await tx.trainingGroup.findUnique({
         where: { id: conversion.groupId },
         include: {
@@ -628,13 +634,43 @@ export async function reviewSubscriptionPayment(input: {
       ) {
         return { ok: false as const, error: "GROUP_FULL" as const };
       }
+    }
 
-      await tx.studentEnrollment.create({
+    const periodStart = now;
+    const periodEnd = addSubscriptionMonth(periodStart);
+    const nextPaymentDueAt = periodEnd;
+    const graceUntil = addDays(
+      nextPaymentDueAt,
+      subscriptionGraceDays()
+    );
+
+    if (!enrollment) {
+      enrollment = await tx.studentEnrollment.create({
         data: {
           childId: conversion.childId,
           groupId: conversion.groupId,
           status: StudentEnrollmentStatus.ACTIVE,
-          startDate: now
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          startDate: periodStart,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          nextPaymentDueAt,
+          graceUntil,
+          pausedAt: null
+        }
+      });
+    } else {
+      enrollment = await tx.studentEnrollment.update({
+        where: { id: enrollment.id },
+        data: {
+          status: StudentEnrollmentStatus.ACTIVE,
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          nextPaymentDueAt,
+          graceUntil,
+          pausedAt: null,
+          endDate: null
         }
       });
     }
@@ -642,7 +678,11 @@ export async function reviewSubscriptionPayment(input: {
     const updatedPayment = await tx.subscriptionPayment.update({
       where: { id: payment.id },
       data: {
+        enrollmentId: enrollment.id,
         status: PaymentStatus.PAID,
+        periodStart,
+        periodEnd,
+        dueAt: periodStart,
         paidAt: now,
         reviewedAt: now,
         reviewedBy: input.reviewedBy,
@@ -668,6 +708,7 @@ export async function reviewSubscriptionPayment(input: {
       alreadyProcessed: false as const,
       approved: true as const,
       payment: updatedPayment,
+      enrollment,
       conversion: {
         ...conversion,
         status: updatedConversion.status,
