@@ -544,6 +544,7 @@ export async function reviewSubscriptionPayment(input: {
     const payment = await tx.subscriptionPayment.findUnique({
       where: { id: input.paymentId },
       include: {
+        enrollment: true,
         trialConversion: {
           include: {
             trialBooking: { include: { lead: true } },
@@ -569,7 +570,9 @@ export async function reviewSubscriptionPayment(input: {
         ok: true as const,
         alreadyProcessed: true as const,
         approved: true as const,
+        renewal: payment.sequence > 1,
         payment,
+        enrollment: payment.enrollment,
         conversion: payment.trialConversion
       };
     }
@@ -591,6 +594,18 @@ export async function reviewSubscriptionPayment(input: {
         }
       });
 
+      if (payment.sequence > 1) {
+        return {
+          ok: true as const,
+          alreadyProcessed: false as const,
+          approved: false as const,
+          renewal: true as const,
+          payment: updatedPayment,
+          enrollment: payment.enrollment,
+          conversion
+        };
+      }
+
       const updatedConversion = await tx.trialConversion.update({
         where: { id: conversion.id },
         data: { status: TrialConversionStatus.OFFERED }
@@ -600,8 +615,92 @@ export async function reviewSubscriptionPayment(input: {
         ok: true as const,
         alreadyProcessed: false as const,
         approved: false as const,
+        renewal: false as const,
         payment: updatedPayment,
         conversion: { ...conversion, status: updatedConversion.status }
+      };
+    }
+
+    if (payment.sequence > 1) {
+      if (
+        !payment.enrollmentId ||
+        !payment.enrollment ||
+        !payment.periodStart ||
+        !payment.periodEnd
+      ) {
+        return {
+          ok: false as const,
+          error: "RENEWAL_CONTEXT_MISSING" as const
+        };
+      }
+
+      await tx.$queryRaw`
+        SELECT "id"
+        FROM "TrainingGroup"
+        WHERE "id" = ${conversion.groupId}
+        FOR UPDATE
+      `;
+
+      if (payment.enrollment.status === StudentEnrollmentStatus.PAUSED) {
+        const activeCount = await tx.studentEnrollment.count({
+          where: {
+            groupId: conversion.groupId,
+            status: StudentEnrollmentStatus.ACTIVE
+          }
+        });
+
+        const group = await tx.trainingGroup.findUnique({
+          where: { id: conversion.groupId },
+          select: { capacityRegular: true }
+        });
+
+        if (!group || activeCount >= group.capacityRegular) {
+          return {
+            ok: false as const,
+            error: "GROUP_FULL" as const
+          };
+        }
+      }
+
+      const nextPaymentDueAt = payment.periodEnd;
+      const graceUntil = addDays(
+        nextPaymentDueAt,
+        subscriptionGraceDays()
+      );
+
+      const enrollment = await tx.studentEnrollment.update({
+        where: { id: payment.enrollmentId },
+        data: {
+          status: StudentEnrollmentStatus.ACTIVE,
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: payment.periodStart,
+          currentPeriodEnd: payment.periodEnd,
+          nextPaymentDueAt,
+          graceUntil,
+          pausedAt: null,
+          endDate: null
+        }
+      });
+
+      const updatedPayment = await tx.subscriptionPayment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.PAID,
+          paidAt: now,
+          reviewedAt: now,
+          reviewedBy: input.reviewedBy,
+          rejectionReason: null
+        }
+      });
+
+      return {
+        ok: true as const,
+        alreadyProcessed: false as const,
+        approved: true as const,
+        renewal: true as const,
+        payment: updatedPayment,
+        enrollment,
+        conversion
       };
     }
 
@@ -717,6 +816,7 @@ export async function reviewSubscriptionPayment(input: {
       ok: true as const,
       alreadyProcessed: false as const,
       approved: true as const,
+      renewal: false as const,
       payment: updatedPayment,
       enrollment,
       conversion: {
