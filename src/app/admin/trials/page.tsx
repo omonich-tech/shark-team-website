@@ -200,7 +200,7 @@ export default async function AdminTrialsPage() {
                     <td>
                       <Link
                         className="admin-row-link"
-                        href={\`/admin/trials/\${trial.id}\`}
+                        href={"/admin/trials/" + trial.id}
                       >
                         Открыть
                       </Link>
