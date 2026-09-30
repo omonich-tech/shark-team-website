@@ -27,7 +27,8 @@ export default async function AdminChildPage({
 }) {
   const { childId } = await params;
   const prisma = getPrisma();
-  const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const since90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
   const child = await prisma.child.findUnique({
     where: { id: childId },
