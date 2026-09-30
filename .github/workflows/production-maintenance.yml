@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PRODUCTION_APP_URL: ${{ secrets.PRODUCTION_APP_URL }}
+      PRODUCTION_APP_URL: https://shark-team-website.vercel.app
       CRON_SECRET: ${{ secrets.PRODUCTION_CRON_SECRET }}
 
     steps:
@@ -26,12 +26,12 @@ jobs:
         id: config
         shell: bash
         run: |
-          if [ -z "$PRODUCTION_APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "Production scheduler is not configured yet; skipping."
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
+          if [ -z "$CRON_SECRET" ]; then
+            echo "PRODUCTION_CRON_SECRET is not configured."
+            exit 1
           fi
+
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Trigger maintenance
         if: steps.config.outputs.configured == 'true'
