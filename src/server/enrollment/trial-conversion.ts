@@ -6,6 +6,7 @@ import {
   PaymentStatus,
   PriceProductType,
   StudentEnrollmentStatus,
+  SubscriptionStatus,
   TrialBookingStatus,
   TrialConversionStatus
 } from "@/generated/prisma/client";
@@ -26,6 +27,46 @@ function formatCard(value: string) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("ru-RU").format(value);
+}
+
+function daysInUtcMonth(year: number, monthIndex: number) {
+  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+}
+
+export function addSubscriptionMonth(value: Date) {
+  const year = value.getUTCFullYear();
+  const month = value.getUTCMonth();
+  const targetMonth = month + 1;
+  const targetYear = year + Math.floor(targetMonth / 12);
+  const normalizedMonth = targetMonth % 12;
+  const day = Math.min(
+    value.getUTCDate(),
+    daysInUtcMonth(targetYear, normalizedMonth)
+  );
+
+  return new Date(
+    Date.UTC(
+      targetYear,
+      normalizedMonth,
+      day,
+      value.getUTCHours(),
+      value.getUTCMinutes(),
+      value.getUTCSeconds(),
+      value.getUTCMilliseconds()
+    )
+  );
+}
+
+function subscriptionGraceDays() {
+  const configured = Number(process.env.SUBSCRIPTION_GRACE_DAYS ?? "3");
+
+  return Number.isInteger(configured) && configured >= 0 && configured <= 30
+    ? configured
+    : 3;
+}
+
+function addDays(value: Date, amount: number) {
+  return new Date(value.getTime() + amount * 24 * 60 * 60 * 1000);
 }
 
 async function findSubscriptionPrice(groupId: string) {
@@ -116,7 +157,12 @@ export async function setTrialConversionDecision(input: {
   const prisma = getPrisma();
   const current = await prisma.trialConversion.findUnique({
     where: { id: ready.conversion.id },
-    include: { payment: true }
+    include: {
+      payments: {
+        orderBy: { sequence: "desc" },
+        take: 1
+      }
+    }
   });
 
   if (!current) {
@@ -127,9 +173,11 @@ export async function setTrialConversionDecision(input: {
     return { ok: false as const, error: "ALREADY_ENROLLED" as const };
   }
 
+  const latestPayment = current.payments[0];
+
   if (
     current.status === TrialConversionStatus.PAYMENT_PENDING ||
-    current.payment?.status === PaymentStatus.UNDER_REVIEW
+    latestPayment?.status === PaymentStatus.UNDER_REVIEW
   ) {
     return {
       ok: false as const,
@@ -150,11 +198,11 @@ export async function setTrialConversionDecision(input: {
   const conversion = await prisma.$transaction(async (tx) => {
     if (
       input.status === "DECLINED" &&
-      current.payment &&
-      current.payment.status !== PaymentStatus.PAID
+      latestPayment &&
+      latestPayment.status !== PaymentStatus.PAID
     ) {
       await tx.subscriptionPayment.update({
-        where: { id: current.payment.id },
+        where: { id: latestPayment.id },
         data: {
           status: PaymentStatus.CANCELLED
         }
@@ -198,7 +246,10 @@ export async function offerTrialSubscription(input: {
           }
         }
       },
-      payment: true
+      payments: {
+        orderBy: { sequence: "desc" },
+        take: 1
+      }
     }
   });
 
@@ -226,9 +277,11 @@ export async function offerTrialSubscription(input: {
     return { ok: false as const, error: "ALREADY_ENROLLED" as const };
   }
 
+  const latestPayment = conversion.payments[0];
+
   if (
     conversion.status === TrialConversionStatus.PAYMENT_PENDING ||
-    conversion.payment?.status === PaymentStatus.UNDER_REVIEW
+    latestPayment?.status === PaymentStatus.UNDER_REVIEW
   ) {
     return {
       ok: false as const,
@@ -253,41 +306,58 @@ export async function offerTrialSubscription(input: {
   }
 
   const now = new Date();
-  const updated = await prisma.trialConversion.update({
-    where: { id: conversion.id },
-    data: {
-      status: TrialConversionStatus.OFFERED,
-      amountUzs: price.amount,
-      currency: price.currency,
-      offeredAt: now,
-      declinedAt: null,
-      adminNote: input.adminNote?.trim().slice(0, 1000) || conversion.adminNote,
-      payment: {
-        upsert: {
-          create: {
-            provider: PaymentProvider.MANUAL_CARD,
-            status: PaymentStatus.PENDING,
-            amountUzs: price.amount,
-            currency: price.currency
-          },
-          update: {
-            provider: PaymentProvider.MANUAL_CARD,
-            status: PaymentStatus.PENDING,
-            amountUzs: price.amount,
-            currency: price.currency,
-            receiptMimeType: null,
-            receiptSize: null,
-            receiptTelegramFileId: null,
-            submittedAt: null,
-            reviewedAt: null,
-            reviewedBy: null,
-            rejectionReason: null,
-            paidAt: null
-          }
-        }
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedConversion = await tx.trialConversion.update({
+      where: { id: conversion.id },
+      data: {
+        status: TrialConversionStatus.OFFERED,
+        amountUzs: price.amount,
+        currency: price.currency,
+        offeredAt: now,
+        declinedAt: null,
+        adminNote: input.adminNote?.trim().slice(0, 1000) || conversion.adminNote
       }
-    },
-    include: { payment: true }
+    });
+
+    const payment = await tx.subscriptionPayment.upsert({
+      where: {
+        trialConversionId_sequence: {
+          trialConversionId: conversion.id,
+          sequence: 1
+        }
+      },
+      create: {
+        trialConversionId: conversion.id,
+        sequence: 1,
+        provider: PaymentProvider.MANUAL_CARD,
+        status: PaymentStatus.PENDING,
+        amountUzs: price.amount,
+        currency: price.currency
+      },
+      update: {
+        provider: PaymentProvider.MANUAL_CARD,
+        status: PaymentStatus.PENDING,
+        amountUzs: price.amount,
+        currency: price.currency,
+        enrollmentId: null,
+        periodStart: null,
+        periodEnd: null,
+        dueAt: null,
+        receiptMimeType: null,
+        receiptSize: null,
+        receiptTelegramFileId: null,
+        submittedAt: null,
+        reviewedAt: null,
+        reviewedBy: null,
+        rejectionReason: null,
+        paidAt: null
+      }
+    });
+
+    return {
+      ...updatedConversion,
+      payment
+    };
   });
 
   const contact = await prisma.telegramContact.findFirst({
@@ -378,7 +448,11 @@ export async function submitSubscriptionReceipt(input: {
       }
     },
     include: {
-      payment: true,
+      payments: {
+        where: { sequence: 1 },
+        orderBy: { createdAt: "desc" },
+        take: 1
+      },
       child: { include: { parent: true } },
       group: {
         include: {
@@ -401,23 +475,25 @@ export async function submitSubscriptionReceipt(input: {
   }
 
   const conversion = conversions[0];
-  if (!conversion.payment) {
+  const payment = conversion.payments[0];
+
+  if (!payment) {
     return { ok: false as const, error: "PAYMENT_NOT_FOUND" as const };
   }
 
-  if (conversion.payment.status === PaymentStatus.PAID) {
+  if (payment.status === PaymentStatus.PAID) {
     return {
       ok: true as const,
       alreadyPaid: true as const,
       conversion,
-      payment: conversion.payment
+      payment
     };
   }
 
   const now = new Date();
-  const [payment] = await prisma.$transaction([
+  const [updatedPayment] = await prisma.$transaction([
     prisma.subscriptionPayment.update({
-      where: { id: conversion.payment.id },
+      where: { id: payment.id },
       data: {
         status: PaymentStatus.UNDER_REVIEW,
         receiptTelegramFileId: input.telegramFileId,
@@ -439,7 +515,7 @@ export async function submitSubscriptionReceipt(input: {
     ok: true as const,
     alreadyPaid: false as const,
     conversion,
-    payment
+    payment: updatedPayment
   };
 }
 
@@ -519,22 +595,28 @@ export async function reviewSubscriptionPayment(input: {
       };
     }
 
-    const existingEnrollment = await tx.studentEnrollment.findFirst({
+    await tx.$queryRaw`
+      SELECT "id"
+      FROM "TrainingGroup"
+      WHERE "id" = ${conversion.groupId}
+      FOR UPDATE
+    `;
+
+    let enrollment = await tx.studentEnrollment.findFirst({
       where: {
         childId: conversion.childId,
         groupId: conversion.groupId,
-        status: StudentEnrollmentStatus.ACTIVE
-      }
+        status: {
+          in: [
+            StudentEnrollmentStatus.ACTIVE,
+            StudentEnrollmentStatus.PAUSED
+          ]
+        }
+      },
+      orderBy: { createdAt: "desc" }
     });
 
-    if (!existingEnrollment) {
-      await tx.$queryRaw`
-        SELECT "id"
-        FROM "TrainingGroup"
-        WHERE "id" = ${conversion.groupId}
-        FOR UPDATE
-      `;
-
+    if (!enrollment) {
       const group = await tx.trainingGroup.findUnique({
         where: { id: conversion.groupId },
         include: {
@@ -552,13 +634,43 @@ export async function reviewSubscriptionPayment(input: {
       ) {
         return { ok: false as const, error: "GROUP_FULL" as const };
       }
+    }
 
-      await tx.studentEnrollment.create({
+    const periodStart = now;
+    const periodEnd = addSubscriptionMonth(periodStart);
+    const nextPaymentDueAt = periodEnd;
+    const graceUntil = addDays(
+      nextPaymentDueAt,
+      subscriptionGraceDays()
+    );
+
+    if (!enrollment) {
+      enrollment = await tx.studentEnrollment.create({
         data: {
           childId: conversion.childId,
           groupId: conversion.groupId,
           status: StudentEnrollmentStatus.ACTIVE,
-          startDate: now
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          startDate: periodStart,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          nextPaymentDueAt,
+          graceUntil,
+          pausedAt: null
+        }
+      });
+    } else {
+      enrollment = await tx.studentEnrollment.update({
+        where: { id: enrollment.id },
+        data: {
+          status: StudentEnrollmentStatus.ACTIVE,
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          nextPaymentDueAt,
+          graceUntil,
+          pausedAt: null,
+          endDate: null
         }
       });
     }
@@ -566,7 +678,11 @@ export async function reviewSubscriptionPayment(input: {
     const updatedPayment = await tx.subscriptionPayment.update({
       where: { id: payment.id },
       data: {
+        enrollmentId: enrollment.id,
         status: PaymentStatus.PAID,
+        periodStart,
+        periodEnd,
+        dueAt: periodStart,
         paidAt: now,
         reviewedAt: now,
         reviewedBy: input.reviewedBy,
@@ -592,6 +708,7 @@ export async function reviewSubscriptionPayment(input: {
       alreadyProcessed: false as const,
       approved: true as const,
       payment: updatedPayment,
+      enrollment,
       conversion: {
         ...conversion,
         status: updatedConversion.status,
@@ -631,4 +748,87 @@ export async function backfillReadyTrialConversions(limit = 200) {
   }
 
   return created;
+}
+
+
+export async function backfillEnrollmentBillingPeriods(limit = 200) {
+  const prisma = getPrisma();
+
+  const paid = await prisma.subscriptionPayment.findMany({
+    where: {
+      status: PaymentStatus.PAID,
+      enrollmentId: null,
+      trialConversion: {
+        status: TrialConversionStatus.ENROLLED
+      }
+    },
+    include: {
+      trialConversion: true
+    },
+    orderBy: {
+      paidAt: "asc"
+    },
+    take: limit
+  });
+
+  let repaired = 0;
+
+  for (const payment of paid) {
+    const paidAt = payment.paidAt ?? payment.reviewedAt;
+    if (!paidAt) continue;
+
+    const enrollment = await prisma.studentEnrollment.findFirst({
+      where: {
+        childId: payment.trialConversion.childId,
+        groupId: payment.trialConversion.groupId,
+        status: {
+          in: [
+            StudentEnrollmentStatus.ACTIVE,
+            StudentEnrollmentStatus.PAUSED
+          ]
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
+    if (!enrollment) continue;
+
+    const periodEnd = addSubscriptionMonth(paidAt);
+    const nextPaymentDueAt = periodEnd;
+    const graceUntil = addDays(
+      nextPaymentDueAt,
+      subscriptionGraceDays()
+    );
+
+    await prisma.$transaction([
+      prisma.studentEnrollment.update({
+        where: { id: enrollment.id },
+        data: {
+          status: StudentEnrollmentStatus.ACTIVE,
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: paidAt,
+          currentPeriodEnd: periodEnd,
+          nextPaymentDueAt,
+          graceUntil,
+          pausedAt: null
+        }
+      }),
+      prisma.subscriptionPayment.update({
+        where: { id: payment.id },
+        data: {
+          enrollmentId: enrollment.id,
+          sequence: 1,
+          periodStart: paidAt,
+          periodEnd,
+          dueAt: paidAt
+        }
+      })
+    ]);
+
+    repaired += 1;
+  }
+
+  return repaired;
 }

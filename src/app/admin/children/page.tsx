@@ -75,7 +75,19 @@ export default async function AdminChildrenPage() {
                           <small>
                             {enrollment.group.sport.nameRu} ·{" "}
                             {enrollment.status}
+                            {enrollment.subscriptionStatus
+                              ? " · " + enrollment.subscriptionStatus
+                              : ""}
                           </small>
+                          {enrollment.currentPeriodEnd ? (
+                            <>
+                              <br />
+                              <small>
+                                Оплачено до:{" "}
+                                {formatAdminDate(enrollment.currentPeriodEnd)}
+                              </small>
+                            </>
+                          ) : null}
                         </div>
                       ))
                     ) : (

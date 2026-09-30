@@ -40,7 +40,8 @@ export default async function AdminPaymentsPage() {
             },
             group: true
           }
-        }
+        },
+        enrollment: true
       }
     })
   ]);
@@ -72,6 +73,7 @@ export default async function AdminPaymentsPage() {
                 <th>Ребёнок</th>
                 <th>Родитель</th>
                 <th>Группа</th>
+                <th>Период</th>
                 <th>Конверсия</th>
               </tr>
             </thead>
@@ -99,13 +101,22 @@ export default async function AdminPaymentsPage() {
                       {child.parent.phone}
                     </td>
                     <td>{conversion.group.internalName}</td>
+                    <td>
+                      {payment.periodStart && payment.periodEnd
+                        ? formatAdminDate(payment.periodStart) +
+                          " → " +
+                          formatAdminDate(payment.periodEnd)
+                        : "—"}
+                      <br />
+                      <small>№{payment.sequence}</small>
+                    </td>
                     <td>{conversion.status}</td>
                   </tr>
                 );
               })}
               {subscriptionPayments.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>Оплат абонементов пока нет.</td>
+                  <td colSpan={8}>Оплат абонементов пока нет.</td>
                 </tr>
               ) : null}
             </tbody>

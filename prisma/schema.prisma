@@ -80,6 +80,14 @@ enum StudentEnrollmentStatus {
   ENDED
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  PAYMENT_DUE
+  PAST_DUE
+  PAUSED
+  ENDED
+}
+
 enum TrialConversionStatus {
   READY
   THINKING
@@ -547,20 +555,28 @@ model CoachAccount {
 }
 
 model StudentEnrollment {
-  id        String                  @id @default(cuid())
-  childId   String
-  groupId   String
-  status    StudentEnrollmentStatus @default(ACTIVE)
-  startDate DateTime                @default(now())
-  endDate   DateTime?
-  createdAt DateTime                @default(now())
-  updatedAt DateTime                @updatedAt
+  id                 String                  @id @default(cuid())
+  childId            String
+  groupId            String
+  status             StudentEnrollmentStatus @default(ACTIVE)
+  subscriptionStatus SubscriptionStatus?
+  startDate          DateTime                 @default(now())
+  endDate            DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  nextPaymentDueAt   DateTime?
+  graceUntil         DateTime?
+  pausedAt           DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
 
-  child Child         @relation(fields: [childId], references: [id], onDelete: Cascade)
-  group TrainingGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  child    Child                 @relation(fields: [childId], references: [id], onDelete: Cascade)
+  group    TrainingGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payments SubscriptionPayment[]
 
   @@index([childId, status])
   @@index([groupId, status])
+  @@index([subscriptionStatus, nextPaymentDueAt])
 }
 
 model TrialConversion {
@@ -581,7 +597,7 @@ model TrialConversion {
   trialBooking TrialBooking        @relation(fields: [trialBookingId], references: [id], onDelete: Cascade)
   child        Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
   group        TrainingGroup       @relation(fields: [groupId], references: [id], onDelete: Restrict)
-  payment      SubscriptionPayment?
+  payments     SubscriptionPayment[]
 
   @@index([status, updatedAt])
   @@index([childId, status])
@@ -590,11 +606,16 @@ model TrialConversion {
 
 model SubscriptionPayment {
   id                      String          @id @default(cuid())
-  trialConversionId       String          @unique
+  trialConversionId       String
+  enrollmentId            String?
+  sequence                Int             @default(1)
   provider                PaymentProvider @default(MANUAL_CARD)
   status                  PaymentStatus   @default(PENDING)
   amountUzs               Int
   currency                String          @default("UZS")
+  periodStart             DateTime?
+  periodEnd               DateTime?
+  dueAt                   DateTime?
   receiptMimeType         String?
   receiptSize             Int?
   receiptTelegramFileId   String?
@@ -606,10 +627,14 @@ model SubscriptionPayment {
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
 
-  trialConversion TrialConversion @relation(fields: [trialConversionId], references: [id], onDelete: Cascade)
+  trialConversion TrialConversion   @relation(fields: [trialConversionId], references: [id], onDelete: Cascade)
+  enrollment      StudentEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
 
+  @@unique([trialConversionId, sequence])
+  @@index([enrollmentId, status])
   @@index([provider, status])
   @@index([status, submittedAt])
+  @@index([dueAt, status])
 }
 
 model Attendance {

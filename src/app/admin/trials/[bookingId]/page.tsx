@@ -39,7 +39,10 @@ export default async function AdminTrialDetailsPage({
       feedback: true,
       conversion: {
         include: {
-          payment: true
+          payments: {
+            orderBy: { sequence: "desc" },
+            take: 1
+          }
         }
       },
       assessment: {
@@ -297,7 +300,7 @@ export default async function AdminTrialDetailsPage({
             status: trial.conversion?.status ?? null,
             amountUzs: trial.conversion?.amountUzs ?? null,
             currency: trial.conversion?.currency ?? null,
-            paymentStatus: trial.conversion?.payment?.status ?? null
+            paymentStatus: trial.conversion?.payments[0]?.status ?? null
           }}
         />
       </section>

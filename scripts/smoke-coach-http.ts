@@ -4,6 +4,7 @@ import {
   NotificationType,
   PaymentStatus,
   StudentEnrollmentStatus,
+  SubscriptionStatus,
   TrialBookingStatus,
   TrialConversionStatus
 } from "../src/generated/prisma/client";
@@ -359,19 +360,26 @@ async function main() {
 
   const offeredConversion = await prisma.trialConversion.findUnique({
     where: { trialBookingId: booking.id },
-    include: { payment: true }
+    include: {
+      payments: {
+        where: { sequence: 1 },
+        take: 1
+      }
+    }
   });
+
+  const offeredPayment = offeredConversion?.payments[0];
 
   assert(
     offeredConversion?.status === TrialConversionStatus.OFFERED,
     "Conversion did not move to OFFERED"
   );
   assert(
-    offeredConversion.payment?.status === PaymentStatus.PENDING,
+    offeredPayment?.status === PaymentStatus.PENDING,
     "Subscription payment was not created"
   );
   assert(
-    offeredConversion.payment?.amountUzs === 500000,
+    offeredPayment?.amountUzs === 500000,
     "Unexpected subscription amount"
   );
 
@@ -409,7 +417,10 @@ async function main() {
 
   const underReview = await prisma.subscriptionPayment.findUnique({
     where: {
-      trialConversionId: readyConversion.id
+      trialConversionId_sequence: {
+        trialConversionId: readyConversion.id,
+        sequence: 1
+      }
     }
   });
 
@@ -455,16 +466,21 @@ async function main() {
   const enrolledConversion = await prisma.trialConversion.findUnique({
     where: { trialBookingId: booking.id },
     include: {
-      payment: true
+      payments: {
+        where: { sequence: 1 },
+        take: 1
+      }
     }
   });
+
+  const paidSubscription = enrolledConversion?.payments[0];
 
   assert(
     enrolledConversion?.status === TrialConversionStatus.ENROLLED,
     "Conversion did not move to ENROLLED"
   );
   assert(
-    enrolledConversion.payment?.status === PaymentStatus.PAID,
+    paidSubscription?.status === PaymentStatus.PAID,
     "Subscription payment was not marked PAID"
   );
 
@@ -477,6 +493,32 @@ async function main() {
   });
 
   assert(enrollment, "Child was not enrolled into the regular group");
+  assert(
+    enrollment.subscriptionStatus === SubscriptionStatus.ACTIVE,
+    "Enrollment subscription status must be ACTIVE"
+  );
+  assert(
+    enrollment.currentPeriodStart &&
+      enrollment.currentPeriodEnd &&
+      enrollment.nextPaymentDueAt &&
+      enrollment.graceUntil,
+    "Monthly billing dates were not initialized"
+  );
+  assert(
+    enrollment.currentPeriodEnd.getTime() ===
+      enrollment.nextPaymentDueAt.getTime(),
+    "Next payment must be due at the end of the current period"
+  );
+  assert(
+    paidSubscription?.enrollmentId === enrollment.id,
+    "Subscription payment was not linked to enrollment"
+  );
+  assert(
+    paidSubscription?.periodStart &&
+      paidSubscription.periodEnd &&
+      paidSubscription.dueAt,
+    "Subscription payment period was not recorded"
+  );
 
   const closedLead = await prisma.lead.findUnique({
     where: { id: booking.leadId }
