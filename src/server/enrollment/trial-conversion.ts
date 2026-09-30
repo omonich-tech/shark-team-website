@@ -367,6 +367,81 @@ export async function submitSubscriptionReceipt(input: {
     return { ok: false as const, error: "NO_ACTIVE_SUBSCRIPTION" as const };
   }
 
+  const renewals = await prisma.subscriptionPayment.findMany({
+    where: {
+      sequence: { gt: 1 },
+      status: {
+        in: [
+          PaymentStatus.PENDING,
+          PaymentStatus.REJECTED,
+          PaymentStatus.UNDER_REVIEW
+        ]
+      },
+      enrollment: {
+        child: {
+          parentId: contact.parentId
+        },
+        subscriptionStatus: {
+          in: [
+            SubscriptionStatus.PAYMENT_DUE,
+            SubscriptionStatus.PAST_DUE,
+            SubscriptionStatus.PAUSED
+          ]
+        }
+      }
+    },
+    include: {
+      enrollment: true,
+      trialConversion: {
+        include: {
+          child: { include: { parent: true } },
+          group: {
+            include: {
+              branch: true,
+              sport: true,
+              primaryCoach: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 2
+  });
+
+  if (renewals.length > 1) {
+    return {
+      ok: false as const,
+      error: "MULTIPLE_ACTIVE_SUBSCRIPTIONS" as const
+    };
+  }
+
+  if (renewals.length === 1) {
+    const renewal = renewals[0];
+    const updatedPayment = await prisma.subscriptionPayment.update({
+      where: { id: renewal.id },
+      data: {
+        status: PaymentStatus.UNDER_REVIEW,
+        receiptTelegramFileId: input.telegramFileId,
+        receiptMimeType: input.receiptMimeType ?? null,
+        receiptSize: input.receiptSize ?? null,
+        submittedAt: new Date(),
+        reviewedAt: null,
+        reviewedBy: null,
+        rejectionReason: null
+      }
+    });
+
+    return {
+      ok: true as const,
+      alreadyPaid: false as const,
+      renewal: true as const,
+      conversion: renewal.trialConversion,
+      enrollment: renewal.enrollment,
+      payment: updatedPayment
+    };
+  }
+
   const conversions = await prisma.trialConversion.findMany({
     where: {
       child: { parentId: contact.parentId },
@@ -401,7 +476,10 @@ export async function submitSubscriptionReceipt(input: {
   }
 
   if (conversions.length > 1) {
-    return { ok: false as const, error: "MULTIPLE_ACTIVE_SUBSCRIPTIONS" as const };
+    return {
+      ok: false as const,
+      error: "MULTIPLE_ACTIVE_SUBSCRIPTIONS" as const
+    };
   }
 
   const conversion = conversions[0];
@@ -415,6 +493,7 @@ export async function submitSubscriptionReceipt(input: {
     return {
       ok: true as const,
       alreadyPaid: true as const,
+      renewal: false as const,
       conversion,
       payment
     };
@@ -444,6 +523,7 @@ export async function submitSubscriptionReceipt(input: {
   return {
     ok: true as const,
     alreadyPaid: false as const,
+    renewal: false as const,
     conversion,
     payment: updatedPayment
   };
