@@ -14,7 +14,8 @@ function time(minutes:number){ return String(Math.floor(minutes/60)).padStart(2,
 export default async function AdminGroupPage({ params }:{ params:Promise<{groupId:string}>}) {
   const { groupId } = await params;
   const prisma=getPrisma();
-  const since30=new Date(Date.now()-30*24*60*60*1000);
+  const currentDate=new Date();
+  const since30=new Date(currentDate.getTime()-30*24*60*60*1000);
   const group=await prisma.trainingGroup.findUnique({
     where:{id:groupId},
     include:{
@@ -38,7 +39,7 @@ export default async function AdminGroupPage({ params }:{ params:Promise<{groupI
   const allAttendance=group.sessions.flatMap(s=>s.attendances.filter(a=>a.trialBookingId===null));
   const present=allAttendance.filter(a=>a.status===AttendanceStatus.PRESENT).length;
   const rate=allAttendance.length?Math.round(present/allAttendance.length*100):null;
-  const now=Date.now();
+  const now=currentDate.getTime();
   const expiring=group.enrollments.filter(e=>e.currentPeriodEnd && e.currentPeriodEnd.getTime()-now<=7*86400000 && e.currentPeriodEnd.getTime()>=now).length;
   const needsAssessment=group.enrollments.filter(e=>!e.child.progressAssessments.length || now-e.child.progressAssessments[0].assessedAt.getTime()>35*86400000).length;
 
