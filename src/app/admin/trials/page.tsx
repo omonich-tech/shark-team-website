@@ -174,9 +174,9 @@ export default async function AdminTrialsPage() {
                     <td>{coachName || "—"}</td>
                     <td>
                       {trial.payment
-                        ? \`\${trial.payment.status} · \${formatAdminMoney(
-                            trial.payment.amountUzs
-                          )}\`
+                        ? trial.payment.status +
+                          " · " +
+                          formatAdminMoney(trial.payment.amountUzs)
                         : "—"}
                     </td>
                     <td>
