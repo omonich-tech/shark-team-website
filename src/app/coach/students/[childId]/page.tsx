@@ -47,7 +47,8 @@ export default async function CoachStudentProgressPage({
   const auth = await requireCoachSession();
   const { childId } = await params;
   const prisma = getPrisma();
-  const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const since90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
   const enrollment = await prisma.studentEnrollment.findFirst({
     where: {
