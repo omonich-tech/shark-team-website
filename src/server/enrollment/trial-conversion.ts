@@ -1,16 +1,20 @@
 import {
   EnrollmentStatus,
   LeadStatus,
-  LifecycleStatus,
   PaymentProvider,
   PaymentStatus,
-  PriceProductType,
   StudentEnrollmentStatus,
   SubscriptionStatus,
   TrialBookingStatus,
   TrialConversionStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  addDays,
+  addSubscriptionMonth,
+  subscriptionGraceDays
+} from "@/server/billing/subscription-period";
+import { findSubscriptionPrice } from "@/server/billing/subscription-price";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
 
 function escapeHtml(value: string) {
@@ -27,80 +31,6 @@ function formatCard(value: string) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("ru-RU").format(value);
-}
-
-function daysInUtcMonth(year: number, monthIndex: number) {
-  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-}
-
-export function addSubscriptionMonth(value: Date) {
-  const year = value.getUTCFullYear();
-  const month = value.getUTCMonth();
-  const targetMonth = month + 1;
-  const targetYear = year + Math.floor(targetMonth / 12);
-  const normalizedMonth = targetMonth % 12;
-  const day = Math.min(
-    value.getUTCDate(),
-    daysInUtcMonth(targetYear, normalizedMonth)
-  );
-
-  return new Date(
-    Date.UTC(
-      targetYear,
-      normalizedMonth,
-      day,
-      value.getUTCHours(),
-      value.getUTCMinutes(),
-      value.getUTCSeconds(),
-      value.getUTCMilliseconds()
-    )
-  );
-}
-
-function subscriptionGraceDays() {
-  const configured = Number(process.env.SUBSCRIPTION_GRACE_DAYS ?? "3");
-
-  return Number.isInteger(configured) && configured >= 0 && configured <= 30
-    ? configured
-    : 3;
-}
-
-function addDays(value: Date, amount: number) {
-  return new Date(value.getTime() + amount * 24 * 60 * 60 * 1000);
-}
-
-async function findSubscriptionPrice(groupId: string) {
-  const prisma = getPrisma();
-  const now = new Date();
-  const group = await prisma.trainingGroup.findUnique({ where: { id: groupId } });
-
-  if (!group) return null;
-
-  const prices = await prisma.price.findMany({
-    where: {
-      productType: PriceProductType.SUBSCRIPTION,
-      status: LifecycleStatus.ACTIVE,
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gt: now } }],
-      AND: [{
-        OR: [
-          { groupId: group.id },
-          { groupId: null, branchId: group.branchId, sportId: group.sportId },
-          { groupId: null, branchId: group.branchId, sportId: null },
-          { groupId: null, branchId: null, sportId: group.sportId }
-        ]
-      }]
-    },
-    orderBy: { validFrom: "desc" }
-  });
-
-  return (
-    prices.find((item) => item.groupId === group.id) ??
-    prices.find((item) => item.branchId === group.branchId && item.sportId === group.sportId) ??
-    prices.find((item) => item.branchId === group.branchId) ??
-    prices.find((item) => item.sportId === group.sportId) ??
-    null
-  );
 }
 
 export async function ensureTrialConversionReady(trialBookingId: string) {
