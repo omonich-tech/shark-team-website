@@ -7,6 +7,13 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function envMinutes(name: string, fallback: number) {
   const parsed = Number(process.env[name] ?? fallback);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
@@ -192,7 +199,7 @@ async function renderNotification(
       : "ru";
 
   const booking = notification.trialBooking;
-  const childName = notification.lead?.childName ?? "";
+  const childName = escapeHtml(notification.lead?.childName ?? "");
   const session = booking?.session;
   const branch = session?.group?.branch;
 
@@ -212,7 +219,7 @@ async function renderNotification(
 
     const cardNumber = process.env.MANUAL_PAYMENT_CARD_NUMBER?.trim();
     const card = cardNumber ? formatCard(cardNumber) : null;
-    const child = enrollment.child.name;
+    const child = escapeHtml(enrollment.child.name);
     const amount = formatMoney(payment.amountUzs);
     const due = payment.dueAt
       ? formatDay(payment.dueAt, locale)
