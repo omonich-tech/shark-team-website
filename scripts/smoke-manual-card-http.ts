@@ -1,5 +1,6 @@
 import "dotenv/config";
 import {
+  NotificationType,
   PaymentProvider,
   PaymentStatus,
   TrialBookingStatus
@@ -227,6 +228,25 @@ async function main() {
   assert(
     paid.trialBooking.status === TrialBookingStatus.CONFIRMED,
     "Booking was not CONFIRMED"
+  );
+
+  const confirmedLead = await prisma.lead.findUnique({
+    where: { id: lead.payload.lead.id }
+  });
+
+  assert(confirmedLead?.parentId, "Manual approval did not link Parent");
+  assert(confirmedLead?.childId, "Manual approval did not link Child");
+
+  const feedbackNotification = await prisma.notification.findFirst({
+    where: {
+      trialBookingId: booking.payload.booking.id,
+      type: NotificationType.POST_TRIAL_FEEDBACK
+    }
+  });
+
+  assert(
+    feedbackNotification,
+    "Manual approval did not schedule post-trial feedback"
   );
 
   console.log("Manual card payment HTTP smoke test passed.");
