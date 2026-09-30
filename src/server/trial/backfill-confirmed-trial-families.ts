@@ -1,5 +1,14 @@
-import { TrialBookingStatus } from "@/generated/prisma/client";
+import {
+  NotificationStatus,
+  NotificationType,
+  TrialBookingStatus
+} from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+
+function envMinutes(name: string, fallback: number) {
+  const value = Number(process.env[name] ?? fallback);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
 
 export async function backfillConfirmedTrialFamilies(limit = 200) {
   const prisma = getPrisma();
@@ -18,7 +27,8 @@ export async function backfillConfirmedTrialFamilies(limit = 200) {
       }
     },
     include: {
-      lead: true
+      lead: true,
+      session: true
     },
     orderBy: {
       updatedAt: "asc"
@@ -83,6 +93,63 @@ export async function backfillConfirmedTrialFamilies(limit = 200) {
         where: { leadId: lead.id },
         data: { parentId: parent.id }
       });
+
+      const now = new Date();
+      const reminderMinutes = envMinutes("TRIAL_REMINDER_MINUTES", 180);
+      const feedbackMinutes = envMinutes("POST_TRIAL_FEEDBACK_MINUTES", 30);
+      const reminderAtRaw = new Date(
+        booking.session.startsAt.getTime() - reminderMinutes * 60_000
+      );
+      const reminderAt = reminderAtRaw > now ? reminderAtRaw : now;
+      const feedbackAt = new Date(
+        booking.session.endsAt.getTime() + feedbackMinutes * 60_000
+      );
+
+      if (booking.session.startsAt > now) {
+        await tx.notification.upsert({
+          where: {
+            dedupeKey: "trial:" + booking.id + ":reminder"
+          },
+          update: {
+            leadId: lead.id,
+            parentId: parent.id,
+            scheduledAt: reminderAt,
+            status: NotificationStatus.PENDING,
+            lastError: null
+          },
+          create: {
+            type: NotificationType.TRIAL_REMINDER,
+            leadId: lead.id,
+            parentId: parent.id,
+            trialBookingId: booking.id,
+            scheduledAt: reminderAt,
+            dedupeKey: "trial:" + booking.id + ":reminder"
+          }
+        });
+      }
+
+      if (booking.status !== TrialBookingStatus.NO_SHOW) {
+        await tx.notification.upsert({
+          where: {
+            dedupeKey: "trial:" + booking.id + ":feedback"
+          },
+          update: {
+            leadId: lead.id,
+            parentId: parent.id,
+            scheduledAt: feedbackAt,
+            status: NotificationStatus.PENDING,
+            lastError: null
+          },
+          create: {
+            type: NotificationType.POST_TRIAL_FEEDBACK,
+            leadId: lead.id,
+            parentId: parent.id,
+            trialBookingId: booking.id,
+            scheduledAt: feedbackAt,
+            dedupeKey: "trial:" + booking.id + ":feedback"
+          }
+        });
+      }
     });
 
     repaired += 1;
