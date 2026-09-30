@@ -1,7 +1,8 @@
 import {
   NotificationStatus,
   NotificationType,
-  Prisma
+  Prisma,
+  TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/server/telegram/send-message";
@@ -137,6 +138,7 @@ type NotificationWithContext = Prisma.NotificationGetPayload<{
     parent: true;
     trialBooking: {
       include: {
+        feedback: true;
         session: {
           include: {
             group: {
@@ -194,8 +196,8 @@ async function renderNotification(
   }
 
   return locale === "uz"
-    ? `💬 <b>${childName}</b>ning sinov mashg‘uloti qanday o‘tdi? Taassurotlaringizni shu yerga yozishingiz mumkin.`
-    : `💬 Как прошло пробное занятие у <b>${childName}</b>? Напишите впечатления прямо сюда.`;
+    ? `💬 <b>${childName}</b>ning sinov mashg‘uloti qanday o‘tdi? Quyida baholang, keyin xohlasangiz izoh yozishingiz mumkin.`
+    : `💬 Как прошло пробное занятие у <b>${childName}</b>? Оцените одним нажатием ниже — затем при желании сможете добавить комментарий.`;
 }
 
 export async function processDueTelegramNotifications(
@@ -215,6 +217,7 @@ export async function processDueTelegramNotifications(
       parent: true,
       trialBooking: {
         include: {
+          feedback: true,
           session: {
             include: {
               group: {
@@ -238,6 +241,50 @@ export async function processDueTelegramNotifications(
   let skipped = 0;
 
   for (const notification of due) {
+    if (notification.type === NotificationType.POST_TRIAL_FEEDBACK) {
+      const booking = notification.trialBooking;
+
+      if (!booking || booking.feedback?.completedAt) {
+        await prisma.notification.update({
+          where: { id: notification.id },
+          data: {
+            status: NotificationStatus.SKIPPED,
+            lastError: booking ? "FEEDBACK_ALREADY_COMPLETED" : "BOOKING_MISSING"
+          }
+        });
+        skipped += 1;
+        continue;
+      }
+
+      if (booking.status !== TrialBookingStatus.ATTENDED) {
+        const canWaitForAttendance =
+          booking.status === TrialBookingStatus.CONFIRMED &&
+          now.getTime() - booking.session.endsAt.getTime() <=
+            24 * 60 * 60 * 1000;
+
+        if (canWaitForAttendance) {
+          await prisma.notification.update({
+            where: { id: notification.id },
+            data: {
+              scheduledAt: new Date(now.getTime() + 15 * 60_000),
+              lastError: "WAITING_FOR_ATTENDANCE"
+            }
+          });
+        } else {
+          await prisma.notification.update({
+            where: { id: notification.id },
+            data: {
+              status: NotificationStatus.SKIPPED,
+              lastError: "TRIAL_NOT_ATTENDED"
+            }
+          });
+          skipped += 1;
+        }
+
+        continue;
+      }
+    }
+
     const contact = await prisma.telegramContact.findFirst({
       where: {
         OR: [
@@ -277,9 +324,48 @@ export async function processDueTelegramNotifications(
     }
 
     const text = await renderNotification(notification);
+    const replyMarkup =
+      notification.type === NotificationType.POST_TRIAL_FEEDBACK &&
+      notification.trialBookingId
+        ? {
+            inline_keyboard: [
+              [
+                {
+                  text: "1 😞",
+                  callback_data:
+                    "feedback:1:" + notification.trialBookingId
+                },
+                {
+                  text: "2 🙁",
+                  callback_data:
+                    "feedback:2:" + notification.trialBookingId
+                },
+                {
+                  text: "3 😐",
+                  callback_data:
+                    "feedback:3:" + notification.trialBookingId
+                }
+              ],
+              [
+                {
+                  text: "4 🙂",
+                  callback_data:
+                    "feedback:4:" + notification.trialBookingId
+                },
+                {
+                  text: "5 😍",
+                  callback_data:
+                    "feedback:5:" + notification.trialBookingId
+                }
+              ]
+            ]
+          }
+        : undefined;
+
     const result = await sendTelegramMessage({
       chatId: contact.chatId,
-      text
+      text,
+      replyMarkup
     });
 
     if (result.ok) {
