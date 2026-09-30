@@ -48,7 +48,8 @@
     "verify:regular-attendance": "tsx scripts/verify-regular-attendance.ts",
     "verify:student-progress": "tsx scripts/verify-student-progress.ts",
     "smoke:student-management": "tsx scripts/smoke-student-management.ts",
-    "smoke:group-operations": "tsx scripts/smoke-group-operations.ts"
+    "smoke:group-operations": "tsx scripts/smoke-group-operations.ts",
+    "verify:attendance-alerts": "tsx scripts/verify-attendance-alerts.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
