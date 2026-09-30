@@ -1,5 +1,8 @@
+import Link from "next/link";
 import {
   AttendanceStatus,
+  OperationalAlertStatus,
+  OperationalAlertType,
   StudentEnrollmentStatus
 } from "@/generated/prisma/client";
 import { formatAdminDate } from "@/lib/admin-format";
@@ -51,6 +54,13 @@ export default async function AdminAttendancePage() {
           branch: true,
           sport: true
         }
+      },
+      operationalAlerts: {
+        where: {
+          type: OperationalAlertType.ATTENDANCE_RISK,
+          status: OperationalAlertStatus.OPEN
+        },
+        take: 1
       }
     },
     orderBy: {
@@ -102,7 +112,8 @@ export default async function AdminAttendancePage() {
         (item) =>
           item.status !== AttendanceStatus.PRESENT &&
           !item.absenceReason
-      ).length
+      ).length,
+      alert: enrollment.operationalAlerts[0] ?? null
     };
   });
 
@@ -114,11 +125,7 @@ export default async function AdminAttendancePage() {
   const totalMisses = all.filter(
     (item) => item.status !== AttendanceStatus.PRESENT
   ).length;
-  const attention = rows.filter(
-    (row) =>
-      row.consecutiveMisses >= 2 ||
-      (row.total >= 4 && (row.rate90 ?? 100) < 70)
-  ).length;
+  const attention = rows.filter((row) => Boolean(row.alert)).length;
 
   return (
     <>
@@ -169,6 +176,7 @@ export default async function AdminAttendancePage() {
                 <th>Подряд пропущено</th>
                 <th>Последний пропуск</th>
                 <th>Без причины</th>
+                <th>Системный сигнал</th>
                 <th>Последняя отметка</th>
               </tr>
             </thead>
@@ -181,7 +189,9 @@ export default async function AdminAttendancePage() {
                 return (
                   <tr key={row.enrollment.id}>
                     <td>
-                      <strong>{row.enrollment.child.name}</strong>
+                      <Link href={"/admin/children/" + row.enrollment.childId}>
+                        <strong>{row.enrollment.child.name}</strong>
+                      </Link>
                       <br />
                       <small>
                         {row.enrollment.child.parent.name} ·{" "}
@@ -234,6 +244,21 @@ export default async function AdminAttendancePage() {
                     </td>
                     <td>{row.unknownReasons}</td>
                     <td>
+                      {row.alert ? (
+                        <>
+                          <span className="admin-attention">
+                            {row.alert.severity === "critical"
+                              ? "Критический"
+                              : "Требует внимания"}
+                          </span>
+                          <br />
+                          <small>{row.alert.details ?? "Риск посещаемости"}</small>
+                        </>
+                      ) : (
+                        <span className="admin-status">Нет</span>
+                      )}
+                    </td>
+                    <td>
                       {row.latest
                         ? formatAdminDate(row.latest.session.startsAt)
                         : "—"}
@@ -243,7 +268,7 @@ export default async function AdminAttendancePage() {
               })}
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>Активных учеников пока нет.</td>
+                  <td colSpan={10}>Активных учеников пока нет.</td>
                 </tr>
               ) : null}
             </tbody>

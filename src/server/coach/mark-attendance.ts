@@ -10,6 +10,7 @@ import {
   skipRegularAbsenceNotice
 } from "@/server/attendance/absence-reason";
 import { getCoachSessionParticipants } from "@/server/coach/get-session-participants";
+import { refreshAttendanceRiskAlert } from "@/server/attendance/risk-alerts";
 
 export async function markCoachAttendance(input: {
   coachId: string;
@@ -116,6 +117,12 @@ export async function markCoachAttendance(input: {
         });
       }
     }
+
+    await refreshAttendanceRiskAlert({
+      childId: input.childId,
+      groupId: data.session.groupId,
+      now
+    });
   }
 
   return {
