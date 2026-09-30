@@ -1,10 +1,17 @@
 import {
   LeadStatus,
+  NotificationStatus,
+  NotificationType,
   PaymentProvider,
   PaymentStatus,
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+
+function envMinutes(name: string, fallback: number) {
+  const value = Number(process.env[name] ?? fallback);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
 
 async function leadIdsForTelegramUser(telegramUserId: bigint) {
   const prisma = getPrisma();
@@ -238,9 +245,115 @@ export async function reviewManualCardPayment(input: {
         }
       });
 
+      const lead = booking.lead;
+
+      const parent = await tx.parent.upsert({
+        where: { phone: lead.phone },
+        update: {
+          name: lead.parentName,
+          locale: lead.locale
+        },
+        create: {
+          name: lead.parentName,
+          phone: lead.phone,
+          locale: lead.locale
+        }
+      });
+
+      let childId = lead.childId;
+
+      if (!childId) {
+        const existingChild = await tx.child.findFirst({
+          where: {
+            parentId: parent.id,
+            name: lead.childName
+          },
+          orderBy: {
+            createdAt: "asc"
+          }
+        });
+
+        childId = existingChild
+          ? existingChild.id
+          : (
+              await tx.child.create({
+                data: {
+                  parentId: parent.id,
+                  name: lead.childName,
+                  ageAtRegistration: lead.childAge
+                }
+              })
+            ).id;
+      }
+
       await tx.lead.update({
         where: { id: booking.leadId },
-        data: { status: LeadStatus.TRIAL_CONFIRMED }
+        data: {
+          status: LeadStatus.TRIAL_CONFIRMED,
+          parentId: parent.id,
+          childId
+        }
+      });
+
+      await tx.telegramContact.updateMany({
+        where: {
+          leadId: booking.leadId
+        },
+        data: {
+          parentId: parent.id
+        }
+      });
+
+      const reminderMinutes = envMinutes("TRIAL_REMINDER_MINUTES", 180);
+      const feedbackMinutes = envMinutes("POST_TRIAL_FEEDBACK_MINUTES", 30);
+      const reminderAtRaw = new Date(
+        booking.session.startsAt.getTime() - reminderMinutes * 60_000
+      );
+      const reminderAt = reminderAtRaw > now ? reminderAtRaw : now;
+      const feedbackAt = new Date(
+        booking.session.endsAt.getTime() + feedbackMinutes * 60_000
+      );
+
+      await tx.notification.upsert({
+        where: {
+          dedupeKey: "trial:" + booking.id + ":reminder"
+        },
+        update: {
+          leadId: booking.leadId,
+          parentId: parent.id,
+          scheduledAt: reminderAt,
+          status: NotificationStatus.PENDING,
+          lastError: null
+        },
+        create: {
+          type: NotificationType.TRIAL_REMINDER,
+          leadId: booking.leadId,
+          parentId: parent.id,
+          trialBookingId: booking.id,
+          scheduledAt: reminderAt,
+          dedupeKey: "trial:" + booking.id + ":reminder"
+        }
+      });
+
+      await tx.notification.upsert({
+        where: {
+          dedupeKey: "trial:" + booking.id + ":feedback"
+        },
+        update: {
+          leadId: booking.leadId,
+          parentId: parent.id,
+          scheduledAt: feedbackAt,
+          status: NotificationStatus.PENDING,
+          lastError: null
+        },
+        create: {
+          type: NotificationType.POST_TRIAL_FEEDBACK,
+          leadId: booking.leadId,
+          parentId: parent.id,
+          trialBookingId: booking.id,
+          scheduledAt: feedbackAt,
+          dedupeKey: "trial:" + booking.id + ":feedback"
+        }
       });
 
       return {
