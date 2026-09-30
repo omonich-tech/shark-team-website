@@ -23,6 +23,7 @@ const nav = [
   ["/admin/payments", "Оплаты"],
   ["/admin/subscriptions", "Абонементы"],
   ["/admin/attendance", "Посещаемость"],
+  ["/admin/progress", "Прогресс"],
   ["/admin/sports", "Виды спорта"],
   ["/admin/branches", "Филиалы"],
   ["/admin/coaches", "Тренеры"],

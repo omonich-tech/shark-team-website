@@ -202,6 +202,18 @@ type NotificationWithContext = Prisma.NotificationGetPayload<{
         };
       };
     };
+    progressAssessment: {
+      include: {
+        child: true;
+        group: {
+          include: {
+            branch: true;
+            sport: true;
+          };
+        };
+        coach: true;
+      };
+    };
   };
 }>;
 
@@ -218,6 +230,76 @@ async function renderNotification(
   const childName = escapeHtml(notification.lead?.childName ?? "");
   const session = booking?.session;
   const branch = session?.group?.branch;
+
+  if (notification.type === NotificationType.STUDENT_PROGRESS_UPDATE) {
+    const assessment = notification.progressAssessment;
+
+    if (!assessment) {
+      return locale === "uz"
+        ? "Rivojlanish hisoboti ma’lumotlarini topib bo‘lmadi."
+        : "Не удалось загрузить отчёт о развитии.";
+    }
+
+    const child = escapeHtml(assessment.child.name);
+    const average =
+      (
+        assessment.ability +
+        assessment.discipline +
+        assessment.motivation +
+        assessment.coordination +
+        assessment.physicalPreparation +
+        assessment.psychologicalReadiness
+      ) / 6;
+    const coach = escapeHtml(
+      [assessment.coach.firstName, assessment.coach.lastName]
+        .filter(Boolean)
+        .join(" ") || "—"
+    );
+
+    return locale === "uz"
+      ? [
+          "📈 <b>SHARK TEAM rivojlanish hisoboti</b>",
+          "",
+          "Bola: <b>" + child + "</b>",
+          "Sport: " + escapeHtml(assessment.group.sport.nameUz),
+          "Murabbiy: " + coach,
+          "O‘rtacha baho: <b>" + average.toFixed(1) + " / 5</b>",
+          "",
+          "Ko‘nikma: " + assessment.ability + "/5",
+          "Intizom: " + assessment.discipline + "/5",
+          "Motivatsiya: " + assessment.motivation + "/5",
+          "Koordinatsiya: " + assessment.coordination + "/5",
+          "Jismoniy tayyorgarlik: " + assessment.physicalPreparation + "/5",
+          "Psixologik tayyorgarlik: " + assessment.psychologicalReadiness + "/5",
+          assessment.coachComment
+            ? "Murabbiy izohi: " + escapeHtml(assessment.coachComment)
+            : null,
+          assessment.recommendation
+            ? "Tavsiya: " + escapeHtml(assessment.recommendation)
+            : null
+        ].filter(Boolean).join("\n")
+      : [
+          "📈 <b>Отчёт о развитии SHARK TEAM</b>",
+          "",
+          "Ребёнок: <b>" + child + "</b>",
+          "Направление: " + escapeHtml(assessment.group.sport.nameRu),
+          "Тренер: " + coach,
+          "Средняя оценка: <b>" + average.toFixed(1) + " / 5</b>",
+          "",
+          "Навыки: " + assessment.ability + "/5",
+          "Дисциплина: " + assessment.discipline + "/5",
+          "Мотивация: " + assessment.motivation + "/5",
+          "Координация: " + assessment.coordination + "/5",
+          "Физподготовка: " + assessment.physicalPreparation + "/5",
+          "Психологическая готовность: " + assessment.psychologicalReadiness + "/5",
+          assessment.coachComment
+            ? "Комментарий тренера: " + escapeHtml(assessment.coachComment)
+            : null,
+          assessment.recommendation
+            ? "Рекомендация: " + escapeHtml(assessment.recommendation)
+            : null
+        ].filter(Boolean).join("\n");
+  }
 
   if (notification.type === NotificationType.REGULAR_ABSENCE_NOTICE) {
     const attendance = notification.attendance;
@@ -528,6 +610,18 @@ export async function processDueTelegramNotifications(
               }
             }
           }
+        }
+      },
+      progressAssessment: {
+        include: {
+          child: true,
+          group: {
+            include: {
+              branch: true,
+              sport: true
+            }
+          },
+          coach: true
         }
       }
     },

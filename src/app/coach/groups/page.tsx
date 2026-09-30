@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { StudentEnrollmentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { requireCoachSession } from "@/server/coach/auth";
@@ -55,7 +56,13 @@ export default async function CoachGroupsPage() {
             {group.enrollments.length > 0 ? (
               <div className="coach-group-students">
                 {group.enrollments.map((enrollment) => (
-                  <span key={enrollment.id}>{enrollment.child.name}</span>
+                  <Link
+                    className="coach-student-link"
+                    key={enrollment.id}
+                    href={"/coach/students/" + enrollment.child.id}
+                  >
+                    {enrollment.child.name}
+                  </Link>
                 ))}
               </div>
             ) : (
