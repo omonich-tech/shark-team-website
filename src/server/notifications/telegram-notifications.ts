@@ -204,6 +204,80 @@ async function renderNotification(
   const branch = session?.group?.branch;
 
   if (
+    notification.type === NotificationType.SUBSCRIPTION_FROZEN ||
+    notification.type === NotificationType.SUBSCRIPTION_RESUMED ||
+    notification.type === NotificationType.SUBSCRIPTION_ENDED
+  ) {
+    const enrollment = notification.enrollment;
+
+    if (!enrollment) {
+      return locale === "uz"
+        ? "Abonement ma’lumotlarini topib bo‘lmadi."
+        : "Не удалось загрузить данные абонемента.";
+    }
+
+    const child = escapeHtml(enrollment.child.name);
+    const paidThrough = enrollment.currentPeriodEnd
+      ? formatDay(enrollment.currentPeriodEnd, locale)
+      : "";
+    const freezeUntil = enrollment.freezeUntil
+      ? formatDay(enrollment.freezeUntil, locale)
+      : "";
+
+    if (notification.type === NotificationType.SUBSCRIPTION_FROZEN) {
+      return locale === "uz"
+        ? [
+            "❄️ <b>Abonement muzlatildi</b>",
+            "",
+            "Bola: <b>" + child + "</b>",
+            freezeUntil ? "Muzlatish muddati: " + freezeUntil + " gacha." : "",
+            paidThrough ? "Yangi amal qilish muddati: " + paidThrough + " gacha." : "",
+            "",
+            "Muzlatish tugagach abonement avtomatik tiklanadi."
+          ].filter(Boolean).join("\n")
+        : [
+            "❄️ <b>Абонемент заморожен</b>",
+            "",
+            "Ребёнок: <b>" + child + "</b>",
+            freezeUntil ? "Заморозка до " + freezeUntil + "." : "",
+            paidThrough ? "Новая дата окончания оплаченного периода: " + paidThrough + "." : "",
+            "",
+            "После окончания заморозки абонемент восстановится автоматически."
+          ].filter(Boolean).join("\n");
+    }
+
+    if (notification.type === NotificationType.SUBSCRIPTION_RESUMED) {
+      return locale === "uz"
+        ? [
+            "▶️ <b>Abonement qayta faollashtirildi</b>",
+            "",
+            "Bola: <b>" + child + "</b>",
+            paidThrough ? "Abonement " + paidThrough + " gacha amal qiladi." : ""
+          ].filter(Boolean).join("\n")
+        : [
+            "▶️ <b>Абонемент возобновлён</b>",
+            "",
+            "Ребёнок: <b>" + child + "</b>",
+            paidThrough ? "Абонемент оплачен до " + paidThrough + "." : ""
+          ].filter(Boolean).join("\n");
+    }
+
+    return locale === "uz"
+      ? [
+          "⛔ <b>Abonement yakunlandi</b>",
+          "",
+          "Bola: <b>" + child + "</b>",
+          "Doimiy guruhdagi abonement yopildi."
+        ].join("\n")
+      : [
+          "⛔ <b>Абонемент прекращён</b>",
+          "",
+          "Ребёнок: <b>" + child + "</b>",
+          "Абонемент в постоянной группе закрыт."
+        ].join("\n");
+  }
+
+  if (
     notification.type === NotificationType.SUBSCRIPTION_RENEWAL_REMINDER ||
     notification.type === NotificationType.SUBSCRIPTION_PAST_DUE ||
     notification.type === NotificationType.SUBSCRIPTION_PAUSED
@@ -424,6 +498,37 @@ export async function processDueTelegramNotifications(
           skipped += 1;
         }
 
+        continue;
+      }
+    }
+
+    if (
+      notification.type === NotificationType.SUBSCRIPTION_FROZEN ||
+      notification.type === NotificationType.SUBSCRIPTION_RESUMED ||
+      notification.type === NotificationType.SUBSCRIPTION_ENDED
+    ) {
+      const enrollment = notification.enrollment;
+
+      const valid =
+        Boolean(enrollment) &&
+        (notification.type === NotificationType.SUBSCRIPTION_FROZEN
+          ? enrollment?.subscriptionStatus === "FROZEN"
+          : notification.type === NotificationType.SUBSCRIPTION_ENDED
+            ? enrollment?.subscriptionStatus === "ENDED"
+            : enrollment?.subscriptionStatus !== "FROZEN" &&
+              enrollment?.subscriptionStatus !== "ENDED");
+
+      if (!valid) {
+        await prisma.notification.update({
+          where: { id: notification.id },
+          data: {
+            status: NotificationStatus.SKIPPED,
+            lastError: enrollment
+              ? "SUBSCRIPTION_STATE_CHANGED"
+              : "SUBSCRIPTION_CONTEXT_MISSING"
+          }
+        });
+        skipped += 1;
         continue;
       }
     }

@@ -84,6 +84,7 @@ enum SubscriptionStatus {
   ACTIVE
   PAYMENT_DUE
   PAST_DUE
+  FROZEN
   PAUSED
   ENDED
 }
@@ -114,7 +115,10 @@ enum NotificationType {
   POST_TRIAL_FEEDBACK
   SUBSCRIPTION_RENEWAL_REMINDER
   SUBSCRIPTION_PAST_DUE
+  SUBSCRIPTION_FROZEN
+  SUBSCRIPTION_RESUMED
   SUBSCRIPTION_PAUSED
+  SUBSCRIPTION_ENDED
 }
 
 enum NotificationStatus {
@@ -570,6 +574,10 @@ model StudentEnrollment {
   nextPaymentDueAt   DateTime?
   graceUntil         DateTime?
   pausedAt           DateTime?
+  freezeStartedAt    DateTime?
+  freezeUntil        DateTime?
+  freezeReason       String?
+  endReason          String?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
 
@@ -581,6 +589,7 @@ model StudentEnrollment {
   @@index([childId, status])
   @@index([groupId, status])
   @@index([subscriptionStatus, nextPaymentDueAt])
+  @@index([subscriptionStatus, freezeUntil])
 }
 
 model TrialConversion {

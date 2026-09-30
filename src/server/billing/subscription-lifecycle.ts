@@ -7,6 +7,7 @@ import {
   SubscriptionStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { resumeExpiredManualFreezes } from "@/server/billing/subscription-controls";
 import {
   addSubscriptionMonth,
   subscriptionReminderDays
@@ -167,6 +168,7 @@ export async function advanceSubscriptionLifecycle(
   limit = 200
 ) {
   const prisma = getPrisma();
+  const manualFreezes = await resumeExpiredManualFreezes(now, limit);
   const reminderCutoff = new Date(
     now.getTime() +
       subscriptionReminderDays() * 24 * 60 * 60 * 1000
@@ -353,6 +355,7 @@ export async function advanceSubscriptionLifecycle(
   }
 
   return {
+    manualFreezes,
     renewalsCreated,
     renewalRemindersQueued,
     pastDueMarked,
