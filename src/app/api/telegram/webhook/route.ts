@@ -425,6 +425,156 @@ async function handleFeedbackCallback(
   return true;
 }
 
+async function handleSubscriptionPaymentCallback(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+
+  if (!callbackId || !data.startsWith("subscription:")) {
+    return false;
+  }
+
+  if (!callbackAllowed(callback)) {
+    await answerTelegramCallbackQuery({
+      callbackQueryId: callbackId,
+      text: "Нет доступа.",
+      showAlert: true
+    });
+    return true;
+  }
+
+  const parts = data.split(":");
+  const action = parts[1];
+  const paymentId = parts[2];
+
+  if (!action || !paymentId) {
+    await answerTelegramCallbackQuery({
+      callbackQueryId: callbackId,
+      text: "Некорректная команда.",
+      showAlert: true
+    });
+    return true;
+  }
+
+  const approve = action === "approve";
+  const reason = approve ? null : rejectionReason(action);
+  const reviewedBy = callback.from?.id
+    ? "telegram:" + callback.from.id
+    : "telegram:unknown";
+
+  const result = await reviewSubscriptionPayment({
+    paymentId,
+    approve,
+    reviewedBy,
+    rejectionReason: reason
+  });
+
+  if (!result.ok) {
+    await answerTelegramCallbackQuery({
+      callbackQueryId: callbackId,
+      text:
+        result.error === "GROUP_FULL"
+          ? "Группа заполнена. Оплату нельзя подтвердить до решения администратора."
+          : result.error === "PAYMENT_NOT_UNDER_REVIEW"
+            ? "Оплата уже обработана или не ожидает проверки."
+            : "Не удалось обработать оплату.",
+      showAlert: true
+    });
+    return true;
+  }
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.approved
+      ? "Абонемент подтверждён."
+      : "Оплата абонемента отклонена."
+  });
+
+  if (result.alreadyProcessed) {
+    return true;
+  }
+
+  const prisma = getPrisma();
+  const conversion = result.conversion;
+  const contact = await prisma.telegramContact.findFirst({
+    where: {
+      parentId: conversion.child.parentId
+    },
+    orderBy: {
+      verifiedAt: "desc"
+    }
+  });
+
+  const locale: "ru" | "uz" =
+    contact?.locale === "uz" ? "uz" : "ru";
+
+  if (contact) {
+    if (result.approved) {
+      const group = conversion.group;
+      const coach = [
+        group.primaryCoach.firstName,
+        group.primaryCoach.lastName
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      const text =
+        locale === "uz"
+          ? [
+              "✅ <b>Abonement to‘lovi tasdiqlandi</b>",
+              "",
+              "Bola: " + escapeHtml(conversion.child.name),
+              "Guruh: " + escapeHtml(group.internalName),
+              "Filial: " + escapeHtml(group.branch.publicNameUz),
+              "Sport: " + escapeHtml(group.sport.nameUz),
+              "Murabbiy: " + escapeHtml(coach || "—"),
+              "",
+              "Bola guruhga doimiy o‘quvchi sifatida qo‘shildi."
+            ].join("\n")
+          : [
+              "✅ <b>Оплата абонемента подтверждена</b>",
+              "",
+              "Ребёнок: " + escapeHtml(conversion.child.name),
+              "Группа: " + escapeHtml(group.internalName),
+              "Филиал: " + escapeHtml(group.branch.publicNameRu),
+              "Направление: " + escapeHtml(group.sport.nameRu),
+              "Тренер: " + escapeHtml(coach || "—"),
+              "",
+              "Ребёнок зачислен в группу как постоянный ученик."
+            ].join("\n");
+
+      await sendTelegramMessage({
+        chatId: contact.chatId,
+        text
+      });
+    } else {
+      await sendTelegramMessage({
+        chatId: contact.chatId,
+        text: rejectionText(reason ?? "NOT_VERIFIED", locale)
+      });
+    }
+  }
+
+  const chatId = adminChatId();
+  if (chatId) {
+    await sendTelegramMessage({
+      chatId,
+      text: result.approved
+        ? "✅ Абонемент <code>" +
+          escapeHtml(paymentId) +
+          "</code> подтверждён. Ребёнок зачислен в группу."
+        : "❌ Оплата абонемента <code>" +
+          escapeHtml(paymentId) +
+          "</code> отклонена: " +
+          escapeHtml(reason ?? "NOT_VERIFIED") +
+          "."
+    });
+  }
+
+  return true;
+}
+
 async function handlePaymentCallback(
   callback: NonNullable<TelegramUpdate["callback_query"]>
 ) {
