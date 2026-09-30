@@ -260,6 +260,81 @@ async function sendPaymentReviewToAdmin(
   }
 }
 
+async function sendSubscriptionPaymentReviewToAdmin(
+  result: Awaited<ReturnType<typeof submitSubscriptionReceipt>>
+) {
+  if (!result.ok || result.alreadyPaid) return;
+
+  const chatId = adminChatId();
+  if (!chatId) return;
+
+  const conversion = result.conversion;
+  const group = conversion.group;
+  const coach = [group.primaryCoach.firstName, group.primaryCoach.lastName]
+    .filter(Boolean)
+    .join(" ");
+
+  const caption = [
+    "<b>💳 Оплата абонемента — SHARK TEAM</b>",
+    "",
+    "Ребёнок: " + escapeHtml(conversion.child.name),
+    "Родитель: " + escapeHtml(conversion.child.parent.name),
+    "Телефон: " + escapeHtml(conversion.child.parent.phone),
+    "Филиал: " + escapeHtml(group.branch.publicNameRu),
+    "Направление: " + escapeHtml(group.sport.nameRu),
+    "Группа: " + escapeHtml(group.internalName),
+    "Тренер: " + escapeHtml(coach || "—"),
+    "Сумма: <b>" + formatMoney(result.payment.amountUzs) + " сум</b>",
+    "ID: <code>" + escapeHtml(result.payment.id) + "</code>"
+  ].join("\n");
+
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        {
+          text: "✅ Подтвердить абонемент",
+          callback_data: "subscription:approve:" + result.payment.id
+        }
+      ],
+      [
+        {
+          text: "❌ Платёж не найден",
+          callback_data: "subscription:not_found:" + result.payment.id
+        },
+        {
+          text: "❌ Неверная сумма",
+          callback_data: "subscription:wrong_amount:" + result.payment.id
+        }
+      ],
+      [
+        {
+          text: "❌ Чек не читается",
+          callback_data: "subscription:bad_receipt:" + result.payment.id
+        }
+      ]
+    ]
+  };
+
+  const fileId = result.payment.receiptTelegramFileId;
+  if (!fileId) return;
+
+  if (result.payment.receiptMimeType?.startsWith("document:")) {
+    await sendTelegramDocument({
+      chatId,
+      document: fileId,
+      caption,
+      replyMarkup
+    });
+  } else {
+    await sendTelegramPhoto({
+      chatId,
+      photo: fileId,
+      caption,
+      replyMarkup
+    });
+  }
+}
+
 async function handleFeedbackCallback(
   callback: NonNullable<TelegramUpdate["callback_query"]>
 ) {
