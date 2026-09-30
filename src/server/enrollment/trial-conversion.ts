@@ -528,6 +528,13 @@ export async function reviewSubscriptionPayment(input: {
     });
 
     if (!existingEnrollment) {
+      await tx.$queryRaw`
+        SELECT "id"
+        FROM "TrainingGroup"
+        WHERE "id" = ${conversion.groupId}
+        FOR UPDATE
+      `;
+
       const group = await tx.trainingGroup.findUnique({
         where: { id: conversion.groupId },
         include: {
