@@ -1,5 +1,6 @@
 import {
   StudentEnrollmentStatus,
+  SubscriptionStatus,
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -22,7 +23,15 @@ export async function getCoachSessionParticipants(
           sport: true,
           enrollments: {
             where: {
-              status: StudentEnrollmentStatus.ACTIVE
+              status: StudentEnrollmentStatus.ACTIVE,
+              OR: [
+                { subscriptionStatus: null },
+                {
+                  subscriptionStatus: {
+                    not: SubscriptionStatus.FROZEN
+                  }
+                }
+              ]
             },
             include: {
               child: {
