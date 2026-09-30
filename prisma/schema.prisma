@@ -134,6 +134,7 @@ enum NotificationType {
   SUBSCRIPTION_PAUSED
   SUBSCRIPTION_ENDED
   REGULAR_ABSENCE_NOTICE
+  STUDENT_PROGRESS_UPDATE
 }
 
 enum NotificationStatus {
@@ -278,6 +279,7 @@ model Coach {
   account       CoachAccount?
   attendances   Attendance[]
   assessments   TrialAssessment[]
+  progressAssessments StudentProgressAssessment[]
 
   @@index([status])
 }
@@ -332,6 +334,7 @@ model TrainingGroup {
   leads         Lead[]
   enrollments   StudentEnrollment[]
   trialConversions TrialConversion[]
+  progressAssessments StudentProgressAssessment[]
 
   @@index([branchId, sportId, status])
   @@index([primaryCoachId, status])
@@ -556,6 +559,7 @@ model Child {
   enrollments StudentEnrollment[]
   attendances Attendance[]
   trialConversions TrialConversion[]
+  progressAssessments StudentProgressAssessment[]
 
   @@index([parentId])
   @@index([createdAt])
@@ -692,6 +696,33 @@ model Attendance {
   @@index([childId, markedAt])
 }
 
+model StudentProgressAssessment {
+  id                     String   @id @default(cuid())
+  childId                String
+  groupId                String
+  coachId                String
+  ability                Int
+  discipline             Int
+  motivation             Int
+  coordination           Int
+  physicalPreparation    Int
+  psychologicalReadiness Int
+  coachComment           String?
+  recommendation         String?
+  assessedAt             DateTime @default(now())
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+  group TrainingGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Restrict)
+  notifications Notification[]
+
+  @@index([childId, assessedAt])
+  @@index([groupId, assessedAt])
+  @@index([coachId, assessedAt])
+}
+
 model TrialAssessment {
   id                     String   @id @default(cuid())
   trialBookingId         String   @unique
@@ -777,6 +808,7 @@ model Notification {
   enrollmentId     String?
   subscriptionPaymentId String?
   attendanceId     String?
+  progressAssessmentId String?
   scheduledAt      DateTime
   sentAt           DateTime?
   attempts         Int                 @default(0)
@@ -792,6 +824,7 @@ model Notification {
   enrollment StudentEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
   subscriptionPayment SubscriptionPayment? @relation(fields: [subscriptionPaymentId], references: [id], onDelete: SetNull)
   attendance Attendance? @relation(fields: [attendanceId], references: [id], onDelete: SetNull)
+  progressAssessment StudentProgressAssessment? @relation(fields: [progressAssessmentId], references: [id], onDelete: SetNull)
 
   @@index([status, scheduledAt])
   @@index([leadId])
@@ -800,6 +833,7 @@ model Notification {
   @@index([enrollmentId])
   @@index([subscriptionPaymentId])
   @@index([attendanceId])
+  @@index([progressAssessmentId])
 }
 
 
