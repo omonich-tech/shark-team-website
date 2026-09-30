@@ -516,3 +516,35 @@ export async function reviewSubscriptionPayment(input: {
     };
   });
 }
+
+
+export async function backfillReadyTrialConversions(limit = 200) {
+  const prisma = getPrisma();
+  const bookings = await prisma.trialBooking.findMany({
+    where: {
+      status: TrialBookingStatus.ATTENDED,
+      assessment: { isNot: null },
+      feedback: {
+        is: {
+          completedAt: { not: null }
+        }
+      },
+      conversion: { is: null },
+      lead: {
+        childId: { not: null }
+      }
+    },
+    select: { id: true },
+    orderBy: { updatedAt: "asc" },
+    take: limit
+  });
+
+  let created = 0;
+
+  for (const booking of bookings) {
+    const result = await ensureTrialConversionReady(booking.id);
+    if (result.ok) created += 1;
+  }
+
+  return created;
+}
