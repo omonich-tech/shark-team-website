@@ -7,6 +7,10 @@ import {
   startParentTrialFeedback
 } from "@/server/feedback/trial-feedback";
 import {
+  reviewSubscriptionPayment,
+  submitSubscriptionReceipt
+} from "@/server/enrollment/trial-conversion";
+import {
   reviewManualCardPayment,
   submitManualCardReceipt
 } from "@/server/payments/manual-card";
