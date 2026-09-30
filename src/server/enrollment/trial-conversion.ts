@@ -157,7 +157,12 @@ export async function setTrialConversionDecision(input: {
   const prisma = getPrisma();
   const current = await prisma.trialConversion.findUnique({
     where: { id: ready.conversion.id },
-    include: { payment: true }
+    include: {
+      payments: {
+        orderBy: { sequence: "desc" },
+        take: 1
+      }
+    }
   });
 
   if (!current) {
@@ -168,9 +173,11 @@ export async function setTrialConversionDecision(input: {
     return { ok: false as const, error: "ALREADY_ENROLLED" as const };
   }
 
+  const latestPayment = current.payments[0];
+
   if (
     current.status === TrialConversionStatus.PAYMENT_PENDING ||
-    current.payment?.status === PaymentStatus.UNDER_REVIEW
+    latestPayment?.status === PaymentStatus.UNDER_REVIEW
   ) {
     return {
       ok: false as const,
@@ -191,11 +198,11 @@ export async function setTrialConversionDecision(input: {
   const conversion = await prisma.$transaction(async (tx) => {
     if (
       input.status === "DECLINED" &&
-      current.payment &&
-      current.payment.status !== PaymentStatus.PAID
+      latestPayment &&
+      latestPayment.status !== PaymentStatus.PAID
     ) {
       await tx.subscriptionPayment.update({
-        where: { id: current.payment.id },
+        where: { id: latestPayment.id },
         data: {
           status: PaymentStatus.CANCELLED
         }
