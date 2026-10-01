@@ -13,6 +13,7 @@ import {
   subscriptionReminderDays
 } from "@/server/billing/subscription-period";
 import { findSubscriptionPrice } from "@/server/billing/subscription-price";
+import { refreshAllPaymentAttentionAlerts } from "@/server/billing/payment-alerts";
 
 async function queueSubscriptionNotification(input: {
   type:
@@ -354,6 +355,8 @@ export async function advanceSubscriptionLifecycle(
     pauseNotificationsQueued += 1;
   }
 
+  const paymentAlerts = await refreshAllPaymentAttentionAlerts(now, limit);
+
   return {
     manualFreezes,
     renewalsCreated,
@@ -362,6 +365,7 @@ export async function advanceSubscriptionLifecycle(
     pastDueNotificationsQueued,
     paused,
     pauseNotificationsQueued,
+    paymentAlerts,
     errors
   };
 }
