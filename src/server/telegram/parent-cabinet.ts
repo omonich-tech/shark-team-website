@@ -679,12 +679,14 @@ export async function buildParentCabinetView(
           enrollment.subscriptionStatus ?? enrollment.status;
         const latestPayment = enrollment.payments[0];
 
+        const payableStatuses: SubscriptionStatus[] = [
+          SubscriptionStatus.PAYMENT_DUE,
+          SubscriptionStatus.PAST_DUE,
+          SubscriptionStatus.PAUSED
+        ];
+
         return (
-          [
-            SubscriptionStatus.PAYMENT_DUE,
-            SubscriptionStatus.PAST_DUE,
-            SubscriptionStatus.PAUSED
-          ].includes(status as SubscriptionStatus) &&
+          payableStatuses.includes(status as SubscriptionStatus) &&
           latestPayment?.status !== PaymentStatus.UNDER_REVIEW
         );
       })
