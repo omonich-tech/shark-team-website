@@ -212,6 +212,9 @@ jobs:
       - name: Verify student progress workflow
         run: npm run verify:student-progress
 
+      - name: Verify progress overdue alerts
+        run: npm run verify:progress-alerts
+
       - name: Smoke test student management
         run: npm run smoke:student-management
 
