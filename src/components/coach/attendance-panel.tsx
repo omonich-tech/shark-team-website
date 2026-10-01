@@ -13,6 +13,7 @@ type Participant = {
   attendanceStatus: string | null;
   absenceReason: string | null;
   absenceNote: string | null;
+  reasonSource: string | null;
   assessmentCompleted: boolean;
 };
 
@@ -213,9 +214,11 @@ export function AttendancePanel({
             ) : participant.source === "REGULAR" && absent ? (
               <div className="attendance-assessment">
                 <span>
-                  {participant.absenceReason
-                    ? "Причина сохранена"
-                    : "Родителю отправится запрос причины"}
+                  {participant.reasonSource === "PARENT"
+                    ? "Родитель сообщил заранее"
+                    : participant.absenceReason
+                      ? "Причина сохранена"
+                      : "Родителю отправится запрос причины"}
                 </span>
               </div>
             ) : null}
