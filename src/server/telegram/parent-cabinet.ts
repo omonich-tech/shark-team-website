@@ -1,9 +1,14 @@
 import {
+  AbsenceReason,
   AttendanceStatus,
   SessionStatus,
   StudentEnrollmentStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  absenceReasonLabel,
+  setParentPlannedAbsence
+} from "@/server/attendance/absence-reason";
 
 type Locale = "ru" | "uz";
 
@@ -25,6 +30,22 @@ type ParentCabinetResponse =
       text: string;
       replyMarkup?: Record<string, unknown>;
     };
+
+
+const absenceReasonCodes: Record<string, AbsenceReason> = {
+  I: AbsenceReason.ILLNESS,
+  F: AbsenceReason.FAMILY,
+  T: AbsenceReason.TRAVEL,
+  S: AbsenceReason.SCHOOL,
+  O: AbsenceReason.OTHER
+};
+
+function absenceReasonCode(reason: AbsenceReason) {
+  const entry = Object.entries(absenceReasonCodes).find(
+    ([, value]) => value === reason
+  );
+  return entry?.[0] ?? "O";
+}
 
 function localeOf(value: string | null | undefined): Locale {
   return value === "uz" ? "uz" : "ru";
@@ -175,6 +196,15 @@ function childMenu(childId: string, locale: Locale) {
         {
           text: locale === "uz" ? "📈 Rivojlanish" : "📈 Прогресс",
           callback_data: "parent:progress:" + childId
+        }
+      ],
+      [
+        {
+          text:
+            locale === "uz"
+              ? "🚫 Kelmaslik haqida xabar berish"
+              : "🚫 Сообщить об отсутствии",
+          callback_data: "parent:absence:" + childId
         }
       ],
       [homeButton(locale)]
@@ -861,6 +891,389 @@ export async function buildParentCabinetView(
   };
 }
 
+
+
+export async function buildParentAbsenceSessionPicker(
+  telegramUserId: bigint,
+  childId: string,
+  now = new Date()
+): Promise<ParentCabinetResponse> {
+  const contact = await getVerifiedContact(telegramUserId);
+  const locale = localeOf(contact?.locale);
+
+  if (!contact?.parentId) {
+    return {
+      ok: false,
+      error: "PARENT_NOT_LINKED",
+      locale,
+      text:
+        locale === "uz"
+          ? "Ota-ona profili hali ulanmagan."
+          : "Профиль родителя ещё не связан."
+    };
+  }
+
+  const child = await getChildForParent(contact.parentId, childId, now);
+
+  if (!child) {
+    return {
+      ok: false,
+      error: "CHILD_NOT_AVAILABLE",
+      locale,
+      text:
+        locale === "uz"
+          ? "Bu bola sizning kabinetingizda mavjud emas."
+          : "Этот ребёнок недоступен в вашем кабинете."
+    };
+  }
+
+  const sessions = child.enrollments
+    .flatMap((enrollment) =>
+      enrollment.group.sessions.map((session) => ({
+        id: session.id,
+        startsAt: session.startsAt,
+        sportName:
+          locale === "uz"
+            ? enrollment.group.sport.nameUz
+            : enrollment.group.sport.nameRu,
+        groupName: enrollment.group.internalName
+      }))
+    )
+    .filter((session, index, all) =>
+      all.findIndex((item) => item.id === session.id) === index
+    )
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+    .slice(0, 6);
+
+  if (sessions.length === 0) {
+    return {
+      ok: true,
+      locale,
+      text:
+        locale === "uz"
+          ? "🚫 <b>" +
+            escapeHtml(child.name) +
+            "</b>\n\nYaqin rejalashtirilgan mashg‘ulotlar topilmadi."
+          : "🚫 <b>" +
+            escapeHtml(child.name) +
+            "</b>\n\nБлижайших запланированных тренировок нет.",
+      replyMarkup: childMenu(child.id, locale)
+    };
+  }
+
+  return {
+    ok: true,
+    locale,
+    text:
+      locale === "uz"
+        ? "🚫 <b>" +
+          escapeHtml(child.name) +
+          " · Kelmaslik haqida xabar</b>\n\nMashg‘ulotni tanlang:"
+        : "🚫 <b>" +
+          escapeHtml(child.name) +
+          " · Сообщить об отсутствии</b>\n\nВыберите тренировку:",
+    replyMarkup: {
+      inline_keyboard: [
+        ...sessions.map((session) => [
+          {
+            text:
+              formatDateTime(session.startsAt, locale) +
+              " · " +
+              session.sportName,
+            callback_data:
+              "pa:s:" + child.id + ":" + session.id
+          }
+        ]),
+        [
+          {
+            text: locale === "uz" ? "⬅️ Orqaga" : "⬅️ Назад",
+            callback_data: "parent:child:" + child.id
+          }
+        ]
+      ]
+    }
+  };
+}
+
+async function verifyParentAbsenceSession(input: {
+  telegramUserId: bigint;
+  childId: string;
+  sessionId: string;
+  now: Date;
+}) {
+  const contact = await getVerifiedContact(input.telegramUserId);
+  const locale = localeOf(contact?.locale);
+
+  if (!contact?.parentId) {
+    return {
+      ok: false as const,
+      locale,
+      error: "PARENT_NOT_LINKED" as const
+    };
+  }
+
+  const child = await getChildForParent(
+    contact.parentId,
+    input.childId,
+    input.now
+  );
+
+  if (!child) {
+    return {
+      ok: false as const,
+      locale,
+      error: "CHILD_NOT_AVAILABLE" as const
+    };
+  }
+
+  const session = child.enrollments
+    .flatMap((enrollment) =>
+      enrollment.group.sessions.map((item) => ({
+        ...item,
+        sportName:
+          locale === "uz"
+            ? enrollment.group.sport.nameUz
+            : enrollment.group.sport.nameRu,
+        groupName: enrollment.group.internalName
+      }))
+    )
+    .find((item) => item.id === input.sessionId);
+
+  if (!session || session.startsAt <= input.now) {
+    return {
+      ok: false as const,
+      locale,
+      error: "SESSION_NOT_AVAILABLE" as const
+    };
+  }
+
+  return {
+    ok: true as const,
+    locale,
+    child,
+    session
+  };
+}
+
+export async function handleParentAbsenceCallback(
+  telegramUserId: bigint,
+  data: string,
+  now = new Date()
+): Promise<ParentCabinetResponse | null> {
+  if (!data.startsWith("pa:")) return null;
+
+  const parts = data.split(":");
+  const step = parts[1];
+
+  if (step === "s") {
+    const childId = parts[2];
+    const sessionId = parts[3];
+
+    if (!childId || !sessionId) return null;
+
+    const verified = await verifyParentAbsenceSession({
+      telegramUserId,
+      childId,
+      sessionId,
+      now
+    });
+
+    if (!verified.ok) {
+      return {
+        ok: false,
+        error:
+          verified.error === "PARENT_NOT_LINKED"
+            ? "PARENT_NOT_LINKED"
+            : "CHILD_NOT_AVAILABLE",
+        locale: verified.locale,
+        text:
+          verified.locale === "uz"
+            ? "Mashg‘ulotni ochib bo‘lmadi."
+            : "Не удалось открыть тренировку."
+      };
+    }
+
+    const reasons = [
+      AbsenceReason.ILLNESS,
+      AbsenceReason.FAMILY,
+      AbsenceReason.TRAVEL,
+      AbsenceReason.SCHOOL,
+      AbsenceReason.OTHER
+    ];
+
+    return {
+      ok: true,
+      locale: verified.locale,
+      text:
+        verified.locale === "uz"
+          ? "🚫 <b>" +
+            escapeHtml(verified.child.name) +
+            "</b>\n" +
+            escapeHtml(formatDateTime(verified.session.startsAt, verified.locale)) +
+            " · " +
+            escapeHtml(verified.session.sportName) +
+            "\n\nSababni tanlang:"
+          : "🚫 <b>" +
+            escapeHtml(verified.child.name) +
+            "</b>\n" +
+            escapeHtml(formatDateTime(verified.session.startsAt, verified.locale)) +
+            " · " +
+            escapeHtml(verified.session.sportName) +
+            "\n\nВыберите причину:",
+      replyMarkup: {
+        inline_keyboard: [
+          ...reasons.map((reason) => [
+            {
+              text: absenceReasonLabel(reason, verified.locale),
+              callback_data:
+                "pa:r:" +
+                absenceReasonCode(reason) +
+                ":" +
+                childId +
+                ":" +
+                sessionId
+            }
+          ]),
+          [
+            {
+              text: verified.locale === "uz" ? "⬅️ Orqaga" : "⬅️ Назад",
+              callback_data: "parent:absence:" + childId
+            }
+          ]
+        ]
+      }
+    };
+  }
+
+  if (step === "r" || step === "c") {
+    const reason = absenceReasonCodes[parts[2] ?? ""];
+    const childId = parts[3];
+    const sessionId = parts[4];
+
+    if (!reason || !childId || !sessionId) return null;
+
+    const verified = await verifyParentAbsenceSession({
+      telegramUserId,
+      childId,
+      sessionId,
+      now
+    });
+
+    if (!verified.ok) {
+      return {
+        ok: false,
+        error:
+          verified.error === "PARENT_NOT_LINKED"
+            ? "PARENT_NOT_LINKED"
+            : "CHILD_NOT_AVAILABLE",
+        locale: verified.locale,
+        text:
+          verified.locale === "uz"
+            ? "Mashg‘ulot endi mavjud emas."
+            : "Эта тренировка больше недоступна."
+      };
+    }
+
+    if (step === "r") {
+      return {
+        ok: true,
+        locale: verified.locale,
+        text:
+          verified.locale === "uz"
+            ? "Tasdiqlaysizmi?\n\n<b>" +
+              escapeHtml(verified.child.name) +
+              "</b>\n" +
+              escapeHtml(formatDateTime(verified.session.startsAt, verified.locale)) +
+              "\nSabab: <b>" +
+              escapeHtml(absenceReasonLabel(reason, verified.locale)) +
+              "</b>"
+            : "Подтвердить отсутствие?\n\n<b>" +
+              escapeHtml(verified.child.name) +
+              "</b>\n" +
+              escapeHtml(formatDateTime(verified.session.startsAt, verified.locale)) +
+              "\nПричина: <b>" +
+              escapeHtml(absenceReasonLabel(reason, verified.locale)) +
+              "</b>",
+        replyMarkup: {
+          inline_keyboard: [
+            [
+              {
+                text:
+                  verified.locale === "uz"
+                    ? "✅ Tasdiqlash"
+                    : "✅ Подтвердить",
+                callback_data:
+                  "pa:c:" +
+                  absenceReasonCode(reason) +
+                  ":" +
+                  childId +
+                  ":" +
+                  sessionId
+              }
+            ],
+            [
+              {
+                text: verified.locale === "uz" ? "⬅️ Orqaga" : "⬅️ Назад",
+                callback_data:
+                  "pa:s:" + childId + ":" + sessionId
+              }
+            ]
+          ]
+        }
+      };
+    }
+
+    const result = await setParentPlannedAbsence({
+      telegramUserId,
+      childId,
+      sessionId,
+      reason,
+      now
+    });
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        error:
+          result.error === "PARENT_NOT_LINKED"
+            ? "PARENT_NOT_LINKED"
+            : result.error === "CHILD_NOT_FOUND"
+              ? "CHILD_NOT_AVAILABLE"
+              : "CHILD_NOT_AVAILABLE",
+        locale: verified.locale,
+        text:
+          verified.locale === "uz"
+            ? "Kelmaslik haqida xabarni saqlab bo‘lmadi."
+            : "Не удалось сохранить сообщение об отсутствии."
+      };
+    }
+
+    return {
+      ok: true,
+      locale: result.locale,
+      text:
+        result.locale === "uz"
+          ? "✅ <b>Xabar saqlandi</b>\n\n" +
+            escapeHtml(result.childName) +
+            "\n" +
+            escapeHtml(formatDateTime(result.session.startsAt, result.locale)) +
+            "\nSabab: " +
+            escapeHtml(absenceReasonLabel(reason, result.locale)) +
+            "\n\nMurabbiy bu ma’lumotni mashg‘ulot ro‘yxatida ko‘radi."
+          : "✅ <b>Отсутствие сохранено</b>\n\n" +
+            escapeHtml(result.childName) +
+            "\n" +
+            escapeHtml(formatDateTime(result.session.startsAt, result.locale)) +
+            "\nПричина: " +
+            escapeHtml(absenceReasonLabel(reason, result.locale)) +
+            "\n\nТренер увидит эту информацию в списке занятия.",
+      replyMarkup: childMenu(childId, result.locale)
+    };
+  }
+
+  return null;
+}
+
 export async function handleParentCabinetCallback(
   telegramUserId: bigint,
   data: string
@@ -875,6 +1288,13 @@ export async function handleParentCabinetCallback(
   }
 
   const childId = parts[2];
+
+  if (action === "absence" && childId) {
+    return buildParentAbsenceSessionPicker(
+      telegramUserId,
+      childId
+    );
+  }
 
   if (
     !childId ||
