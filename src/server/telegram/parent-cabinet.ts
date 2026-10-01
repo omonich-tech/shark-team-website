@@ -837,3 +837,120 @@ export async function handleParentCabinetCallback(
     childId
   );
 }
+
+
+export async function resolveParentCabinetIntent(
+  telegramUserId: bigint,
+  rawText: string
+): Promise<ParentCabinetResponse | null> {
+  const text = rawText.trim().toLowerCase();
+
+  const cabinetIntent = [
+    "кабинет",
+    "личный кабинет",
+    "мои дети",
+    "мой ребенок",
+    "мой ребёнок",
+    "kabinet",
+    "farzandim",
+    "bolam"
+  ].some((value) => text.includes(value));
+
+  const scheduleIntent = [
+    "мое расписание",
+    "моё расписание",
+    "расписание ребенка",
+    "расписание ребёнка",
+    "jadvalim",
+    "bola jadvali"
+  ].some((value) => text.includes(value));
+
+  const attendanceIntent = [
+    "посещаемость",
+    "мои посещения",
+    "пропуски ребенка",
+    "пропуски ребёнка",
+    "davomat"
+  ].some((value) => text.includes(value));
+
+  const subscriptionIntent = [
+    "мой абонемент",
+    "абонемент ребенка",
+    "абонемент ребёнка",
+    "abonementim",
+    "abonement"
+  ].some((value) => text.includes(value));
+
+  const progressIntent = [
+    "прогресс ребенка",
+    "прогресс ребёнка",
+    "мой прогресс",
+    "развитие ребенка",
+    "развитие ребёнка",
+    "rivojlanish"
+  ].some((value) => text.includes(value));
+
+  if (
+    !cabinetIntent &&
+    !scheduleIntent &&
+    !attendanceIntent &&
+    !subscriptionIntent &&
+    !progressIntent
+  ) {
+    return null;
+  }
+
+  const home = await buildParentCabinetHome(telegramUserId);
+
+  if (!home.ok) {
+    return home.error === "NO_STUDENTS" ||
+      home.error === "PARENT_NOT_LINKED"
+      ? null
+      : home;
+  }
+
+  const contact = await getVerifiedContact(telegramUserId);
+  if (!contact?.parentId) return home;
+
+  const children = await getParentChildren(contact.parentId);
+
+  if (cabinetIntent || children.length !== 1) {
+    return home;
+  }
+
+  const childId = children[0].id;
+
+  if (scheduleIntent) {
+    return buildParentCabinetView(
+      telegramUserId,
+      "schedule",
+      childId
+    );
+  }
+
+  if (attendanceIntent) {
+    return buildParentCabinetView(
+      telegramUserId,
+      "attendance",
+      childId
+    );
+  }
+
+  if (subscriptionIntent) {
+    return buildParentCabinetView(
+      telegramUserId,
+      "subscription",
+      childId
+    );
+  }
+
+  if (progressIntent) {
+    return buildParentCabinetView(
+      telegramUserId,
+      "progress",
+      childId
+    );
+  }
+
+  return home;
+}
