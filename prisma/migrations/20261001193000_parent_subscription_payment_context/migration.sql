@@ -1,5 +1,6 @@
 ALTER TABLE "TelegramContact"
-ADD COLUMN "selectedSubscriptionPaymentId" TEXT;
+ADD COLUMN "selectedSubscriptionPaymentId" TEXT,
+ADD COLUMN "selectedSubscriptionPaymentAt" TIMESTAMP(3);
 
 CREATE INDEX "TelegramContact_selectedSubscriptionPaymentId_idx"
 ON "TelegramContact"("selectedSubscriptionPaymentId");
