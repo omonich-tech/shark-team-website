@@ -830,6 +830,7 @@ model TelegramContact {
   verifiedAt     DateTime @default(now())
   lastMessageAt  DateTime?
   selectedSubscriptionPaymentId String?
+  selectedSubscriptionPaymentAt DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
