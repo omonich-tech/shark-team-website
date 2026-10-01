@@ -7,6 +7,7 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { addDays } from "@/server/billing/subscription-period";
+import { refreshPaymentAttentionAlert } from "@/server/billing/payment-alerts";
 
 const FREEZE_OPTIONS = new Set([7, 14, 30]);
 
@@ -202,6 +203,11 @@ export async function freezeEnrollmentSubscription(input: {
     now
   });
 
+  await refreshPaymentAttentionAlert({
+    enrollmentId: enrollment.id,
+    now
+  });
+
   return {
     ok: true as const,
     enrollment: updated,
@@ -317,6 +323,11 @@ export async function resumeEnrollmentSubscription(input: {
     now
   });
 
+  await refreshPaymentAttentionAlert({
+    enrollmentId: enrollment.id,
+    now
+  });
+
   return {
     ok: true as const,
     enrollment: updated,
@@ -397,6 +408,11 @@ export async function endEnrollmentSubscription(input: {
     enrollmentId: enrollment.id,
     parentId: enrollment.child.parentId,
     type: "SUBSCRIPTION_ENDED",
+    now
+  });
+
+  await refreshPaymentAttentionAlert({
+    enrollmentId: enrollment.id,
     now
   });
 

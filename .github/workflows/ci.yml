@@ -199,6 +199,9 @@ jobs:
 
       - name: Verify subscription renewal lifecycle
         run: npm run verify:subscription-lifecycle
+
+      - name: Verify payment attention alerts
+        run: npm run verify:payment-alerts
         env:
           TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
           TELEGRAM_ADMIN_USER_IDS: "999001"

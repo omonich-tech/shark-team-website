@@ -16,6 +16,7 @@ import {
   subscriptionGraceDays
 } from "@/server/billing/subscription-period";
 import { findSubscriptionPrice } from "@/server/billing/subscription-price";
+import { refreshPaymentAttentionAlert } from "@/server/billing/payment-alerts";
 
 export async function POST(
   request: NextRequest,
@@ -125,6 +126,11 @@ export async function POST(
     });
 
     return { enrollment, payment };
+  });
+
+  await refreshPaymentAttentionAlert({
+    enrollmentId: result.enrollment.id,
+    now
   });
 
   await writeAdminAudit({
