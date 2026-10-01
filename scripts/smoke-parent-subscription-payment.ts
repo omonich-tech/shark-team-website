@@ -1,5 +1,6 @@
 import "dotenv/config";
 import {
+  LeadStatus,
   PaymentProvider,
   PaymentStatus,
   StudentEnrollmentStatus,
@@ -41,7 +42,7 @@ async function createBillingFixture(input: {
 
   const lead = await prisma.lead.create({
     data: {
-      status: "CLOSED",
+      status: LeadStatus.CLOSED,
       parentName: input.parentName,
       childName: child.name,
       phone: input.phone,
