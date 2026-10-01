@@ -23,6 +23,7 @@ import { buildTelegramAssistantReply } from "@/server/telegram/assistant";
 import { consumeTelegramLinkToken } from "@/server/telegram/link";
 import {
   buildParentCabinetHome,
+  handleParentAbsenceCallback,
   handleParentCabinetCallback,
   resolveParentCabinetIntent
 } from "@/server/telegram/parent-cabinet";
@@ -350,6 +351,56 @@ async function sendSubscriptionPaymentReviewToAdmin(
       replyMarkup
     });
   }
+}
+
+async function handleParentAbsenceCallbackQuery(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+  const telegramUserId = callback.from?.id;
+  const chatId = callback.message?.chat?.id;
+
+  if (
+    !callbackId ||
+    !telegramUserId ||
+    !data.startsWith("pa:")
+  ) {
+    return false;
+  }
+
+  const result = await handleParentAbsenceCallback(
+    BigInt(telegramUserId),
+    data
+  );
+
+  if (!result) {
+    return false;
+  }
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.ok
+      ? result.locale === "uz"
+        ? "Tayyor."
+        : "Готово."
+      : result.locale === "uz"
+        ? "Saqlab bo‘lmadi."
+        : "Не удалось сохранить.",
+    showAlert: !result.ok
+  });
+
+  if (chatId !== undefined) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: result.text,
+      ...(result.replyMarkup
+        ? { replyMarkup: result.replyMarkup }
+        : {})
+    });
+  }
+
+  return true;
 }
 
 async function handleParentCabinetCallbackQuery(
@@ -881,8 +932,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (update.callback_query) {
-    const parentCabinetHandled =
-      await handleParentCabinetCallbackQuery(update.callback_query);
+    const parentAbsenceHandled =
+      await handleParentAbsenceCallbackQuery(update.callback_query);
+
+    const parentCabinetHandled = parentAbsenceHandled
+      ? true
+      : await handleParentCabinetCallbackQuery(update.callback_query);
 
     const feedbackHandled = parentCabinetHandled
       ? true
