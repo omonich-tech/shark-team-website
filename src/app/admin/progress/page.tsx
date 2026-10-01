@@ -1,4 +1,9 @@
-import { StudentEnrollmentStatus } from "@/generated/prisma/client";
+import Link from "next/link";
+import {
+  OperationalAlertStatus,
+  OperationalAlertType,
+  StudentEnrollmentStatus
+} from "@/generated/prisma/client";
 import { formatAdminDate } from "@/lib/admin-format";
 import { getPrisma } from "@/lib/prisma";
 
@@ -46,6 +51,13 @@ export default async function AdminProgressPage() {
           sport: true,
           primaryCoach: true
         }
+      },
+      operationalAlerts: {
+        where: {
+          type: OperationalAlertType.PROGRESS_OVERDUE,
+          status: OperationalAlertStatus.OPEN
+        },
+        take: 1
       }
     },
     orderBy: { updatedAt: "desc" },
@@ -54,6 +66,9 @@ export default async function AdminProgressPage() {
 
   const assessed = enrollments.filter(
     (item) => item.child.progressAssessments.length > 0
+  ).length;
+  const overdue = enrollments.filter(
+    (item) => item.operationalAlerts.length > 0
   ).length;
 
   return (
@@ -66,9 +81,14 @@ export default async function AdminProgressPage() {
             Регулярные оценки тренера и динамика развития постоянных учеников.
           </p>
         </div>
-        <span className="admin-count">
-          {assessed} / {enrollments.length} оценены
-        </span>
+        <div className="admin-page-actions">
+          <span className="admin-count">
+            {assessed} / {enrollments.length} оценены
+          </span>
+          <span className={overdue ? "admin-attention" : "admin-status"}>
+            Просрочено: {overdue}
+          </span>
+        </div>
       </div>
 
       <section className="admin-panel">
@@ -84,6 +104,7 @@ export default async function AdminProgressPage() {
                 <th>Дата</th>
                 <th>Комментарий</th>
                 <th>Рекомендация</th>
+                <th>Сигнал</th>
               </tr>
             </thead>
             <tbody>
@@ -105,7 +126,9 @@ export default async function AdminProgressPage() {
                 return (
                   <tr key={enrollment.id}>
                     <td>
-                      <strong>{enrollment.child.name}</strong>
+                      <Link href={"/admin/children/" + enrollment.childId}>
+                        <strong>{enrollment.child.name}</strong>
+                      </Link>
                       <br />
                       <small>{enrollment.child.parent.phone}</small>
                     </td>
@@ -128,11 +151,28 @@ export default async function AdminProgressPage() {
                     <td>{latest ? formatAdminDate(latest.assessedAt) : "—"}</td>
                     <td>{latest?.coachComment ?? "—"}</td>
                     <td>{latest?.recommendation ?? "—"}</td>
+                    <td>
+                      {enrollment.operationalAlerts[0] ? (
+                        <>
+                          <span className="admin-attention">
+                            {enrollment.operationalAlerts[0].severity === "critical"
+                              ? "Критический"
+                              : "Нужна оценка"}
+                          </span>
+                          <br />
+                          <small>
+                            {enrollment.operationalAlerts[0].details ?? "Просрочена оценка прогресса"}
+                          </small>
+                        </>
+                      ) : (
+                        <span className="admin-status">OK</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {enrollments.length === 0 ? (
-                <tr><td colSpan={8}>Активных учеников пока нет.</td></tr>
+                <tr><td colSpan={9}>Активных учеников пока нет.</td></tr>
               ) : null}
             </tbody>
           </table>
