@@ -97,21 +97,26 @@ export async function prepareParentSubscriptionPayment(input: {
   }
 
   const latest = enrollment.payments[0];
+  const renewalStatuses: PaymentStatus[] = [
+    PaymentStatus.PENDING,
+    PaymentStatus.REJECTED,
+    PaymentStatus.UNDER_REVIEW
+  ];
+  const payableSubscriptionStatuses: SubscriptionStatus[] = [
+    SubscriptionStatus.PAYMENT_DUE,
+    SubscriptionStatus.PAST_DUE,
+    SubscriptionStatus.PAUSED
+  ];
+
   const renewalInProgress =
     latest &&
     latest.sequence > 1 &&
     latest.enrollmentId === enrollment.id &&
-    [
-      PaymentStatus.PENDING,
-      PaymentStatus.REJECTED,
-      PaymentStatus.UNDER_REVIEW
-    ].includes(latest.status);
+    renewalStatuses.includes(latest.status);
 
-  const dueStatus = [
-    SubscriptionStatus.PAYMENT_DUE,
-    SubscriptionStatus.PAST_DUE,
-    SubscriptionStatus.PAUSED
-  ].includes(enrollment.subscriptionStatus ?? SubscriptionStatus.ACTIVE);
+  const dueStatus = payableSubscriptionStatuses.includes(
+    enrollment.subscriptionStatus ?? SubscriptionStatus.ACTIVE
+  );
 
   if (!renewalInProgress && !dueStatus) {
     return {
@@ -135,7 +140,9 @@ export async function prepareParentSubscriptionPayment(input: {
       };
     }
 
-    payment = prepared.payment;
+    payment = await prisma.subscriptionPayment.findUnique({
+      where: { id: prepared.payment.id }
+    });
   }
 
   if (!payment) {
