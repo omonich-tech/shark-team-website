@@ -22,6 +22,11 @@ import {
 import { buildTelegramAssistantReply } from "@/server/telegram/assistant";
 import { consumeTelegramLinkToken } from "@/server/telegram/link";
 import {
+  buildParentCabinetHome,
+  handleParentCabinetCallback,
+  resolveParentCabinetIntent
+} from "@/server/telegram/parent-cabinet";
+import {
   answerTelegramCallbackQuery,
   sendTelegramDocument,
   sendTelegramMessage,
@@ -345,6 +350,56 @@ async function sendSubscriptionPaymentReviewToAdmin(
       replyMarkup
     });
   }
+}
+
+async function handleParentCabinetCallbackQuery(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+  const telegramUserId = callback.from?.id;
+  const chatId = callback.message?.chat?.id;
+
+  if (
+    !callbackId ||
+    !telegramUserId ||
+    !data.startsWith("parent:")
+  ) {
+    return false;
+  }
+
+  const result = await handleParentCabinetCallback(
+    BigInt(telegramUserId),
+    data
+  );
+
+  if (!result) {
+    return false;
+  }
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.ok
+      ? result.locale === "uz"
+        ? "Kabinet yangilandi."
+        : "Кабинет обновлён."
+      : result.locale === "uz"
+        ? "Ma’lumotni ochib bo‘lmadi."
+        : "Не удалось открыть раздел.",
+    showAlert: !result.ok
+  });
+
+  if (chatId !== undefined) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: result.text,
+      ...(result.replyMarkup
+        ? { replyMarkup: result.replyMarkup }
+        : {})
+    });
+  }
+
+  return true;
 }
 
 async function handleFeedbackCallback(
@@ -826,9 +881,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (update.callback_query) {
-    const feedbackHandled = await handleFeedbackCallback(
-      update.callback_query
-    );
+    const parentCabinetHandled =
+      await handleParentCabinetCallbackQuery(update.callback_query);
+
+    const feedbackHandled = parentCabinetHandled
+      ? true
+      : await handleFeedbackCallback(update.callback_query);
 
     const attendanceHandled = feedbackHandled
       ? true
@@ -887,12 +945,26 @@ export async function POST(request: NextRequest) {
     if (result.ok) {
       const greeting =
         result.contact.locale === "uz"
-          ? "✅ Telegram SHARK TEAM arizangizga ulandi. Agar kartaga to‘lov qilgan bo‘lsangiz, chek yoki skrinshotni shu chatga yuboring."
-          : "✅ Telegram подключён к вашей заявке SHARK TEAM. Если вы уже перевели оплату на карту, отправьте сюда фото или скриншот чека.";
+          ? "✅ Telegram SHARK TEAM profilingizga ulandi."
+          : "✅ Telegram подключён к вашему профилю SHARK TEAM.";
+
+      const cabinet = await buildParentCabinetHome(
+        BigInt(telegramUserId)
+      );
 
       await sendTelegramMessage({
         chatId: BigInt(chatId),
-        text: greeting
+        text:
+          greeting +
+          (cabinet.ok
+            ? "\n\n" + cabinet.text
+            : "\n\n" +
+              (result.contact.locale === "uz"
+                ? "Agar kartaga to‘lov qilgan bo‘lsangiz, chek yoki skrinshotni shu chatga yuboring."
+                : "Если вы уже перевели оплату на карту, отправьте сюда фото или скриншот чека.")),
+        ...(cabinet.ok
+          ? { replyMarkup: cabinet.replyMarkup }
+          : {})
       });
     } else {
       await sendTelegramMessage({
@@ -933,6 +1005,28 @@ export async function POST(request: NextRequest) {
       lastMessageAt: new Date()
     }
   });
+
+  if (
+    text &&
+    (/^\/(?:cabinet|menu|start)(?:@[A-Za-z0-9_]+)?$/.test(text) ||
+      ["кабинет", "личный кабинет", "kabinet"].includes(
+        text.toLowerCase()
+      ))
+  ) {
+    const cabinet = await buildParentCabinetHome(
+      BigInt(telegramUserId)
+    );
+
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: cabinet.text,
+      ...(cabinet.replyMarkup
+        ? { replyMarkup: cabinet.replyMarkup }
+        : {})
+    });
+
+    return NextResponse.json({ ok: true });
+  }
 
   const photos = message.photo ?? [];
   const document = message.document;
@@ -1101,6 +1195,23 @@ export async function POST(request: NextRequest) {
         feedback.locale === "uz"
           ? "✅ Rahmat. Fikringiz saqlandi. Administrator va murabbiy natijalarni ko‘rib chiqadi."
           : "✅ Спасибо. Ваш отзыв сохранён. Администратор увидит его вместе с оценкой тренера."
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  const cabinetReply = await resolveParentCabinetIntent(
+    BigInt(telegramUserId),
+    text
+  );
+
+  if (cabinetReply) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: cabinetReply.text,
+      ...(cabinetReply.replyMarkup
+        ? { replyMarkup: cabinetReply.replyMarkup }
+        : {})
     });
 
     return NextResponse.json({ ok: true });

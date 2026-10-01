@@ -191,6 +191,9 @@ jobs:
       - name: Smoke test Telegram linking and notifications
         run: npm run smoke:telegram
 
+      - name: Smoke test parent Telegram cabinet
+        run: npm run smoke:parent-cabinet
+
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
         env:
