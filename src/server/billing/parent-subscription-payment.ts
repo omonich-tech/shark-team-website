@@ -205,7 +205,8 @@ export async function prepareParentSubscriptionPayment(input: {
   await prisma.telegramContact.update({
     where: { id: contact.id },
     data: {
-      selectedSubscriptionPaymentId: payment.id
+      selectedSubscriptionPaymentId: payment.id,
+      selectedSubscriptionPaymentAt: now
     }
   });
 
