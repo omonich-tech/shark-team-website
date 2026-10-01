@@ -127,7 +127,8 @@ export async function prepareParentSubscriptionPayment(input: {
     };
   }
 
-  let payment = latest ?? null;
+  let payment: (typeof enrollment.payments)[number] | null =
+    latest ?? null;
 
   if (!renewalInProgress) {
     const prepared = await ensureRenewalPayment(enrollment, now);
