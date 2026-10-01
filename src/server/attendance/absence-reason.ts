@@ -158,3 +158,141 @@ export async function setParentAttendanceReason(input: {
     childName: attendance.child.name
   };
 }
+
+
+export async function setParentPlannedAbsence(input: {
+  telegramUserId: bigint;
+  childId: string;
+  sessionId: string;
+  reason: AbsenceReason;
+  now?: Date;
+}) {
+  const prisma = getPrisma();
+  const now = input.now ?? new Date();
+
+  const contact = await prisma.telegramContact.findUnique({
+    where: {
+      telegramUserId: input.telegramUserId
+    }
+  });
+
+  if (!contact?.parentId) {
+    return { ok: false as const, error: "PARENT_NOT_LINKED" as const };
+  }
+
+  const child = await prisma.child.findFirst({
+    where: {
+      id: input.childId,
+      parentId: contact.parentId
+    },
+    select: {
+      id: true,
+      name: true
+    }
+  });
+
+  if (!child) {
+    return { ok: false as const, error: "CHILD_NOT_FOUND" as const };
+  }
+
+  const session = await prisma.trainingSession.findFirst({
+    where: {
+      id: input.sessionId,
+      status: "SCHEDULED",
+      startsAt: { gt: now },
+      group: {
+        enrollments: {
+          some: {
+            childId: child.id,
+            status: "ACTIVE",
+            startDate: { lte: now },
+            OR: [
+              { endDate: null },
+              { endDate: { gte: now } }
+            ]
+          }
+        }
+      }
+    },
+    include: {
+      group: {
+        include: {
+          sport: true,
+          branch: true
+        }
+      }
+    }
+  });
+
+  if (!session) {
+    return {
+      ok: false as const,
+      error: "SESSION_NOT_AVAILABLE" as const
+    };
+  }
+
+  const existing = await prisma.attendance.findUnique({
+    where: {
+      sessionId_childId: {
+        sessionId: session.id,
+        childId: child.id
+      }
+    }
+  });
+
+  if (
+    existing?.trialBookingId ||
+    existing?.status === AttendanceStatus.PRESENT
+  ) {
+    return {
+      ok: false as const,
+      error: "ATTENDANCE_NOT_EDITABLE" as const
+    };
+  }
+
+  const attendance = await prisma.attendance.upsert({
+    where: {
+      sessionId_childId: {
+        sessionId: session.id,
+        childId: child.id
+      }
+    },
+    update: {
+      coachId: session.coachId,
+      status: AttendanceStatus.EXCUSED,
+      absenceReason: input.reason,
+      absenceNote: null,
+      reasonSource: AttendanceReasonSource.PARENT,
+      reasonUpdatedAt: now,
+      markedAt: now
+    },
+    create: {
+      sessionId: session.id,
+      childId: child.id,
+      coachId: session.coachId,
+      status: AttendanceStatus.EXCUSED,
+      absenceReason: input.reason,
+      reasonSource: AttendanceReasonSource.PARENT,
+      reasonUpdatedAt: now,
+      markedAt: now
+    }
+  });
+
+  await skipRegularAbsenceNotice(attendance.id);
+
+  return {
+    ok: true as const,
+    locale: contact.locale === "uz" ? ("uz" as const) : ("ru" as const),
+    childName: child.name,
+    session: {
+      id: session.id,
+      startsAt: session.startsAt,
+      groupName: session.group.internalName,
+      sportNameRu: session.group.sport.nameRu,
+      sportNameUz: session.group.sport.nameUz,
+      branchNameRu: session.group.branch.publicNameRu,
+      branchNameUz: session.group.branch.publicNameUz
+    },
+    attendance
+  };
+}
