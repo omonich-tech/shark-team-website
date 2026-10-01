@@ -227,6 +227,9 @@ jobs:
       - name: Smoke test operations dashboard
         run: npm run smoke:operations-dashboard
 
+      - name: Smoke test operations assistant
+        run: npm run smoke:operations-assistant
+
       - name: Smoke test protected CRM
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/admin)
