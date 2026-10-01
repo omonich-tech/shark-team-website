@@ -222,6 +222,10 @@ export default async function AdminDashboardPage() {
   const alertsByType = new Map(
     alertGroups.map((item) => [item.type, item._count._all])
   );
+  const totalOpenAlerts = alertGroups.reduce(
+    (sum, item) => sum + item._count._all,
+    0
+  );
 
   return (
     <>
@@ -277,8 +281,8 @@ export default async function AdminDashboardPage() {
         </article>
         <article className="admin-metric">
           <span>Открытые сигналы</span>
-          <strong>{openAlerts.length}</strong>
-          <small>Показаны первые 15</small>
+          <strong>{totalOpenAlerts}</strong>
+          <small>В таблице показаны первые 15</small>
         </article>
       </section>
 
