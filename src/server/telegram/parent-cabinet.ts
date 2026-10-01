@@ -462,12 +462,7 @@ export async function buildParentCabinetView(
     };
   }
 
-  const activeEnrollment =
-    child.enrollments.find(
-      (item) => item.status === StudentEnrollmentStatus.ACTIVE
-    ) ?? child.enrollments[0];
-
-  if (!activeEnrollment) {
+  if (child.enrollments.length === 0) {
     return {
       ok: false,
       error: "NO_STUDENTS",
@@ -478,20 +473,6 @@ export async function buildParentCabinetView(
           : "Активная группа не найдена."
     };
   }
-
-  const group = activeEnrollment.group;
-  const sportName =
-    locale === "uz" ? group.sport.nameUz : group.sport.nameRu;
-  const branchName =
-    locale === "uz"
-      ? group.branch.publicNameUz
-      : group.branch.publicNameRu;
-  const coachName = [
-    group.primaryCoach.firstName,
-    group.primaryCoach.lastName
-  ]
-    .filter(Boolean)
-    .join(" ");
 
   if (view === "schedule") {
     const sessions = child.enrollments.flatMap((enrollment) =>
