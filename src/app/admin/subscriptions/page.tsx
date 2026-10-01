@@ -1,3 +1,8 @@
+import Link from "next/link";
+import {
+  OperationalAlertStatus,
+  OperationalAlertType
+} from "@/generated/prisma/client";
 import { SubscriptionControls } from "@/components/admin/subscription-controls";
 import { formatAdminDate } from "@/lib/admin-format";
 import { getPrisma } from "@/lib/prisma";
@@ -31,6 +36,13 @@ export default async function AdminSubscriptionsPage() {
           sequence: "desc"
         },
         take: 2
+      },
+      operationalAlerts: {
+        where: {
+          type: OperationalAlertType.PAYMENT_ATTENTION,
+          status: OperationalAlertStatus.OPEN
+        },
+        take: 1
       }
     }
   });
@@ -41,11 +53,20 @@ export default async function AdminSubscriptionsPage() {
   const frozen = enrollments.filter(
     (item) => item.subscriptionStatus === "FROZEN"
   ).length;
+  const paymentDue = enrollments.filter(
+    (item) => item.subscriptionStatus === "PAYMENT_DUE"
+  ).length;
+  const pastDue = enrollments.filter(
+    (item) => item.subscriptionStatus === "PAST_DUE"
+  ).length;
+  const pausedForPayment = enrollments.filter(
+    (item) => item.subscriptionStatus === "PAUSED"
+  ).length;
+  const underReview = enrollments.filter((item) =>
+    item.payments.some((payment) => payment.status === "UNDER_REVIEW")
+  ).length;
   const paymentIssues = enrollments.filter(
-    (item) =>
-      item.subscriptionStatus === "PAYMENT_DUE" ||
-      item.subscriptionStatus === "PAST_DUE" ||
-      item.subscriptionStatus === "PAUSED"
+    (item) => item.operationalAlerts.length > 0
   ).length;
 
   return (
@@ -71,8 +92,24 @@ export default async function AdminSubscriptionsPage() {
           <strong>{frozen}</strong>
         </div>
         <div className="admin-metric">
-          <span>Требуют оплаты</span>
+          <span>Требуют внимания</span>
           <strong>{paymentIssues}</strong>
+        </div>
+        <div className="admin-metric">
+          <span>Срок оплаты</span>
+          <strong>{paymentDue}</strong>
+        </div>
+        <div className="admin-metric">
+          <span>Просрочено</span>
+          <strong>{pastDue}</strong>
+        </div>
+        <div className="admin-metric">
+          <span>Приостановлено</span>
+          <strong>{pausedForPayment}</strong>
+        </div>
+        <div className="admin-metric">
+          <span>Оплата на проверке</span>
+          <strong>{underReview}</strong>
         </div>
       </section>
 
@@ -96,7 +133,11 @@ export default async function AdminSubscriptionsPage() {
                   <span className="admin-status">
                     {enrollment.subscriptionStatus ?? enrollment.status}
                   </span>
-                  <h2>{enrollment.child.name}</h2>
+                  <h2>
+                    <Link href={"/admin/children/" + enrollment.childId}>
+                      {enrollment.child.name}
+                    </Link>
+                  </h2>
                   <p>
                     {enrollment.group.sport.nameRu} ·{" "}
                     {enrollment.group.internalName} ·{" "}
@@ -132,6 +173,14 @@ export default async function AdminSubscriptionsPage() {
                   </strong>
                 </div>
                 <div>
+                  <span>Льготный период</span>
+                  <strong>
+                    {enrollment.graceUntil
+                      ? "до " + formatAdminDate(enrollment.graceUntil)
+                      : "—"}
+                  </strong>
+                </div>
+                <div>
                   <span>Заморозка</span>
                   <strong>
                     {enrollment.subscriptionStatus === "FROZEN"
@@ -140,6 +189,18 @@ export default async function AdminSubscriptionsPage() {
                   </strong>
                 </div>
               </div>
+
+              {enrollment.operationalAlerts[0] ? (
+                <div className="subscription-note">
+                  <strong>
+                    {enrollment.operationalAlerts[0].severity === "critical"
+                      ? "Критический платёжный сигнал"
+                      : "Требует оплаты"}
+                  </strong>
+                  {" · "}
+                  {enrollment.operationalAlerts[0].details ?? "Требуется действие администратора"}
+                </div>
+              ) : null}
 
               {enrollment.freezeReason ? (
                 <div className="subscription-note">
