@@ -83,6 +83,70 @@ function averageAssessment(item: {
   ) / 6;
 }
 
+
+function attendanceStatusLabel(
+  status: AttendanceStatus,
+  locale: Locale
+) {
+  if (locale === "uz") {
+    if (status === AttendanceStatus.PRESENT) return "qatnashdi";
+    if (status === AttendanceStatus.EXCUSED) return "sababli kelmadi";
+    return "kelmadi";
+  }
+
+  if (status === AttendanceStatus.PRESENT) return "присутствовал";
+  if (status === AttendanceStatus.EXCUSED) return "уважительный пропуск";
+  return "отсутствовал";
+}
+
+function subscriptionStatusLabel(
+  status: string,
+  locale: Locale
+) {
+  const ru: Record<string, string> = {
+    ACTIVE: "активен",
+    PAYMENT_DUE: "скоро оплата",
+    PAST_DUE: "оплата просрочена",
+    FROZEN: "заморожен",
+    PAUSED: "приостановлен",
+    ENDED: "завершён"
+  };
+  const uz: Record<string, string> = {
+    ACTIVE: "faol",
+    PAYMENT_DUE: "to‘lov vaqti",
+    PAST_DUE: "to‘lov muddati o‘tgan",
+    FROZEN: "muzlatilgan",
+    PAUSED: "to‘xtatilgan",
+    ENDED: "yakunlangan"
+  };
+
+  return (locale === "uz" ? uz : ru)[status] ?? status;
+}
+
+function paymentStatusLabel(
+  status: string,
+  locale: Locale
+) {
+  const ru: Record<string, string> = {
+    PENDING: "ожидается",
+    UNDER_REVIEW: "на проверке",
+    PAID: "оплачен",
+    REJECTED: "отклонён",
+    CANCELLED: "отменён",
+    REFUNDED: "возвращён"
+  };
+  const uz: Record<string, string> = {
+    PENDING: "kutilmoqda",
+    UNDER_REVIEW: "tekshiruvda",
+    PAID: "to‘langan",
+    REJECTED: "rad etilgan",
+    CANCELLED: "bekor qilingan",
+    REFUNDED: "qaytarilgan"
+  };
+
+  return (locale === "uz" ? uz : ru)[status] ?? status;
+}
+
 function homeButton(locale: Locale) {
   return {
     text: locale === "uz" ? "🏠 Bosh sahifa" : "🏠 Главная",
@@ -244,7 +308,7 @@ async function getChildForParent(
       },
       progressAssessments: {
         orderBy: { assessedAt: "desc" },
-        take: 2,
+        take: 20,
         include: {
           group: {
             include: {
@@ -510,7 +574,7 @@ export async function buildParentCabinetView(
                 "• " +
                 escapeHtml(formatDateTime(item.session.startsAt, locale)) +
                 " · " +
-                item.status
+                escapeHtml(attendanceStatusLabel(item.status, locale))
             )
           ]
         : [
@@ -528,7 +592,7 @@ export async function buildParentCabinetView(
                 "• " +
                 escapeHtml(formatDateTime(item.session.startsAt, locale)) +
                 " · " +
-                item.status
+                escapeHtml(attendanceStatusLabel(item.status, locale))
             )
           ];
 
@@ -541,92 +605,69 @@ export async function buildParentCabinetView(
   }
 
   if (view === "subscription") {
-    const latestPayment = activeEnrollment.payments[0];
-
     const lines =
       locale === "uz"
         ? [
-            "💳 <b>" + escapeHtml(child.name) + " · Abonement</b>",
-            "",
-            "Holat: <b>" +
-              escapeHtml(
-                activeEnrollment.subscriptionStatus ??
-                  activeEnrollment.status
-              ) +
-              "</b>",
-            "To‘langan davr: " +
-              escapeHtml(
-                formatDate(activeEnrollment.currentPeriodStart, locale)
-              ) +
-              " → " +
-              escapeHtml(
-                formatDate(activeEnrollment.currentPeriodEnd, locale)
-              ),
-            "Keyingi to‘lov: " +
-              escapeHtml(
-                formatDate(activeEnrollment.nextPaymentDueAt, locale)
-              ),
-            activeEnrollment.graceUntil
-              ? "Imtiyozli muddat: " +
-                escapeHtml(
-                  formatDate(activeEnrollment.graceUntil, locale)
-                )
-              : "",
-            latestPayment
-              ? "Oxirgi to‘lov: " +
-                escapeHtml(latestPayment.status) +
-                " · " +
-                formatMoney(latestPayment.amountUzs) +
-                " UZS"
-              : ""
+            "💳 <b>" + escapeHtml(child.name) + " · Abonementlar</b>",
+            ""
           ]
         : [
-            "💳 <b>" + escapeHtml(child.name) + " · Абонемент</b>",
-            "",
-            "Статус: <b>" +
-              escapeHtml(
-                activeEnrollment.subscriptionStatus ??
-                  activeEnrollment.status
-              ) +
-              "</b>",
-            "Оплаченный период: " +
-              escapeHtml(
-                formatDate(activeEnrollment.currentPeriodStart, locale)
-              ) +
-              " → " +
-              escapeHtml(
-                formatDate(activeEnrollment.currentPeriodEnd, locale)
-              ),
-            "Следующая оплата: " +
-              escapeHtml(
-                formatDate(activeEnrollment.nextPaymentDueAt, locale)
-              ),
-            activeEnrollment.graceUntil
-              ? "Льготный период: до " +
-                escapeHtml(
-                  formatDate(activeEnrollment.graceUntil, locale)
-                )
-              : "",
-            latestPayment
-              ? "Последний платёж: " +
-                escapeHtml(latestPayment.status) +
-                " · " +
-                formatMoney(latestPayment.amountUzs) +
-                " UZS"
-              : ""
+            "💳 <b>" + escapeHtml(child.name) + " · Абонементы</b>",
+            ""
           ];
+
+    for (const enrollment of child.enrollments) {
+      const latestPayment = enrollment.payments[0];
+      const enrollmentSport =
+        locale === "uz"
+          ? enrollment.group.sport.nameUz
+          : enrollment.group.sport.nameRu;
+      const status =
+        enrollment.subscriptionStatus ?? enrollment.status;
+
+      lines.push(
+        "<b>" +
+          escapeHtml(enrollmentSport) +
+          " · " +
+          escapeHtml(enrollment.group.internalName) +
+          "</b>",
+        (locale === "uz" ? "Holat: " : "Статус: ") +
+          "<b>" +
+          escapeHtml(subscriptionStatusLabel(status, locale)) +
+          "</b>",
+        (locale === "uz" ? "To‘langan davr: " : "Оплаченный период: ") +
+          escapeHtml(formatDate(enrollment.currentPeriodStart, locale)) +
+          " → " +
+          escapeHtml(formatDate(enrollment.currentPeriodEnd, locale)),
+        (locale === "uz" ? "Keyingi to‘lov: " : "Следующая оплата: ") +
+          escapeHtml(formatDate(enrollment.nextPaymentDueAt, locale)),
+        enrollment.graceUntil
+          ? (locale === "uz"
+              ? "Imtiyozli muddat: "
+              : "Льготный период: до ") +
+            escapeHtml(formatDate(enrollment.graceUntil, locale))
+          : "",
+        latestPayment
+          ? (locale === "uz" ? "Oxirgi to‘lov: " : "Последний платёж: ") +
+            escapeHtml(paymentStatusLabel(latestPayment.status, locale)) +
+            " · " +
+            formatMoney(latestPayment.amountUzs) +
+            " UZS"
+          : "",
+        ""
+      );
+    }
 
     return {
       ok: true,
       locale,
-      text: lines.filter(Boolean).join("\n"),
+      text: lines.filter((line, index) => Boolean(line) || index === lines.length - 1).join("\n").trim(),
       replyMarkup: childMenu(child.id, locale)
     };
   }
 
   if (view === "progress") {
     const latest = child.progressAssessments[0];
-    const previous = child.progressAssessments[1];
 
     if (!latest) {
       return {
@@ -644,91 +685,111 @@ export async function buildParentCabinetView(
       };
     }
 
-    const latestAverage = averageAssessment(latest);
-    const previousAverage = previous
-      ? averageAssessment(previous)
-      : null;
-    const delta =
-      previousAverage === null
-        ? null
-        : latestAverage - previousAverage;
-
     const lines =
       locale === "uz"
         ? [
             "📈 <b>" + escapeHtml(child.name) + " · Rivojlanish</b>",
-            "",
-            "Oxirgi baho: <b>" +
-              latestAverage.toFixed(1) +
-              " / 5</b>" +
-              (delta === null
-                ? ""
-                : " · " +
-                  (delta >= 0 ? "+" : "") +
-                  delta.toFixed(1)),
-            "Sana: " + escapeHtml(formatDate(latest.assessedAt, locale)),
-            "",
-            "Ko‘nikma: " + latest.ability + "/5",
-            "Intizom: " + latest.discipline + "/5",
-            "Motivatsiya: " + latest.motivation + "/5",
-            "Koordinatsiya: " + latest.coordination + "/5",
-            "Jismoniy tayyorgarlik: " +
-              latest.physicalPreparation +
-              "/5",
-            "Psixologik tayyorgarlik: " +
-              latest.psychologicalReadiness +
-              "/5",
-            latest.coachComment
-              ? "Murabbiy izohi: " +
-                escapeHtml(latest.coachComment)
-              : "",
-            latest.recommendation
-              ? "Tavsiya: " +
-                escapeHtml(latest.recommendation)
-              : ""
+            ""
           ]
         : [
             "📈 <b>" + escapeHtml(child.name) + " · Прогресс</b>",
-            "",
-            "Последняя оценка: <b>" +
-              latestAverage.toFixed(1) +
-              " / 5</b>" +
-              (delta === null
-                ? ""
-                : " · " +
-                  (delta >= 0 ? "+" : "") +
-                  delta.toFixed(1)),
-            "Дата: " + escapeHtml(formatDate(latest.assessedAt, locale)),
-            "",
-            "Навыки: " + latest.ability + "/5",
-            "Дисциплина: " + latest.discipline + "/5",
-            "Мотивация: " + latest.motivation + "/5",
-            "Координация: " + latest.coordination + "/5",
-            "Физподготовка: " +
-              latest.physicalPreparation +
-              "/5",
-            "Психологическая готовность: " +
-              latest.psychologicalReadiness +
-              "/5",
-            latest.coachComment
-              ? "Комментарий тренера: " +
-                escapeHtml(latest.coachComment)
-              : "",
-            latest.recommendation
-              ? "Рекомендация: " +
-                escapeHtml(latest.recommendation)
-              : ""
+            ""
           ];
+
+    for (const enrollment of child.enrollments) {
+      const assessments = child.progressAssessments.filter(
+        (item) => item.groupId === enrollment.groupId
+      );
+      const current = assessments[0];
+      const previous = assessments[1];
+      const enrollmentSport =
+        locale === "uz"
+          ? enrollment.group.sport.nameUz
+          : enrollment.group.sport.nameRu;
+
+      lines.push(
+        "<b>" +
+          escapeHtml(enrollmentSport) +
+          " · " +
+          escapeHtml(enrollment.group.internalName) +
+          "</b>"
+      );
+
+      if (!current) {
+        lines.push(
+          locale === "uz"
+            ? "Murabbiyning muntazam bahosi hali yo‘q."
+            : "Регулярной оценки тренера пока нет.",
+          ""
+        );
+        continue;
+      }
+
+      const currentAverage = averageAssessment(current);
+      const previousAverage = previous
+        ? averageAssessment(previous)
+        : null;
+      const delta =
+        previousAverage === null
+          ? null
+          : currentAverage - previousAverage;
+
+      lines.push(
+        (locale === "uz" ? "Oxirgi baho: " : "Последняя оценка: ") +
+          "<b>" +
+          currentAverage.toFixed(1) +
+          " / 5</b>" +
+          (delta === null
+            ? ""
+            : " · " +
+              (delta >= 0 ? "+" : "") +
+              delta.toFixed(1)),
+        (locale === "uz" ? "Sana: " : "Дата: ") +
+          escapeHtml(formatDate(current.assessedAt, locale)),
+        (locale === "uz" ? "Ko‘nikma: " : "Навыки: ") +
+          current.ability +
+          "/5",
+        (locale === "uz" ? "Intizom: " : "Дисциплина: ") +
+          current.discipline +
+          "/5",
+        (locale === "uz" ? "Motivatsiya: " : "Мотивация: ") +
+          current.motivation +
+          "/5",
+        (locale === "uz" ? "Koordinatsiya: " : "Координация: ") +
+          current.coordination +
+          "/5",
+        (locale === "uz"
+          ? "Jismoniy tayyorgarlik: "
+          : "Физподготовка: ") +
+          current.physicalPreparation +
+          "/5",
+        (locale === "uz"
+          ? "Psixologik tayyorgarlik: "
+          : "Психологическая готовность: ") +
+          current.psychologicalReadiness +
+          "/5",
+        current.coachComment
+          ? (locale === "uz"
+              ? "Murabbiy izohi: "
+              : "Комментарий тренера: ") +
+            escapeHtml(current.coachComment)
+          : "",
+        current.recommendation
+          ? (locale === "uz" ? "Tavsiya: " : "Рекомендация: ") +
+            escapeHtml(current.recommendation)
+          : "",
+        ""
+      );
+    }
 
     return {
       ok: true,
       locale,
-      text: lines.filter(Boolean).join("\n"),
+      text: lines.filter((line, index) => Boolean(line) || index === lines.length - 1).join("\n").trim(),
       replyMarkup: childMenu(child.id, locale)
     };
   }
 
-  const nextSession = group.sessions[0];
   const attendanceTotal = child.attendances.length;
   const attendancePresent = child.attendances.filter(
     (item) => item.status === AttendanceStatus.PRESENT
@@ -737,67 +798,84 @@ export async function buildParentCabinetView(
     attendanceTotal > 0
       ? Math.round((attendancePresent / attendanceTotal) * 100)
       : null;
-  const latestProgress = child.progressAssessments[0];
 
   const lines =
     locale === "uz"
       ? [
           "👤 <b>" + escapeHtml(child.name) + "</b>",
           "",
-          "Sport: " + escapeHtml(sportName),
-          "Guruh: " + escapeHtml(group.internalName),
-          "Filial: " + escapeHtml(branchName),
-          "Murabbiy: " + escapeHtml(coachName || "—"),
-          "",
-          "Keyingi mashg‘ulot: <b>" +
-            escapeHtml(formatDateTime(nextSession?.startsAt, locale)) +
-            "</b>",
-          "Abonement: <b>" +
-            escapeHtml(
-              activeEnrollment.subscriptionStatus ??
-                activeEnrollment.status
-            ) +
-            "</b>",
+          "Faol yo‘nalishlar: <b>" + child.enrollments.length + "</b>",
           "Davomat · 30 kun: <b>" +
             (attendanceRate === null ? "—" : attendanceRate + "%") +
             "</b>",
-          "Rivojlanish: <b>" +
-            (latestProgress
-              ? averageAssessment(latestProgress).toFixed(1) + " / 5"
-              : "—") +
-            "</b>"
+          ""
         ]
       : [
           "👤 <b>" + escapeHtml(child.name) + "</b>",
           "",
-          "Направление: " + escapeHtml(sportName),
-          "Группа: " + escapeHtml(group.internalName),
-          "Филиал: " + escapeHtml(branchName),
-          "Тренер: " + escapeHtml(coachName || "—"),
-          "",
-          "Следующая тренировка: <b>" +
-            escapeHtml(formatDateTime(nextSession?.startsAt, locale)) +
-            "</b>",
-          "Абонемент: <b>" +
-            escapeHtml(
-              activeEnrollment.subscriptionStatus ??
-                activeEnrollment.status
-            ) +
-            "</b>",
+          "Активных направлений: <b>" + child.enrollments.length + "</b>",
           "Посещаемость · 30 дней: <b>" +
             (attendanceRate === null ? "—" : attendanceRate + "%") +
             "</b>",
-          "Прогресс: <b>" +
-            (latestProgress
-              ? averageAssessment(latestProgress).toFixed(1) + " / 5"
-              : "—") +
-            "</b>"
+          ""
         ];
+
+  for (const enrollment of child.enrollments) {
+    const enrollmentSport =
+      locale === "uz"
+        ? enrollment.group.sport.nameUz
+        : enrollment.group.sport.nameRu;
+    const enrollmentBranch =
+      locale === "uz"
+        ? enrollment.group.branch.publicNameUz
+        : enrollment.group.branch.publicNameRu;
+    const enrollmentCoach = [
+      enrollment.group.primaryCoach.firstName,
+      enrollment.group.primaryCoach.lastName
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const nextSession = enrollment.group.sessions[0];
+    const progress = child.progressAssessments.find(
+      (item) => item.groupId === enrollment.groupId
+    );
+    const status =
+      enrollment.subscriptionStatus ?? enrollment.status;
+
+    lines.push(
+      "<b>" +
+        escapeHtml(enrollmentSport) +
+        " · " +
+        escapeHtml(enrollment.group.internalName) +
+        "</b>",
+      (locale === "uz" ? "Filial: " : "Филиал: ") +
+        escapeHtml(enrollmentBranch),
+      (locale === "uz" ? "Murabbiy: " : "Тренер: ") +
+        escapeHtml(enrollmentCoach || "—"),
+      (locale === "uz"
+        ? "Keyingi mashg‘ulot: "
+        : "Следующая тренировка: ") +
+        "<b>" +
+        escapeHtml(formatDateTime(nextSession?.startsAt, locale)) +
+        "</b>",
+      (locale === "uz" ? "Abonement: " : "Абонемент: ") +
+        "<b>" +
+        escapeHtml(subscriptionStatusLabel(status, locale)) +
+        "</b>",
+      (locale === "uz" ? "Rivojlanish: " : "Прогресс: ") +
+        "<b>" +
+        (progress
+          ? averageAssessment(progress).toFixed(1) + " / 5"
+          : "—") +
+        "</b>",
+      ""
+    );
+  }
 
   return {
     ok: true,
     locale,
-    text: lines.join("\n"),
+    text: lines.join("\n").trim(),
     replyMarkup: childMenu(child.id, locale)
   };
 }
