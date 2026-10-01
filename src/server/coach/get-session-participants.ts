@@ -98,6 +98,7 @@ export async function getCoachSessionParticipants(
       attendanceStatus: string | null;
       absenceReason: string | null;
       absenceNote: string | null;
+      reasonSource: string | null;
       assessmentCompleted: boolean;
     }
   >();
@@ -124,6 +125,7 @@ export async function getCoachSessionParticipants(
       attendanceStatus: attendance?.status ?? null,
       absenceReason: attendance?.absenceReason ?? null,
       absenceNote: attendance?.absenceNote ?? null,
+      reasonSource: attendance?.reasonSource ?? null,
       assessmentCompleted: false
     });
   }
@@ -147,6 +149,7 @@ export async function getCoachSessionParticipants(
       attendanceStatus: attendance?.status ?? null,
       absenceReason: attendance?.absenceReason ?? null,
       absenceNote: attendance?.absenceNote ?? null,
+      reasonSource: attendance?.reasonSource ?? null,
       assessmentCompleted: Boolean(booking.assessment)
     });
   }
