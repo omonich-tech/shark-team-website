@@ -72,7 +72,7 @@ async function queueSubscriptionNotification(input: {
   });
 }
 
-async function ensureRenewalPayment(
+export async function ensureRenewalPayment(
   enrollment: {
     id: string;
     groupId: string;

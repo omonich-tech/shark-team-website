@@ -367,6 +367,136 @@ export async function submitSubscriptionReceipt(input: {
     return { ok: false as const, error: "NO_ACTIVE_SUBSCRIPTION" as const };
   }
 
+  const selectedContextFresh =
+    contact.selectedSubscriptionPaymentId &&
+    contact.selectedSubscriptionPaymentAt &&
+    Date.now() - contact.selectedSubscriptionPaymentAt.getTime() <=
+      24 * 60 * 60 * 1000;
+
+  if (contact.selectedSubscriptionPaymentId && !selectedContextFresh) {
+    await prisma.telegramContact.update({
+      where: { id: contact.id },
+      data: {
+        selectedSubscriptionPaymentId: null,
+        selectedSubscriptionPaymentAt: null
+      }
+    });
+  }
+
+  if (contact.selectedSubscriptionPaymentId && selectedContextFresh) {
+    const selected = await prisma.subscriptionPayment.findFirst({
+      where: {
+        id: contact.selectedSubscriptionPaymentId,
+        sequence: { gt: 1 },
+        enrollment: {
+          child: {
+            parentId: contact.parentId
+          }
+        }
+      },
+      include: {
+        enrollment: true,
+        trialConversion: {
+          include: {
+            child: { include: { parent: true } },
+            group: {
+              include: {
+                branch: true,
+                sport: true,
+                primaryCoach: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!selected) {
+      await prisma.telegramContact.update({
+        where: { id: contact.id },
+        data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
+      });
+    } else if (selected.status === PaymentStatus.PAID) {
+      await prisma.telegramContact.update({
+        where: { id: contact.id },
+        data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
+      });
+
+      return {
+        ok: true as const,
+        alreadyPaid: true as const,
+        renewal: true as const,
+        conversion: selected.trialConversion,
+        enrollment: selected.enrollment,
+        payment: selected
+      };
+    } else if (selected.status === PaymentStatus.UNDER_REVIEW) {
+      await prisma.telegramContact.update({
+        where: { id: contact.id },
+        data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
+      });
+
+      return {
+        ok: false as const,
+        error: "PAYMENT_ALREADY_UNDER_REVIEW" as const
+      };
+    } else if (
+      selected.status === PaymentStatus.PENDING ||
+      selected.status === PaymentStatus.REJECTED
+    ) {
+      const now = new Date();
+
+      const [updatedPayment] = await prisma.$transaction([
+        prisma.subscriptionPayment.update({
+          where: { id: selected.id },
+          data: {
+            status: PaymentStatus.UNDER_REVIEW,
+            receiptTelegramFileId: input.telegramFileId,
+            receiptMimeType: input.receiptMimeType ?? null,
+            receiptSize: input.receiptSize ?? null,
+            submittedAt: now,
+            reviewedAt: null,
+            reviewedBy: null,
+            rejectionReason: null
+          }
+        }),
+        prisma.telegramContact.update({
+          where: { id: contact.id },
+          data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
+        })
+      ]);
+
+      return {
+        ok: true as const,
+        alreadyPaid: false as const,
+        renewal: true as const,
+        conversion: selected.trialConversion,
+        enrollment: selected.enrollment,
+        payment: updatedPayment
+      };
+    } else {
+      await prisma.telegramContact.update({
+        where: { id: contact.id },
+        data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
+      });
+    }
+  }
+
   const renewals = await prisma.subscriptionPayment.findMany({
     where: {
       sequence: { gt: 1 },
@@ -418,6 +548,14 @@ export async function submitSubscriptionReceipt(input: {
 
   if (renewals.length === 1) {
     const renewal = renewals[0];
+
+    if (renewal.status === PaymentStatus.UNDER_REVIEW) {
+      return {
+        ok: false as const,
+        error: "PAYMENT_ALREADY_UNDER_REVIEW" as const
+      };
+    }
+
     const updatedPayment = await prisma.subscriptionPayment.update({
       where: { id: renewal.id },
       data: {
@@ -496,6 +634,13 @@ export async function submitSubscriptionReceipt(input: {
       renewal: false as const,
       conversion,
       payment
+    };
+  }
+
+  if (payment.status === PaymentStatus.UNDER_REVIEW) {
+    return {
+      ok: false as const,
+      error: "PAYMENT_ALREADY_UNDER_REVIEW" as const
     };
   }
 

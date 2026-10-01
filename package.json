@@ -55,7 +55,8 @@
     "smoke:operations-dashboard": "tsx scripts/smoke-operations-dashboard.ts",
     "smoke:operations-assistant": "tsx scripts/smoke-operations-assistant.ts",
     "smoke:parent-cabinet": "tsx scripts/smoke-parent-telegram-cabinet.ts",
-    "smoke:parent-planned-absence": "tsx scripts/smoke-parent-planned-absence.ts"
+    "smoke:parent-planned-absence": "tsx scripts/smoke-parent-planned-absence.ts",
+    "smoke:parent-subscription-payment": "tsx scripts/smoke-parent-subscription-payment.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

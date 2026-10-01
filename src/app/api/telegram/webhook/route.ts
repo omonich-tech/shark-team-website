@@ -25,6 +25,7 @@ import {
   buildParentCabinetHome,
   handleParentAbsenceCallback,
   handleParentCabinetCallback,
+  handleParentSubscriptionPaymentCallback,
   resolveParentCabinetIntent
 } from "@/server/telegram/parent-cabinet";
 import {
@@ -351,6 +352,56 @@ async function sendSubscriptionPaymentReviewToAdmin(
       replyMarkup
     });
   }
+}
+
+async function handleParentSubscriptionPaymentCallbackQuery(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+  const telegramUserId = callback.from?.id;
+  const chatId = callback.message?.chat?.id;
+
+  if (
+    !callbackId ||
+    !telegramUserId ||
+    !data.startsWith("ppay:")
+  ) {
+    return false;
+  }
+
+  const result = await handleParentSubscriptionPaymentCallback(
+    BigInt(telegramUserId),
+    data
+  );
+
+  if (!result) {
+    return false;
+  }
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.ok
+      ? result.locale === "uz"
+        ? "To‘lov tanlandi."
+        : "Абонемент выбран."
+      : result.locale === "uz"
+        ? "To‘lovni ochib bo‘lmadi."
+        : "Не удалось открыть оплату.",
+    showAlert: !result.ok
+  });
+
+  if (chatId !== undefined) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: result.text,
+      ...(result.replyMarkup
+        ? { replyMarkup: result.replyMarkup }
+        : {})
+    });
+  }
+
+  return true;
 }
 
 async function handleParentAbsenceCallbackQuery(
@@ -932,8 +983,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (update.callback_query) {
-    const parentAbsenceHandled =
-      await handleParentAbsenceCallbackQuery(update.callback_query);
+    const parentPaymentHandled =
+      await handleParentSubscriptionPaymentCallbackQuery(
+        update.callback_query
+      );
+
+    const parentAbsenceHandled = parentPaymentHandled
+      ? true
+      : await handleParentAbsenceCallbackQuery(update.callback_query);
 
     const parentCabinetHandled = parentAbsenceHandled
       ? true
@@ -1147,14 +1204,27 @@ export async function POST(request: NextRequest) {
     }
 
     if (
+      subscriptionResult.error === "PAYMENT_ALREADY_UNDER_REVIEW"
+    ) {
+      await sendTelegramMessage({
+        chatId: BigInt(chatId),
+        text:
+          contact.locale === "uz"
+            ? "🕒 Bu abonement bo‘yicha chek allaqachon administrator tekshiruvida."
+            : "🕒 Чек по этому абонементу уже находится на проверке у администратора."
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (
       subscriptionResult.error === "MULTIPLE_ACTIVE_SUBSCRIPTIONS"
     ) {
       await sendTelegramMessage({
         chatId: BigInt(chatId),
         text:
           contact.locale === "uz"
-            ? "Bir nechta faol abonement taklifi bor. Qaysi bola uchun to‘lov qilganingizni administratorga yozing."
-            : "У вас несколько активных предложений абонемента. Напишите администратору, за какого ребёнка выполнена оплата."
+            ? "Bir nechta abonement to‘lovi mavjud. Kabinet → Abonement bo‘limidan kerakli abonementni tanlab, «To‘lash» tugmasini bosing va chekni qayta yuboring."
+            : "У вас несколько абонементов к оплате. Откройте Кабинет → Абонемент, нажмите «Оплатить» у нужной секции и отправьте чек ещё раз."
       });
       return NextResponse.json({ ok: true });
     }
