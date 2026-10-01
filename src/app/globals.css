@@ -2342,3 +2342,40 @@ h3 {
 .group-member-remove .admin-danger-link {
   text-align: left;
 }
+
+
+/* Progress visual comparison */
+.progress-visual-list {
+  display: grid;
+  gap: 16px;
+}
+
+.progress-visual-row {
+  display: grid;
+  gap: 8px;
+}
+
+.progress-visual-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.progress-visual-head span {
+  color: var(--muted);
+}
+
+.progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #e9eef5;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  color: var(--navy);
+}

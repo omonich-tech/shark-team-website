@@ -4,6 +4,7 @@ import {
   SubscriptionStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { refreshProgressOverdueAlert } from "@/server/progress/progress-alerts";
 
 type Scores = {
   ability: number;
@@ -84,6 +85,12 @@ export async function createStudentProgressAssessment(input: {
       scheduledAt: now,
       dedupeKey: "progress:" + assessment.id + ":parent"
     }
+  });
+
+  await refreshProgressOverdueAlert({
+    childId: enrollment.childId,
+    groupId: enrollment.groupId,
+    now
   });
 
   return {

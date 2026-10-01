@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { TrialBookingStatus } from "@/generated/prisma/client";
+import {
+  OperationalAlertStatus,
+  OperationalAlertType,
+  TrialBookingStatus
+} from "@/generated/prisma/client";
 import { formatCoachDate, formatCoachTime } from "@/lib/coach-format";
 import { dayRangeInTimeZone } from "@/lib/timezone";
 import { getPrisma } from "@/lib/prisma";
@@ -13,7 +17,7 @@ export default async function CoachDashboardPage() {
   const now = new Date();
   const today = dayRangeInTimeZone(now, "Asia/Tashkent");
 
-  const [todaySessions, upcomingSessions, pendingAssessments] =
+  const [todaySessions, upcomingSessions, pendingAssessments, overdueProgress] =
     await Promise.all([
       prisma.trainingSession.findMany({
         where: {
@@ -75,6 +79,24 @@ export default async function CoachDashboardPage() {
           updatedAt: "asc"
         },
         take: 10
+      }),
+      prisma.operationalAlert.findMany({
+        where: {
+          type: OperationalAlertType.PROGRESS_OVERDUE,
+          status: OperationalAlertStatus.OPEN,
+          group: {
+            primaryCoachId: auth.coachId
+          }
+        },
+        include: {
+          child: true,
+          group: true
+        },
+        orderBy: [
+          { severity: "asc" },
+          { openedAt: "asc" }
+        ],
+        take: 20
       })
     ]);
 
@@ -139,6 +161,31 @@ export default async function CoachDashboardPage() {
               <span>{session.group.branch.publicNameRu}</span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="coach-section">
+        <div className="coach-section-head">
+          <h2>Регулярная оценка просрочена</h2>
+          <span>{overdueProgress.length}</span>
+        </div>
+
+        <div className="coach-list">
+          {overdueProgress.map((alert) => (
+            <Link
+              className="coach-list-row"
+              href={"/coach/students/" + alert.childId}
+              key={alert.id}
+            >
+              <span>{alert.child?.name ?? "Ученик"}</span>
+              <strong>{alert.group?.internalName ?? "Группа"}</strong>
+              <span>{alert.severity === "critical" ? "Срочно" : "Нужна оценка"}</span>
+            </Link>
+          ))}
+
+          {overdueProgress.length === 0 ? (
+            <div className="coach-empty">Просроченных регулярных оценок нет.</div>
+          ) : null}
         </div>
       </section>
 
