@@ -197,6 +197,9 @@ jobs:
       - name: Smoke test parent planned absence
         run: npm run smoke:parent-planned-absence
 
+      - name: Smoke test parent subscription payment
+        run: npm run smoke:parent-subscription-payment
+
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
         env:
