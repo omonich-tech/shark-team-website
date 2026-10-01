@@ -39,9 +39,51 @@ export async function configureTelegramWebhook() {
     };
   }
 
+  const commandsResponse = await fetch(
+    `${apiBase}/bot${token}/setMyCommands`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        commands: [
+          {
+            command: "start",
+            description: "Открыть SHARK TEAM"
+          },
+          {
+            command: "cabinet",
+            description: "Кабинет родителя"
+          },
+          {
+            command: "menu",
+            description: "Главное меню"
+          }
+        ]
+      })
+    }
+  );
+
+  const commandsPayload = (await commandsResponse.json()) as {
+    ok?: boolean;
+    description?: string;
+    result?: boolean;
+  };
+
+  if (!commandsResponse.ok || commandsPayload.ok !== true) {
+    return {
+      ok: false as const,
+      error:
+        commandsPayload.description ??
+        `TELEGRAM_COMMANDS_HTTP_${commandsResponse.status}`
+    };
+  }
+
   return {
     ok: true as const,
     webhookUrl: `${appUrl}/api/telegram/webhook`,
-    allowedUpdates: ["message", "callback_query"] as const
+    allowedUpdates: ["message", "callback_query"] as const,
+    commands: ["start", "cabinet", "menu"] as const
   };
 }
