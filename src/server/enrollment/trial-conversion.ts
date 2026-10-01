@@ -367,7 +367,23 @@ export async function submitSubscriptionReceipt(input: {
     return { ok: false as const, error: "NO_ACTIVE_SUBSCRIPTION" as const };
   }
 
-  if (contact.selectedSubscriptionPaymentId) {
+  const selectedContextFresh =
+    contact.selectedSubscriptionPaymentId &&
+    contact.selectedSubscriptionPaymentAt &&
+    Date.now() - contact.selectedSubscriptionPaymentAt.getTime() <=
+      24 * 60 * 60 * 1000;
+
+  if (contact.selectedSubscriptionPaymentId && !selectedContextFresh) {
+    await prisma.telegramContact.update({
+      where: { id: contact.id },
+      data: {
+        selectedSubscriptionPaymentId: null,
+        selectedSubscriptionPaymentAt: null
+      }
+    });
+  }
+
+  if (contact.selectedSubscriptionPaymentId && selectedContextFresh) {
     const selected = await prisma.subscriptionPayment.findFirst({
       where: {
         id: contact.selectedSubscriptionPaymentId,
@@ -398,12 +414,18 @@ export async function submitSubscriptionReceipt(input: {
     if (!selected) {
       await prisma.telegramContact.update({
         where: { id: contact.id },
-        data: { selectedSubscriptionPaymentId: null }
+        data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
       });
     } else if (selected.status === PaymentStatus.PAID) {
       await prisma.telegramContact.update({
         where: { id: contact.id },
-        data: { selectedSubscriptionPaymentId: null }
+        data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
       });
 
       return {
@@ -417,7 +439,10 @@ export async function submitSubscriptionReceipt(input: {
     } else if (selected.status === PaymentStatus.UNDER_REVIEW) {
       await prisma.telegramContact.update({
         where: { id: contact.id },
-        data: { selectedSubscriptionPaymentId: null }
+        data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
       });
 
       return {
@@ -446,7 +471,10 @@ export async function submitSubscriptionReceipt(input: {
         }),
         prisma.telegramContact.update({
           where: { id: contact.id },
-          data: { selectedSubscriptionPaymentId: null }
+          data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
         })
       ]);
 
@@ -461,7 +489,10 @@ export async function submitSubscriptionReceipt(input: {
     } else {
       await prisma.telegramContact.update({
         where: { id: contact.id },
-        data: { selectedSubscriptionPaymentId: null }
+        data: {
+          selectedSubscriptionPaymentId: null,
+          selectedSubscriptionPaymentAt: null
+        }
       });
     }
   }
