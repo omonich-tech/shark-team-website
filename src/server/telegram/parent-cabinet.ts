@@ -1,14 +1,17 @@
 import {
   AbsenceReason,
   AttendanceStatus,
+  PaymentStatus,
   SessionStatus,
-  StudentEnrollmentStatus
+  StudentEnrollmentStatus,
+  SubscriptionStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import {
   absenceReasonLabel,
   setParentPlannedAbsence
 } from "@/server/attendance/absence-reason";
+import { prepareParentSubscriptionPayment } from "@/server/billing/parent-subscription-payment";
 
 type Locale = "ru" | "uz";
 
@@ -25,7 +28,8 @@ type ParentCabinetResponse =
         | "CONTACT_NOT_FOUND"
         | "PARENT_NOT_LINKED"
         | "CHILD_NOT_AVAILABLE"
-        | "NO_STUDENTS";
+        | "NO_STUDENTS"
+        | "PAYMENT_NOT_AVAILABLE";
       locale: Locale;
       text: string;
       replyMarkup?: Record<string, unknown>;
@@ -669,11 +673,50 @@ export async function buildParentCabinetView(
       );
     }
 
+    const payRows = child.enrollments
+      .filter((enrollment) => {
+        const status =
+          enrollment.subscriptionStatus ?? enrollment.status;
+        const latestPayment = enrollment.payments[0];
+
+        return (
+          [
+            SubscriptionStatus.PAYMENT_DUE,
+            SubscriptionStatus.PAST_DUE,
+            SubscriptionStatus.PAUSED
+          ].includes(status as SubscriptionStatus) &&
+          latestPayment?.status !== PaymentStatus.UNDER_REVIEW
+        );
+      })
+      .map((enrollment) => {
+        const sportName =
+          locale === "uz"
+            ? enrollment.group.sport.nameUz
+            : enrollment.group.sport.nameRu;
+
+        return [
+          {
+            text:
+              locale === "uz"
+                ? "💳 To‘lash · " + sportName
+                : "💳 Оплатить · " + sportName,
+            callback_data: "ppay:" + enrollment.id
+          }
+        ];
+      });
+
+    const menu = childMenu(child.id, locale);
+
     return {
       ok: true,
       locale,
       text: lines.filter((line, index) => Boolean(line) || index === lines.length - 1).join("\n").trim(),
-      replyMarkup: childMenu(child.id, locale)
+      replyMarkup: {
+        inline_keyboard: [
+          ...payRows,
+          ...(menu.inline_keyboard as Array<Array<Record<string, string>>>)
+        ]
+      }
     };
   }
 
@@ -1272,6 +1315,79 @@ export async function handleParentAbsenceCallback(
   }
 
   return null;
+}
+
+export async function handleParentSubscriptionPaymentCallback(
+  telegramUserId: bigint,
+  data: string
+): Promise<ParentCabinetResponse | null> {
+  if (!data.startsWith("ppay:")) return null;
+
+  const enrollmentId = data.slice("ppay:".length).trim();
+  if (!enrollmentId) return null;
+
+  const result = await prepareParentSubscriptionPayment({
+    telegramUserId,
+    enrollmentId
+  });
+
+  if (!result.ok) {
+    const locale = result.locale;
+
+    if (result.error === "PAYMENT_UNDER_REVIEW") {
+      return {
+        ok: false,
+        error: "PAYMENT_NOT_AVAILABLE",
+        locale,
+        text:
+          locale === "uz"
+            ? "🕒 Bu abonement bo‘yicha chek allaqachon tekshiruvda."
+            : "🕒 Чек по этому абонементу уже находится на проверке."
+      };
+    }
+
+    if (result.error === "PAYMENT_NOT_DUE") {
+      return {
+        ok: false,
+        error: "PAYMENT_NOT_AVAILABLE",
+        locale,
+        text:
+          locale === "uz"
+            ? "✅ Hozir bu abonement uchun to‘lov talab qilinmaydi."
+            : "✅ Сейчас оплата по этому абонементу не требуется."
+      };
+    }
+
+    return {
+      ok: false,
+      error: "PAYMENT_NOT_AVAILABLE",
+      locale,
+      text:
+        locale === "uz"
+          ? "To‘lovni ochib bo‘lmadi. Administrator bilan bog‘laning."
+          : "Не удалось открыть оплату. Свяжитесь с администратором."
+    };
+  }
+
+  return {
+    ok: true,
+    locale: result.locale,
+    text: result.text,
+    replyMarkup: {
+      inline_keyboard: [
+        [
+          {
+            text:
+              result.locale === "uz"
+                ? "⬅️ Abonementlarga"
+                : "⬅️ К абонементам",
+            callback_data: "parent:subscription:" + result.childId
+          }
+        ],
+        [homeButton(result.locale)]
+      ]
+    }
+  };
 }
 
 export async function handleParentCabinetCallback(
