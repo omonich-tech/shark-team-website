@@ -115,6 +115,15 @@ export default async function CoachStudentProgressPage({
       ? Math.round((present / attendance.length) * 100)
       : null;
   const latest = history[0];
+  const comparison = latest
+    ? criteria.map(([key, label]) => ({
+        key,
+        label,
+        baseline: baseline ? baseline[key] : null,
+        latest: latest[key],
+        delta: baseline ? latest[key] - baseline[key] : null
+      }))
+    : [];
 
   return (
     <>
@@ -158,6 +167,37 @@ export default async function CoachStudentProgressPage({
               <div className="progress-score-card" key={key}>
                 <span>{label}</span>
                 <strong>{baseline[key]} / 5</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {latest ? (
+        <section className="coach-section">
+          <div className="coach-section-head">
+            <h2>Динамика от старта</h2>
+          </div>
+          <div className="progress-visual-list">
+            {comparison.map((item) => (
+              <div className="progress-visual-row" key={item.key}>
+                <div className="progress-visual-head">
+                  <strong>{item.label}</strong>
+                  <span>
+                    {item.baseline === null
+                      ? item.latest + "/5"
+                      : item.baseline + "/5 → " + item.latest + "/5"}
+                    {item.delta === null
+                      ? ""
+                      : " · " + (item.delta >= 0 ? "+" : "") + item.delta}
+                  </span>
+                </div>
+                <div className="progress-track">
+                  <div
+                    className="progress-fill"
+                    style={{ width: item.latest * 20 + "%" }}
+                  />
+                </div>
               </div>
             ))}
           </div>
