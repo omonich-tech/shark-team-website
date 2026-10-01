@@ -199,6 +199,9 @@ jobs:
 
       - name: Smoke test parent subscription payment
         run: npm run smoke:parent-subscription-payment
+        env:
+          MANUAL_PAYMENT_CARD_NUMBER: "111111111111"
+          MANUAL_PAYMENT_CARD_HOLDER: "CI Test"
 
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
