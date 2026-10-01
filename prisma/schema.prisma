@@ -716,6 +716,7 @@ model SubscriptionPayment {
   trialConversion TrialConversion   @relation(fields: [trialConversionId], references: [id], onDelete: Cascade)
   enrollment      StudentEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
   notifications   Notification[]
+  selectedByTelegramContacts TelegramContact[] @relation("TelegramSelectedSubscriptionPayment")
 
   @@unique([trialConversionId, sequence])
   @@index([enrollmentId, status])
@@ -828,14 +829,17 @@ model TelegramContact {
   locale         String   @default("ru")
   verifiedAt     DateTime @default(now())
   lastMessageAt  DateTime?
+  selectedSubscriptionPaymentId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
   parent Parent? @relation(fields: [parentId], references: [id], onDelete: SetNull)
+  selectedSubscriptionPayment SubscriptionPayment? @relation("TelegramSelectedSubscriptionPayment", fields: [selectedSubscriptionPaymentId], references: [id], onDelete: SetNull)
 
   @@index([leadId])
   @@index([parentId])
+  @@index([selectedSubscriptionPaymentId])
 }
 
 model TelegramLinkToken {
