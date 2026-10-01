@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 
 const nav = [
   ["/admin", "Dashboard"],
+  ["/admin/assistant", "AI-ассистент"],
   ["/admin/leads", "Лиды"],
   ["/admin/trials", "Пробные"],
   ["/admin/parents", "Родители"],
