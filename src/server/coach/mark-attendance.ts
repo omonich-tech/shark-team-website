@@ -48,6 +48,32 @@ export async function markCoachAttendance(input: {
     ? input.absenceNote?.trim().slice(0, 500) || null
     : null;
 
+  const existingAttendance = await prisma.attendance.findUnique({
+    where: {
+      sessionId_childId: {
+        sessionId: input.sessionId,
+        childId: input.childId
+      }
+    }
+  });
+
+  const preserveParentReason =
+    isAbsent &&
+    existingAttendance?.reasonSource === AttendanceReasonSource.PARENT &&
+    existingAttendance.absenceReason === reason &&
+    (!note || note === existingAttendance.absenceNote);
+
+  const reasonSource = reason
+    ? preserveParentReason
+      ? AttendanceReasonSource.PARENT
+      : AttendanceReasonSource.COACH
+    : null;
+  const reasonUpdatedAt = reason
+    ? preserveParentReason
+      ? existingAttendance?.reasonUpdatedAt ?? now
+      : now
+    : null;
+
   const attendance = await prisma.attendance.upsert({
     where: {
       sessionId_childId: {
@@ -61,8 +87,8 @@ export async function markCoachAttendance(input: {
       status: input.status,
       absenceReason: reason,
       absenceNote: note,
-      reasonSource: reason ? AttendanceReasonSource.COACH : null,
-      reasonUpdatedAt: reason ? now : null,
+      reasonSource,
+      reasonUpdatedAt,
       markedAt: now
     },
     create: {
@@ -73,8 +99,8 @@ export async function markCoachAttendance(input: {
       status: input.status,
       absenceReason: reason,
       absenceNote: note,
-      reasonSource: reason ? AttendanceReasonSource.COACH : null,
-      reasonUpdatedAt: reason ? now : null,
+      reasonSource,
+      reasonUpdatedAt,
       markedAt: now
     }
   });
@@ -109,7 +135,10 @@ export async function markCoachAttendance(input: {
         select: { parentId: true }
       });
 
-      if (child?.parentId) {
+      if (
+        child?.parentId &&
+        attendance.reasonSource !== AttendanceReasonSource.PARENT
+      ) {
         await queueRegularAbsenceNotice({
           attendanceId: attendance.id,
           parentId: child.parentId,
@@ -132,6 +161,7 @@ export async function markCoachAttendance(input: {
       status: attendance.status,
       absenceReason: attendance.absenceReason,
       absenceNote: attendance.absenceNote,
+      reasonSource: attendance.reasonSource,
       markedAt: attendance.markedAt.toISOString()
     }
   };
