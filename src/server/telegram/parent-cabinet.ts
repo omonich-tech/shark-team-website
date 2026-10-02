@@ -3,6 +3,7 @@ import {
   AttendanceStatus,
   PaymentStatus,
   SessionStatus,
+  SubscriptionFreezeRequestStatus,
   StudentEnrollmentStatus,
   SubscriptionStatus
 } from "@/generated/prisma/client";
@@ -11,6 +12,11 @@ import {
   absenceReasonLabel,
   setParentPlannedAbsence
 } from "@/server/attendance/absence-reason";
+import {
+  createParentFreezeRequest,
+  parentFreezeReasonLabel,
+  type ParentFreezeReason
+} from "@/server/billing/parent-freeze-request";
 import { prepareParentSubscriptionPayment } from "@/server/billing/parent-subscription-payment";
 
 type Locale = "ru" | "uz";
@@ -29,7 +35,8 @@ type ParentCabinetResponse =
         | "PARENT_NOT_LINKED"
         | "CHILD_NOT_AVAILABLE"
         | "NO_STUDENTS"
-        | "PAYMENT_NOT_AVAILABLE";
+        | "PAYMENT_NOT_AVAILABLE"
+        | "FREEZE_REQUEST_NOT_AVAILABLE";
       locale: Locale;
       text: string;
       replyMarkup?: Record<string, unknown>;
@@ -310,6 +317,10 @@ async function getChildForParent(
           payments: {
             orderBy: { sequence: "desc" },
             take: 2
+          },
+          freezeRequests: {
+            orderBy: { createdAt: "desc" },
+            take: 1
           }
         },
         orderBy: { createdAt: "desc" }
@@ -633,6 +644,7 @@ export async function buildParentCabinetView(
 
     for (const enrollment of child.enrollments) {
       const latestPayment = enrollment.payments[0];
+      const freezeRequest = enrollment.freezeRequests[0];
       const enrollmentSport =
         locale === "uz"
           ? enrollment.group.sport.nameUz
@@ -668,6 +680,33 @@ export async function buildParentCabinetView(
             " · " +
             formatMoney(latestPayment.amountUzs) +
             " UZS"
+          : "",
+        freezeRequest
+          ? (locale === "uz"
+              ? "Muzlatish so‘rovi: "
+              : "Заявка на заморозку: ") +
+            "<b>" +
+            escapeHtml(
+              freezeRequest.status === SubscriptionFreezeRequestStatus.PENDING
+                ? locale === "uz"
+                  ? "tekshiruvda"
+                  : "ожидает решения"
+                : freezeRequest.status === SubscriptionFreezeRequestStatus.APPROVED
+                  ? locale === "uz"
+                    ? "tasdiqlangan"
+                    : "одобрена"
+                  : freezeRequest.status === SubscriptionFreezeRequestStatus.REJECTED
+                    ? locale === "uz"
+                      ? "rad etilgan"
+                      : "отклонена"
+                    : locale === "uz"
+                      ? "bekor qilingan"
+                      : "отменена"
+            ) +
+            "</b> · " +
+            freezeRequest.days +
+            (locale === "uz" ? " kun · " : " дней · ") +
+            escapeHtml(parentFreezeReasonLabel(freezeRequest.reason, locale))
           : "",
         ""
       );
@@ -707,6 +746,41 @@ export async function buildParentCabinetView(
         ];
       });
 
+    const freezeRows = child.enrollments
+      .filter((enrollment) => {
+        const status =
+          enrollment.subscriptionStatus ?? enrollment.status;
+        const latestPayment = enrollment.payments[0];
+        const latestFreezeRequest = enrollment.freezeRequests[0];
+        const freezeableStatuses: SubscriptionStatus[] = [
+          SubscriptionStatus.ACTIVE,
+          SubscriptionStatus.PAYMENT_DUE
+        ];
+
+        return (
+          freezeableStatuses.includes(status as SubscriptionStatus) &&
+          latestPayment?.status !== PaymentStatus.UNDER_REVIEW &&
+          latestFreezeRequest?.status !==
+            SubscriptionFreezeRequestStatus.PENDING
+        );
+      })
+      .map((enrollment) => {
+        const sportName =
+          locale === "uz"
+            ? enrollment.group.sport.nameUz
+            : enrollment.group.sport.nameRu;
+
+        return [
+          {
+            text:
+              locale === "uz"
+                ? "❄️ Muzlatishni so‘rash · " + sportName
+                : "❄️ Запросить заморозку · " + sportName,
+            callback_data: "pf:" + enrollment.id
+          }
+        ];
+      });
+
     const menu = childMenu(child.id, locale);
 
     return {
@@ -716,6 +790,7 @@ export async function buildParentCabinetView(
       replyMarkup: {
         inline_keyboard: [
           ...payRows,
+          ...freezeRows,
           ...(menu.inline_keyboard as Array<Array<Record<string, string>>>)
         ]
       }
@@ -1317,6 +1392,292 @@ export async function handleParentAbsenceCallback(
   }
 
   return null;
+}
+
+export async function handleParentFreezeRequestCallback(
+  telegramUserId: bigint,
+  data: string
+): Promise<ParentCabinetResponse | null> {
+  const isStart = data.startsWith("pf:");
+  const isDays = data.startsWith("pfd:");
+  const isReason = data.startsWith("pfr:");
+
+  if (!isStart && !isDays && !isReason) return null;
+
+  const contact = await getVerifiedContact(telegramUserId);
+  const locale = localeOf(contact?.locale);
+
+  if (!contact?.parentId) {
+    return {
+      ok: false,
+      error: "PARENT_NOT_LINKED",
+      locale,
+      text:
+        locale === "uz"
+          ? "Ota-ona profili ulanmagan."
+          : "Профиль родителя не связан."
+    };
+  }
+
+  const parts = data.split(":");
+  const enrollmentId = parts[1];
+
+  if (!enrollmentId) return null;
+
+  const prisma = getPrisma();
+  const enrollment = await prisma.studentEnrollment.findFirst({
+    where: {
+      id: enrollmentId,
+      child: {
+        parentId: contact.parentId
+      }
+    },
+    include: {
+      child: true,
+      group: {
+        include: {
+          sport: true
+        }
+      },
+      freezeRequests: {
+        where: {
+          status: SubscriptionFreezeRequestStatus.PENDING
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1
+      }
+    }
+  });
+
+  if (!enrollment) {
+    return {
+      ok: false,
+      error: "FREEZE_REQUEST_NOT_AVAILABLE",
+      locale,
+      text:
+        locale === "uz"
+          ? "Bu abonement topilmadi."
+          : "Абонемент не найден."
+    };
+  }
+
+  if (enrollment.freezeRequests[0]) {
+    return {
+      ok: false,
+      error: "FREEZE_REQUEST_NOT_AVAILABLE",
+      locale,
+      text:
+        locale === "uz"
+          ? "🕒 Bu abonement bo‘yicha muzlatish so‘rovi allaqachon tekshiruvda."
+          : "🕒 По этому абонементу уже есть заявка на заморозку, ожидающая решения администратора."
+    };
+  }
+
+  const childId = enrollment.childId;
+
+  if (isStart) {
+    return {
+      ok: true,
+      locale,
+      text:
+        locale === "uz"
+          ? [
+              "❄️ <b>Abonementni muzlatish so‘rovi</b>",
+              "",
+              "Bola: <b>" + escapeHtml(enrollment.child.name) + "</b>",
+              "Muzlatish muddati administrator tasdiqlagan paytdan boshlanadi.",
+              "",
+              "Muddatni tanlang:"
+            ].join("\n")
+          : [
+              "❄️ <b>Запрос на заморозку абонемента</b>",
+              "",
+              "Ребёнок: <b>" + escapeHtml(enrollment.child.name) + "</b>",
+              "Заморозка начнётся с момента одобрения администратором.",
+              "",
+              "Выберите срок:"
+            ].join("\n"),
+      replyMarkup: {
+        inline_keyboard: [
+          [
+            {
+              text: "7 " + (locale === "uz" ? "kun" : "дней"),
+              callback_data: "pfd:" + enrollment.id + ":7"
+            },
+            {
+              text: "14 " + (locale === "uz" ? "kun" : "дней"),
+              callback_data: "pfd:" + enrollment.id + ":14"
+            },
+            {
+              text: "30 " + (locale === "uz" ? "kun" : "дней"),
+              callback_data: "pfd:" + enrollment.id + ":30"
+            }
+          ],
+          [
+            {
+              text:
+                locale === "uz"
+                  ? "⬅️ Abonementlarga"
+                  : "⬅️ К абонементам",
+              callback_data: "parent:subscription:" + childId
+            }
+          ]
+        ]
+      }
+    };
+  }
+
+  const days = Number(parts[2]);
+
+  if (![7, 14, 30].includes(days)) {
+    return {
+      ok: false,
+      error: "FREEZE_REQUEST_NOT_AVAILABLE",
+      locale,
+      text:
+        locale === "uz"
+          ? "Muzlatish muddati noto‘g‘ri."
+          : "Некорректный срок заморозки."
+    };
+  }
+
+  if (isDays) {
+    return {
+      ok: true,
+      locale,
+      text:
+        locale === "uz"
+          ? "Sababni tanlang:"
+          : "Выберите причину заморозки:",
+      replyMarkup: {
+        inline_keyboard: [
+          [
+            {
+              text: locale === "uz" ? "🤒 Kasallik" : "🤒 Болезнь",
+              callback_data:
+                "pfr:" + enrollment.id + ":" + days + ":I"
+            },
+            {
+              text: locale === "uz" ? "✈️ Safar" : "✈️ Поездка",
+              callback_data:
+                "pfr:" + enrollment.id + ":" + days + ":T"
+            }
+          ],
+          [
+            {
+              text:
+                locale === "uz"
+                  ? "👨‍👩‍👧 Oilaviy sabab"
+                  : "👨‍👩‍👧 Семейные обстоятельства",
+              callback_data:
+                "pfr:" + enrollment.id + ":" + days + ":F"
+            }
+          ],
+          [
+            {
+              text:
+                locale === "uz" ? "Boshqa sabab" : "Другая причина",
+              callback_data:
+                "pfr:" + enrollment.id + ":" + days + ":O"
+            }
+          ],
+          [
+            {
+              text: locale === "uz" ? "⬅️ Orqaga" : "⬅️ Назад",
+              callback_data: "pf:" + enrollment.id
+            }
+          ]
+        ]
+      }
+    };
+  }
+
+  const reasonCode = parts[3];
+  const reasons: Record<string, ParentFreezeReason> = {
+    I: "ILLNESS",
+    T: "TRAVEL",
+    F: "FAMILY",
+    O: "OTHER"
+  };
+  const reason = reasons[reasonCode];
+
+  if (!reason) {
+    return {
+      ok: false,
+      error: "FREEZE_REQUEST_NOT_AVAILABLE",
+      locale,
+      text:
+        locale === "uz"
+          ? "Muzlatish sababi noto‘g‘ri."
+          : "Некорректная причина заморозки."
+    };
+  }
+
+  const result = await createParentFreezeRequest({
+    telegramUserId,
+    enrollmentId,
+    days,
+    reason
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: "FREEZE_REQUEST_NOT_AVAILABLE",
+      locale: result.locale,
+      text:
+        result.error === "FREEZE_REQUEST_ALREADY_PENDING"
+          ? result.locale === "uz"
+            ? "🕒 Muzlatish so‘rovi allaqachon administrator tekshiruvida."
+            : "🕒 Заявка на заморозку уже ожидает решения администратора."
+          : result.locale === "uz"
+            ? "Hozir bu abonementni muzlatish uchun so‘rov yuborib bo‘lmaydi."
+            : "Сейчас по этому абонементу нельзя отправить заявку на заморозку."
+    };
+  }
+
+  return {
+    ok: true,
+    locale: result.locale,
+    text:
+      result.locale === "uz"
+        ? [
+            "✅ <b>Muzlatish so‘rovi yuborildi</b>",
+            "",
+            "Bola: <b>" + escapeHtml(result.childName) + "</b>",
+            "Yo‘nalish: " + escapeHtml(result.sportName),
+            "Muddat: <b>" + days + " kun</b>",
+            "Sabab: " +
+              escapeHtml(parentFreezeReasonLabel(reason, result.locale)),
+            "",
+            "Abonement administrator tasdiqlamaguncha o‘zgarmaydi."
+          ].join("\n")
+        : [
+            "✅ <b>Заявка на заморозку отправлена</b>",
+            "",
+            "Ребёнок: <b>" + escapeHtml(result.childName) + "</b>",
+            "Направление: " + escapeHtml(result.sportName),
+            "Срок: <b>" + days + " дней</b>",
+            "Причина: " +
+              escapeHtml(parentFreezeReasonLabel(reason, result.locale)),
+            "",
+            "До решения администратора абонемент остаётся без изменений."
+          ].join("\n"),
+    replyMarkup: {
+      inline_keyboard: [
+        [
+          {
+            text:
+              result.locale === "uz"
+                ? "⬅️ Abonementlarga"
+                : "⬅️ К абонементам",
+            callback_data: "parent:subscription:" + result.childId
+          }
+        ],
+        [homeButton(result.locale)]
+      ]
+    }
+  };
 }
 
 export async function handleParentSubscriptionPaymentCallback(
