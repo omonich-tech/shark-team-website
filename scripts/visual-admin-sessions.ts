@@ -55,7 +55,9 @@ async function waitForPageTarget(port: number) {
         );
 
         if (page?.webSocketDebuggerUrl) {
-          return page;
+          return {
+            webSocketDebuggerUrl: page.webSocketDebuggerUrl
+          };
         }
       }
     } catch {
