@@ -7,6 +7,7 @@ import {
 } from "@/generated/prisma/client";
 import { GroupMemberManager } from "@/components/admin/group-member-manager";
 import { RemoveFromGroupButton } from "@/components/admin/remove-from-group-button";
+import { SessionAdminControls } from "@/components/admin/session-admin-controls";
 import { formatAdminDate } from "@/lib/admin-format";
 import { getPrisma } from "@/lib/prisma";
 
@@ -38,6 +39,37 @@ function formatSession(value: Date) {
     minute: "2-digit",
     timeZone: "Asia/Tashkent"
   }).format(value);
+}
+
+function formatSessionInput(value: Date) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tashkent",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  });
+
+  const parts = Object.fromEntries(
+    formatter
+      .formatToParts(value)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+
+  return (
+    parts.year +
+    "-" +
+    parts.month +
+    "-" +
+    parts.day +
+    "T" +
+    parts.hour +
+    ":" +
+    parts.minute
+  );
 }
 
 function percent(present: number, total: number) {
@@ -504,6 +536,7 @@ export default async function AdminGroupPage({
                 <th>Статус</th>
                 <th>Вместимость</th>
                 <th>Пробные места</th>
+                <th>Управление</th>
               </tr>
             </thead>
             <tbody>
@@ -513,11 +546,20 @@ export default async function AdminGroupPage({
                   <td>{session.status}</td>
                   <td>{session.regularCapacity}</td>
                   <td>{session.trialCapacity ?? "—"}</td>
+                  <td>
+                    <SessionAdminControls
+                      session={{
+                        id: session.id,
+                        startsAt: formatSessionInput(session.startsAt),
+                        endsAt: formatSessionInput(session.endsAt)
+                      }}
+                    />
+                  </td>
                 </tr>
               ))}
               {!upcomingSessions.length ? (
                 <tr>
-                  <td colSpan={4}>Ближайших тренировок нет.</td>
+                  <td colSpan={5}>Ближайших тренировок нет.</td>
                 </tr>
               ) : null}
             </tbody>
