@@ -58,19 +58,29 @@ async function waitForJsonVersion(port: number) {
   throw new Error("Chrome DevTools endpoint did not start");
 }
 
+type CdpResult = Record<string, unknown>;
+
+type CdpMessage = {
+  id?: number;
+  error?: {
+    message?: string;
+  };
+  result?: CdpResult;
+};
+
 class CdpClient {
   private nextId = 1;
   private pending = new Map<
     number,
     {
-      resolve: (value: any) => void;
+      resolve: (value: CdpResult) => void;
       reject: (error: Error) => void;
     }
   >();
 
   constructor(private socket: WebSocket) {
     socket.addEventListener("message", (event) => {
-      const payload = JSON.parse(String(event.data));
+      const payload = JSON.parse(String(event.data)) as CdpMessage;
 
       if (!payload.id) return;
 
@@ -86,7 +96,7 @@ class CdpClient {
           )
         );
       } else {
-        request.resolve(payload.result);
+        request.resolve(payload.result ?? {});
       }
     });
   }
@@ -94,7 +104,7 @@ class CdpClient {
   send(method: string, params: Record<string, unknown> = {}) {
     const id = this.nextId++;
 
-    return new Promise<any>((resolve, reject) => {
+    return new Promise<CdpResult>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
       this.socket.send(
         JSON.stringify({
@@ -139,11 +149,16 @@ async function waitForPage(
       returnByValue: true
     });
 
-    const value = result.result?.value as {
-      ready?: string;
-      text?: string;
-      overlay?: boolean;
+    const runtime = result as {
+      result?: {
+        value?: {
+          ready?: string;
+          text?: string;
+          overlay?: boolean;
+        };
+      };
     };
+    const value = runtime.result?.value;
 
     if (
       value?.ready === "complete" &&
@@ -175,13 +190,19 @@ async function screenshot(
   fileName: string
 ) {
   const metrics = await client.send("Page.getLayoutMetrics");
+  const layout = metrics as {
+    cssContentSize?: {
+      width?: number;
+      height?: number;
+    };
+  };
   const width = Math.max(
     1440,
-    Math.ceil(metrics.cssContentSize?.width ?? 1440)
+    Math.ceil(layout.cssContentSize?.width ?? 1440)
   );
   const height = Math.min(
     12000,
-    Math.max(1000, Math.ceil(metrics.cssContentSize?.height ?? 1000))
+    Math.max(1000, Math.ceil(layout.cssContentSize?.height ?? 1000))
   );
 
   await client.send("Emulation.setDeviceMetricsOverride", {
@@ -197,9 +218,12 @@ async function screenshot(
     captureBeyondViewport: true
   });
 
+  const image = captured as { data?: string };
+  assert(image.data, "Chrome did not return screenshot data");
+
   await writeFile(
     fileName,
-    Buffer.from(captured.data, "base64")
+    Buffer.from(image.data, "base64")
   );
 }
 
@@ -299,7 +323,12 @@ async function main() {
         returnByValue: true
       });
 
-      const detailPath = firstDetail.result?.value as string | null;
+      const detailRuntime = firstDetail as {
+        result?: {
+          value?: string | null;
+        };
+      };
+      const detailPath = detailRuntime.result?.value ?? null;
       assert(detailPath, "No session detail link found");
 
       await screenshot(
