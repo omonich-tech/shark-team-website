@@ -83,7 +83,9 @@ export default async function AdminDashboardPage() {
     groups,
     openAlerts,
     alertGroups,
-    recentLeads
+    recentLeads,
+    sessionsToday,
+    overdueSessions
   ] = await Promise.all([
     prisma.lead.count({
       where: {
@@ -197,6 +199,32 @@ export default async function AdminDashboardPage() {
     prisma.lead.findMany({
       take: 8,
       orderBy: { createdAt: "desc" }
+    }),
+    prisma.trainingSession.count({
+      where: {
+        startsAt: {
+          gte: localDateTimeToUtc(
+            dateKeyInTimeZone(now, TIME_ZONE),
+            0,
+            0,
+            TIME_ZONE
+          ),
+          lt: new Date(
+            localDateTimeToUtc(
+              dateKeyInTimeZone(now, TIME_ZONE),
+              0,
+              0,
+              TIME_ZONE
+            ).getTime() + DAY
+          )
+        }
+      }
+    }),
+    prisma.trainingSession.count({
+      where: {
+        status: "SCHEDULED",
+        endsAt: { lt: now }
+      }
     })
   ]);
 
@@ -283,6 +311,20 @@ export default async function AdminDashboardPage() {
           <span>Открытые сигналы</span>
           <strong>{totalOpenAlerts}</strong>
           <small>В таблице показаны первые 15</small>
+        </article>
+        <article className="admin-metric">
+          <span>Занятия сегодня</span>
+          <strong>{sessionsToday}</strong>
+          <small>
+            <Link href="/admin/sessions?scope=today">Открыть Sessions →</Link>
+          </small>
+        </article>
+        <article className="admin-metric">
+          <span>Не завершены вовремя</span>
+          <strong>{overdueSessions}</strong>
+          <small>
+            <Link href="/admin/sessions?scope=overdue">Проверить →</Link>
+          </small>
         </article>
       </section>
 
