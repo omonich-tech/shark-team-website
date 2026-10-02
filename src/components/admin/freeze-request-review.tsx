@@ -64,7 +64,7 @@ export function FreezeRequestReview({
       setMessage(
         approve
           ? "Заявка одобрена. Абонемент заморожен."
-          : "Заявка отклонена. Родитель уведомлён."
+          : "Заявка отклонена."
       );
 
       window.setTimeout(() => window.location.reload(), 700);
