@@ -89,6 +89,13 @@ enum SubscriptionStatus {
   ENDED
 }
 
+enum SubscriptionFreezeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum TrialConversionStatus {
   READY
   THINKING
@@ -553,6 +560,7 @@ model Parent {
   telegramContacts TelegramContact[]
   notifications    Notification[]
   trialFeedbacks   TrialFeedback[]
+  subscriptionFreezeRequests SubscriptionFreezeRequest[]
 
   @@index([createdAt])
 }
@@ -658,11 +666,33 @@ model StudentEnrollment {
   payments      SubscriptionPayment[]
   notifications Notification[]
   operationalAlerts OperationalAlert[]
+  freezeRequests SubscriptionFreezeRequest[]
 
   @@index([childId, status])
   @@index([groupId, status])
   @@index([subscriptionStatus, nextPaymentDueAt])
   @@index([subscriptionStatus, freezeUntil])
+}
+
+model SubscriptionFreezeRequest {
+  id           String                          @id @default(cuid())
+  enrollmentId String
+  parentId     String
+  days         Int
+  reason       String
+  status       SubscriptionFreezeRequestStatus @default(PENDING)
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  decisionNote String?
+  createdAt    DateTime                        @default(now())
+  updatedAt    DateTime                        @updatedAt
+
+  enrollment StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  parent     Parent            @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId, status, createdAt])
+  @@index([parentId, status, createdAt])
+  @@index([status, createdAt])
 }
 
 model TrialConversion {

@@ -1,11 +1,14 @@
 import Link from "next/link";
 import {
   OperationalAlertStatus,
-  OperationalAlertType
+  OperationalAlertType,
+  SubscriptionFreezeRequestStatus
 } from "@/generated/prisma/client";
+import { FreezeRequestReview } from "@/components/admin/freeze-request-review";
 import { SubscriptionControls } from "@/components/admin/subscription-controls";
 import { formatAdminDate } from "@/lib/admin-format";
 import { getPrisma } from "@/lib/prisma";
+import { parentFreezeReasonLabel } from "@/server/billing/parent-freeze-request";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +46,13 @@ export default async function AdminSubscriptionsPage() {
           status: OperationalAlertStatus.OPEN
         },
         take: 1
+      },
+      freezeRequests: {
+        where: {
+          status: SubscriptionFreezeRequestStatus.PENDING
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1
       }
     }
   });
@@ -67,6 +77,9 @@ export default async function AdminSubscriptionsPage() {
   ).length;
   const paymentIssues = enrollments.filter(
     (item) => item.operationalAlerts.length > 0
+  ).length;
+  const freezeRequestsPending = enrollments.filter(
+    (item) => item.freezeRequests.length > 0
   ).length;
 
   return (
@@ -110,6 +123,10 @@ export default async function AdminSubscriptionsPage() {
         <div className="admin-metric">
           <span>Оплата на проверке</span>
           <strong>{underReview}</strong>
+        </div>
+        <div className="admin-metric">
+          <span>Заявки на заморозку</span>
+          <strong>{freezeRequestsPending}</strong>
         </div>
       </section>
 
@@ -212,6 +229,22 @@ export default async function AdminSubscriptionsPage() {
                 <div className="subscription-note">
                   Причина прекращения: {enrollment.endReason}
                 </div>
+              ) : null}
+
+              {enrollment.freezeRequests[0] ? (
+                <FreezeRequestReview
+                  request={{
+                    id: enrollment.freezeRequests[0].id,
+                    days: enrollment.freezeRequests[0].days,
+                    reasonLabel: parentFreezeReasonLabel(
+                      enrollment.freezeRequests[0].reason,
+                      "ru"
+                    ),
+                    createdLabel: formatAdminDate(
+                      enrollment.freezeRequests[0].createdAt
+                    )
+                  }}
+                />
               ) : null}
 
               <SubscriptionControls

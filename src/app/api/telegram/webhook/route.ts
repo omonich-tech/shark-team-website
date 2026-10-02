@@ -25,6 +25,7 @@ import {
   buildParentCabinetHome,
   handleParentAbsenceCallback,
   handleParentCabinetCallback,
+  handleParentFreezeRequestCallback,
   handleParentSubscriptionPaymentCallback,
   resolveParentCabinetIntent
 } from "@/server/telegram/parent-cabinet";
@@ -352,6 +353,60 @@ async function sendSubscriptionPaymentReviewToAdmin(
       replyMarkup
     });
   }
+}
+
+async function handleParentFreezeRequestCallbackQuery(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+  const telegramUserId = callback.from?.id;
+  const chatId = callback.message?.chat?.id;
+
+  if (
+    !callbackId ||
+    !telegramUserId ||
+    !(
+      data.startsWith("pf:") ||
+      data.startsWith("pfd:") ||
+      data.startsWith("pfr:")
+    )
+  ) {
+    return false;
+  }
+
+  const result = await handleParentFreezeRequestCallback(
+    BigInt(telegramUserId),
+    data
+  );
+
+  if (!result) {
+    return false;
+  }
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.ok
+      ? result.locale === "uz"
+        ? "Tayyor."
+        : "Готово."
+      : result.locale === "uz"
+        ? "So‘rovni yuborib bo‘lmadi."
+        : "Не удалось обработать заявку.",
+    showAlert: !result.ok
+  });
+
+  if (chatId !== undefined) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: result.text,
+      ...(result.replyMarkup
+        ? { replyMarkup: result.replyMarkup }
+        : {})
+    });
+  }
+
+  return true;
 }
 
 async function handleParentSubscriptionPaymentCallbackQuery(
@@ -983,10 +1038,16 @@ export async function POST(request: NextRequest) {
   }
 
   if (update.callback_query) {
-    const parentPaymentHandled =
-      await handleParentSubscriptionPaymentCallbackQuery(
+    const parentFreezeHandled =
+      await handleParentFreezeRequestCallbackQuery(
         update.callback_query
       );
+
+    const parentPaymentHandled = parentFreezeHandled
+      ? true
+      : await handleParentSubscriptionPaymentCallbackQuery(
+          update.callback_query
+        );
 
     const parentAbsenceHandled = parentPaymentHandled
       ? true

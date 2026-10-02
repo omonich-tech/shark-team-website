@@ -203,6 +203,9 @@ jobs:
           MANUAL_PAYMENT_CARD_NUMBER: "111111111111"
           MANUAL_PAYMENT_CARD_HOLDER: "CI Test"
 
+      - name: Smoke test parent subscription freeze request
+        run: npm run smoke:parent-subscription-freeze-request
+
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
         env:
