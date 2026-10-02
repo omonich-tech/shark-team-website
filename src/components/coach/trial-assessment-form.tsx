@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 type Scores = {
@@ -22,11 +23,13 @@ const criteria = [
 
 export function TrialAssessmentForm({
   bookingId,
+  sessionId,
   initialScores,
   initialComment,
   initialRecommendation
 }: {
   bookingId: string;
+  sessionId: string;
   initialScores?: Scores | null;
   initialComment?: string | null;
   initialRecommendation?: string | null;
@@ -129,7 +132,12 @@ export function TrialAssessmentForm({
       </button>
 
       {state === "saved" ? (
-        <p className="coach-form-success">Оценка сохранена.</p>
+        <div className="coach-form-success coach-form-success-row">
+          <span>Оценка сохранена.</span>
+          <Link href={`/coach/sessions/${sessionId}`}>
+            ← Вернуться к занятию
+          </Link>
+        </div>
       ) : null}
       {state === "error" ? (
         <p className="coach-form-error">Не удалось сохранить оценку.</p>
