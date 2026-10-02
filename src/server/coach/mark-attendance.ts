@@ -2,6 +2,7 @@ import {
   AbsenceReason,
   AttendanceReasonSource,
   AttendanceStatus,
+  SessionStatus,
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -27,6 +28,10 @@ export async function markCoachAttendance(input: {
 
   if (!data) {
     return { ok: false as const, error: "SESSION_NOT_FOUND" as const };
+  }
+
+  if (data.session.status !== SessionStatus.SCHEDULED) {
+    return { ok: false as const, error: "SESSION_LOCKED" as const };
   }
 
   const participant = data.participants.find(
@@ -136,6 +141,7 @@ export async function markCoachAttendance(input: {
       });
 
       if (
+        data.session.status === SessionStatus.COMPLETED &&
         child?.parentId &&
         attendance.reasonSource !== AttendanceReasonSource.PARENT
       ) {
