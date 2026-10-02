@@ -8,6 +8,7 @@ import {
 import { GroupMemberManager } from "@/components/admin/group-member-manager";
 import { RemoveFromGroupButton } from "@/components/admin/remove-from-group-button";
 import { SessionAdminControls } from "@/components/admin/session-admin-controls";
+import { SessionReopenControl } from "@/components/admin/session-reopen-control";
 import { formatAdminDate } from "@/lib/admin-format";
 import { getPrisma } from "@/lib/prisma";
 
@@ -580,6 +581,7 @@ export default async function AdminGroupPage({
                 <th>Отмечено</th>
                 <th>Присутствовали</th>
                 <th>Отсутствовали</th>
+                <th>Действие</th>
               </tr>
             </thead>
             <tbody>
@@ -606,12 +608,19 @@ export default async function AdminGroupPage({
                         ).length
                       }
                     </td>
+                    <td>
+                      {session.status === "COMPLETED" ? (
+                        <SessionReopenControl sessionId={session.id} />
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {!recentSessions.length ? (
                 <tr>
-                  <td colSpan={5}>Занятий за последние 30 дней нет.</td>
+                  <td colSpan={6}>Занятий за последние 30 дней нет.</td>
                 </tr>
               ) : null}
             </tbody>
