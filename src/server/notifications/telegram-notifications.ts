@@ -214,6 +214,17 @@ type NotificationWithContext = Prisma.NotificationGetPayload<{
         coach: true;
       };
     };
+    trainingSession: {
+      include: {
+        group: {
+          include: {
+            branch: true;
+            sport: true;
+          };
+        };
+        coach: true;
+      };
+    };
   };
 }>;
 
