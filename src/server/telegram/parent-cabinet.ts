@@ -248,26 +248,11 @@ async function getParentChildren(parentId: string) {
     where: {
       parentId,
       enrollments: {
-        some: {
-          status: {
-            in: [
-              StudentEnrollmentStatus.ACTIVE,
-              StudentEnrollmentStatus.PAUSED
-            ]
-          }
-        }
+        some: {}
       }
     },
     include: {
       enrollments: {
-        where: {
-          status: {
-            in: [
-              StudentEnrollmentStatus.ACTIVE,
-              StudentEnrollmentStatus.PAUSED
-            ]
-          }
-        },
         include: {
           group: {
             include: {
@@ -420,11 +405,22 @@ export async function buildParentCabinetHome(
   }
 
   if (children.length === 1) {
-    return buildParentCabinetView(
-      telegramUserId,
-      "child",
-      children[0].id
+    const hasCurrentEnrollment = children[0].enrollments.some(
+      (enrollment) =>
+        enrollment.status === StudentEnrollmentStatus.ACTIVE ||
+        enrollment.status === StudentEnrollmentStatus.PAUSED
     );
+
+    return hasCurrentEnrollment
+      ? buildParentCabinetView(
+          telegramUserId,
+          "child",
+          children[0].id
+        )
+      : buildParentBillingHistoryIndex(
+          telegramUserId,
+          children[0].id
+        );
   }
 
   const lines =
@@ -446,17 +442,32 @@ export async function buildParentCabinetHome(
     text: lines.join("\n"),
     replyMarkup: {
       inline_keyboard: children.map((child) => {
-        const enrollment = child.enrollments[0];
+        const currentEnrollment =
+          child.enrollments.find(
+            (enrollment) =>
+              enrollment.status === StudentEnrollmentStatus.ACTIVE ||
+              enrollment.status === StudentEnrollmentStatus.PAUSED
+          ) ?? null;
+        const enrollment = currentEnrollment ?? child.enrollments[0];
         const label = enrollment
-          ? child.name + " · " + enrollment.group.sport[
+          ? child.name +
+            " · " +
+            enrollment.group.sport[
               locale === "uz" ? "nameUz" : "nameRu"
-            ]
+            ] +
+            (currentEnrollment
+              ? ""
+              : locale === "uz"
+                ? " · tarix"
+                : " · история")
           : child.name;
 
         return [
           {
             text: "👤 " + label,
-            callback_data: "parent:child:" + child.id
+            callback_data: currentEnrollment
+              ? "parent:child:" + child.id
+              : "parent:billing:" + child.id
           }
         ];
       })
