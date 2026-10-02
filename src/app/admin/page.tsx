@@ -11,8 +11,7 @@ import {
 import { formatAdminDate, formatAdminMoney } from "@/lib/admin-format";
 import { getPrisma } from "@/lib/prisma";
 import {
-  dateKeyInTimeZone,
-  localDateTimeToUtc
+  dayRangeInTimeZone
 } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -83,9 +82,7 @@ export default async function AdminDashboardPage() {
     groups,
     openAlerts,
     alertGroups,
-    recentLeads,
-    sessionsToday,
-    overdueSessions
+    recentLeads
   ] = await Promise.all([
     prisma.lead.count({
       where: {
@@ -199,34 +196,32 @@ export default async function AdminDashboardPage() {
     prisma.lead.findMany({
       take: 8,
       orderBy: { createdAt: "desc" }
-    }),
-    prisma.trainingSession.count({
+    })
+  ]);
+
+  const dayRange = dayRangeInTimeZone(now, TIME_ZONE);
+  let sessionsToday: number | null = null;
+  let overdueSessions: number | null = null;
+
+  try {
+    sessionsToday = await prisma.trainingSession.count({
       where: {
         startsAt: {
-          gte: localDateTimeToUtc(
-            dateKeyInTimeZone(now, TIME_ZONE),
-            0,
-            0,
-            TIME_ZONE
-          ),
-          lt: new Date(
-            localDateTimeToUtc(
-              dateKeyInTimeZone(now, TIME_ZONE),
-              0,
-              0,
-              TIME_ZONE
-            ).getTime() + DAY
-          )
+          gte: dayRange.start,
+          lt: dayRange.end
         }
       }
-    }),
-    prisma.trainingSession.count({
+    });
+
+    overdueSessions = await prisma.trainingSession.count({
       where: {
         status: "SCHEDULED",
         endsAt: { lt: now }
       }
-    })
-  ]);
+    });
+  } catch (error) {
+    console.error("ADMIN_DASHBOARD_SESSION_METRICS_FAILED", error);
+  }
 
   const conversionRate = percent(enrolledFromTrialMonth, attendedTrialsMonth);
   const revenueMonth =
@@ -314,14 +309,14 @@ export default async function AdminDashboardPage() {
         </article>
         <article className="admin-metric">
           <span>Занятия сегодня</span>
-          <strong>{sessionsToday}</strong>
+          <strong>{sessionsToday ?? "—"}</strong>
           <small>
             <Link href="/admin/sessions?scope=today">Открыть Sessions →</Link>
           </small>
         </article>
         <article className="admin-metric">
           <span>Не завершены вовремя</span>
-          <strong>{overdueSessions}</strong>
+          <strong>{overdueSessions ?? "—"}</strong>
           <small>
             <Link href="/admin/sessions?scope=overdue">Проверить →</Link>
           </small>
