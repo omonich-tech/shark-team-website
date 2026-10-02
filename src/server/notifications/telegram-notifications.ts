@@ -231,6 +231,161 @@ async function renderNotification(
   const session = booking?.session;
   const branch = session?.group?.branch;
 
+  if (
+    notification.type === NotificationType.REGULAR_SESSION_REMINDER ||
+    notification.type === NotificationType.REGULAR_SESSION_CANCELLED ||
+    notification.type === NotificationType.REGULAR_SESSION_RESCHEDULED
+  ) {
+    const regularSession = notification.trainingSession;
+    const enrollment = notification.enrollment;
+
+    if (!regularSession || !enrollment) {
+      return locale === "uz"
+        ? "Mashg‘ulot ma’lumotlarini topib bo‘lmadi."
+        : "Не удалось загрузить данные тренировки.";
+    }
+
+    const child = escapeHtml(enrollment.child.name);
+    const sport =
+      locale === "uz"
+        ? regularSession.group.sport.nameUz
+        : regularSession.group.sport.nameRu;
+    const branchName =
+      locale === "uz"
+        ? regularSession.group.branch.publicNameUz
+        : regularSession.group.branch.publicNameRu;
+    const address =
+      locale === "uz"
+        ? regularSession.group.branch.addressUz
+        : regularSession.group.branch.addressRu;
+    const coach = escapeHtml(
+      [
+        regularSession.coach.firstName,
+        regularSession.coach.lastName
+      ]
+        .filter(Boolean)
+        .join(" ") || "—"
+    );
+
+    if (
+      notification.type ===
+      NotificationType.REGULAR_SESSION_REMINDER
+    ) {
+      const date = formatDate(regularSession.startsAt, locale);
+
+      return locale === "uz"
+        ? [
+            "🏀 <b>SHARK TEAM mashg‘ulot eslatmasi</b>",
+            "",
+            "Bola: <b>" + child + "</b>",
+            "Yo‘nalish: " + escapeHtml(sport),
+            "Vaqt: <b>" + escapeHtml(date) + "</b>",
+            "Filial: " + escapeHtml(branchName),
+            "Manzil: " + escapeHtml(address),
+            "Murabbiy: " + coach,
+            "",
+            "Iltimos, mashg‘ulotga 10–15 daqiqa oldin keling."
+          ].join("\n")
+        : [
+            "🏀 <b>Напоминание о тренировке SHARK TEAM</b>",
+            "",
+            "Ребёнок: <b>" + child + "</b>",
+            "Направление: " + escapeHtml(sport),
+            "Время: <b>" + escapeHtml(date) + "</b>",
+            "Филиал: " + escapeHtml(branchName),
+            "Адрес: " + escapeHtml(address),
+            "Тренер: " + coach,
+            "",
+            "Пожалуйста, приходите за 10–15 минут до начала."
+          ].join("\n");
+    }
+
+    if (
+      notification.type ===
+      NotificationType.REGULAR_SESSION_CANCELLED
+    ) {
+      const date = formatDate(regularSession.startsAt, locale);
+      const context =
+        notification.contextJson &&
+        typeof notification.contextJson === "object" &&
+        !Array.isArray(notification.contextJson)
+          ? notification.contextJson
+          : null;
+      const reason =
+        context &&
+        "reason" in context &&
+        typeof context.reason === "string"
+          ? context.reason
+          : null;
+
+      return locale === "uz"
+        ? [
+            "❌ <b>SHARK TEAM mashg‘uloti bekor qilindi</b>",
+            "",
+            "Bola: <b>" + child + "</b>",
+            "Yo‘nalish: " + escapeHtml(sport),
+            "Mashg‘ulot: " + escapeHtml(date),
+            "Filial: " + escapeHtml(branchName),
+            reason ? "Sabab: " + escapeHtml(reason) : "",
+            "",
+            "Keyingi mashg‘ulotlar jadval bo‘yicha davom etadi."
+          ].filter(Boolean).join("\n")
+        : [
+            "❌ <b>Тренировка SHARK TEAM отменена</b>",
+            "",
+            "Ребёнок: <b>" + child + "</b>",
+            "Направление: " + escapeHtml(sport),
+            "Тренировка: " + escapeHtml(date),
+            "Филиал: " + escapeHtml(branchName),
+            reason ? "Причина: " + escapeHtml(reason) : "",
+            "",
+            "Следующие тренировки продолжаются по расписанию."
+          ].filter(Boolean).join("\n");
+    }
+
+    const context =
+      notification.contextJson &&
+      typeof notification.contextJson === "object" &&
+      !Array.isArray(notification.contextJson)
+        ? notification.contextJson
+        : null;
+    const oldStartsAt =
+      context &&
+      "oldStartsAt" in context &&
+      typeof context.oldStartsAt === "string"
+        ? new Date(context.oldStartsAt)
+        : null;
+    const oldDate =
+      oldStartsAt && !Number.isNaN(oldStartsAt.getTime())
+        ? formatDate(oldStartsAt, locale)
+        : "—";
+    const newDate = formatDate(regularSession.startsAt, locale);
+
+    return locale === "uz"
+      ? [
+          "🔄 <b>SHARK TEAM mashg‘uloti ko‘chirildi</b>",
+          "",
+          "Bola: <b>" + child + "</b>",
+          "Yo‘nalish: " + escapeHtml(sport),
+          "Oldingi vaqt: <s>" + escapeHtml(oldDate) + "</s>",
+          "Yangi vaqt: <b>" + escapeHtml(newDate) + "</b>",
+          "Filial: " + escapeHtml(branchName),
+          "Manzil: " + escapeHtml(address),
+          "Murabbiy: " + coach
+        ].join("\n")
+      : [
+          "🔄 <b>Тренировка SHARK TEAM перенесена</b>",
+          "",
+          "Ребёнок: <b>" + child + "</b>",
+          "Направление: " + escapeHtml(sport),
+          "Было: <s>" + escapeHtml(oldDate) + "</s>",
+          "Стало: <b>" + escapeHtml(newDate) + "</b>",
+          "Филиал: " + escapeHtml(branchName),
+          "Адрес: " + escapeHtml(address),
+          "Тренер: " + coach
+        ].join("\n");
+  }
+
   if (notification.type === NotificationType.STUDENT_PROGRESS_UPDATE) {
     const assessment = notification.progressAssessment;
 
@@ -623,6 +778,17 @@ export async function processDueTelegramNotifications(
           },
           coach: true
         }
+      },
+      trainingSession: {
+        include: {
+          group: {
+            include: {
+              branch: true,
+              sport: true
+            }
+          },
+          coach: true
+        }
       }
     },
     orderBy: {
@@ -678,6 +844,67 @@ export async function processDueTelegramNotifications(
 
         continue;
       }
+    }
+
+    if (
+      notification.type === NotificationType.REGULAR_SESSION_REMINDER
+    ) {
+      const session = notification.trainingSession;
+      const enrollment = notification.enrollment;
+
+      if (
+        !session ||
+        !enrollment ||
+        session.status !== "SCHEDULED" ||
+        session.startsAt <= now ||
+        enrollment.status !== "ACTIVE" ||
+        enrollment.subscriptionStatus === "FROZEN" ||
+        enrollment.subscriptionStatus === "PAUSED" ||
+        enrollment.subscriptionStatus === "ENDED"
+      ) {
+        await prisma.notification.update({
+          where: { id: notification.id },
+          data: {
+            status: NotificationStatus.SKIPPED,
+            lastError: !session || !enrollment
+              ? "REGULAR_SESSION_CONTEXT_MISSING"
+              : "REGULAR_SESSION_STATE_CHANGED"
+          }
+        });
+        skipped += 1;
+        continue;
+      }
+    }
+
+    if (
+      notification.type === NotificationType.REGULAR_SESSION_CANCELLED &&
+      notification.trainingSession?.status !== "CANCELLED"
+    ) {
+      await prisma.notification.update({
+        where: { id: notification.id },
+        data: {
+          status: NotificationStatus.SKIPPED,
+          lastError: "SESSION_NOT_CANCELLED"
+        }
+      });
+      skipped += 1;
+      continue;
+    }
+
+    if (
+      notification.type === NotificationType.REGULAR_SESSION_RESCHEDULED &&
+      (!notification.trainingSession ||
+        notification.trainingSession.status !== "SCHEDULED")
+    ) {
+      await prisma.notification.update({
+        where: { id: notification.id },
+        data: {
+          status: NotificationStatus.SKIPPED,
+          lastError: "SESSION_NOT_SCHEDULED"
+        }
+      });
+      skipped += 1;
+      continue;
     }
 
     if (notification.type === NotificationType.REGULAR_ABSENCE_NOTICE) {
