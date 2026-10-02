@@ -31,3 +31,27 @@ export async function writeAdminAudit(input: {
     }
   });
 }
+
+
+export async function writeCoachAudit(input: {
+  actorId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  before?: unknown;
+  after?: unknown;
+}) {
+  const prisma = getPrisma();
+
+  return prisma.auditLog.create({
+    data: {
+      actorType: AuditActorType.COACH,
+      actorId: input.actorId,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      beforeJson: jsonValue(input.before),
+      afterJson: jsonValue(input.after)
+    }
+  });
+}
