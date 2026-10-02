@@ -300,6 +300,7 @@ async function main() {
   const changedReminderCount = await prisma.notification.count({
     where: {
       trainingSessionId: changeSession.id,
+      enrollmentId: enrollment.id,
       type: NotificationType.REGULAR_SESSION_REMINDER
     }
   });
