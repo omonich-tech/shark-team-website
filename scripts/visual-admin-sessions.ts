@@ -36,17 +36,27 @@ function findChrome() {
   throw new Error("Chrome/Chromium executable not found");
 }
 
-async function waitForJsonVersion(port: number) {
+async function waitForPageTarget(port: number) {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try {
       const response = await fetch(
-        `http://127.0.0.1:${port}/json/version`
+        `http://127.0.0.1:${port}/json/list`
       );
 
       if (response.ok) {
-        return (await response.json()) as {
-          webSocketDebuggerUrl: string;
-        };
+        const targets = (await response.json()) as Array<{
+          type?: string;
+          webSocketDebuggerUrl?: string;
+        }>;
+        const page = targets.find(
+          (target) =>
+            target.type === "page" &&
+            Boolean(target.webSocketDebuggerUrl)
+        );
+
+        if (page?.webSocketDebuggerUrl) {
+          return page;
+        }
       }
     } catch {
       // Chrome is still starting.
@@ -55,7 +65,7 @@ async function waitForJsonVersion(port: number) {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  throw new Error("Chrome DevTools endpoint did not start");
+  throw new Error("Chrome page DevTools endpoint did not start");
 }
 
 type CdpResult = Record<string, unknown>;
@@ -269,9 +279,9 @@ async function main() {
   );
 
   try {
-    const version = await waitForJsonVersion(port);
+    const pageTarget = await waitForPageTarget(port);
     const { socket, client } = await connectCdp(
-      version.webSocketDebuggerUrl
+      pageTarget.webSocketDebuggerUrl
     );
 
     try {
