@@ -29,6 +29,7 @@ const nav = [
   ["/admin/branches", "Филиалы"],
   ["/admin/coaches", "Тренеры"],
   ["/admin/groups", "Группы"],
+  ["/admin/sessions", "Занятия"],
   ["/admin/prices", "Цены"],
   ["/admin/content", "Контент"],
   ["/admin/faq", "FAQ"],
