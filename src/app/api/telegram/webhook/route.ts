@@ -24,6 +24,7 @@ import { consumeTelegramLinkToken } from "@/server/telegram/link";
 import {
   buildParentCabinetHome,
   handleParentAbsenceCallback,
+  handleParentBillingHistoryCallback,
   handleParentCabinetCallback,
   handleParentFreezeRequestCallback,
   handleParentSubscriptionPaymentCallback,
@@ -353,6 +354,56 @@ async function sendSubscriptionPaymentReviewToAdmin(
       replyMarkup
     });
   }
+}
+
+async function handleParentBillingHistoryCallbackQuery(
+  callback: NonNullable<TelegramUpdate["callback_query"]>
+) {
+  const callbackId = callback.id;
+  const data = callback.data ?? "";
+  const telegramUserId = callback.from?.id;
+  const chatId = callback.message?.chat?.id;
+
+  if (
+    !callbackId ||
+    !telegramUserId ||
+    !data.startsWith("bh:")
+  ) {
+    return false;
+  }
+
+  const result = await handleParentBillingHistoryCallback(
+    BigInt(telegramUserId),
+    data
+  );
+
+  if (!result) {
+    return false;
+  }
+
+  await answerTelegramCallbackQuery({
+    callbackQueryId: callbackId,
+    text: result.ok
+      ? result.locale === "uz"
+        ? "Tarix ochildi."
+        : "История открыта."
+      : result.locale === "uz"
+        ? "Tarixni ochib bo‘lmadi."
+        : "Не удалось открыть историю.",
+    showAlert: !result.ok
+  });
+
+  if (chatId !== undefined) {
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: result.text,
+      ...(result.replyMarkup
+        ? { replyMarkup: result.replyMarkup }
+        : {})
+    });
+  }
+
+  return true;
 }
 
 async function handleParentFreezeRequestCallbackQuery(
@@ -1038,10 +1089,16 @@ export async function POST(request: NextRequest) {
   }
 
   if (update.callback_query) {
-    const parentFreezeHandled =
-      await handleParentFreezeRequestCallbackQuery(
+    const parentBillingHandled =
+      await handleParentBillingHistoryCallbackQuery(
         update.callback_query
       );
+
+    const parentFreezeHandled = parentBillingHandled
+      ? true
+      : await handleParentFreezeRequestCallbackQuery(
+          update.callback_query
+        );
 
     const parentPaymentHandled = parentFreezeHandled
       ? true
