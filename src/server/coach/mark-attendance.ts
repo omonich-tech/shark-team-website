@@ -7,7 +7,6 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import {
-  queueRegularAbsenceNotice,
   skipRegularAbsenceNotice
 } from "@/server/attendance/absence-reason";
 import { getCoachSessionParticipants } from "@/server/coach/get-session-participants";
@@ -134,23 +133,6 @@ export async function markCoachAttendance(input: {
   if (!participant.trialBookingId) {
     if (input.status === AttendanceStatus.PRESENT) {
       await skipRegularAbsenceNotice(attendance.id);
-    } else {
-      const child = await prisma.child.findUnique({
-        where: { id: input.childId },
-        select: { parentId: true }
-      });
-
-      if (
-        data.session.status === SessionStatus.COMPLETED &&
-        child?.parentId &&
-        attendance.reasonSource !== AttendanceReasonSource.PARENT
-      ) {
-        await queueRegularAbsenceNotice({
-          attendanceId: attendance.id,
-          parentId: child.parentId,
-          scheduledAt: now
-        });
-      }
     }
 
     await refreshAttendanceRiskAlert({
