@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type Participant = {
@@ -40,6 +41,7 @@ export function AttendancePanel({
   initialParticipants: Participant[];
   initialSessionStatus: string;
 }) {
+  const router = useRouter();
   const [participants, setParticipants] = useState(initialParticipants);
   const [sessionStatus, setSessionStatus] = useState(initialSessionStatus);
   const [savingChild, setSavingChild] = useState<string | null>(null);
@@ -193,6 +195,7 @@ export function AttendancePanel({
 
       setSessionStatus("COMPLETED");
       setCompletionState("saved");
+      router.refresh();
     } catch {
       setError("Не удалось завершить тренировку.");
       setCompletionState("error");
