@@ -759,6 +759,11 @@ export async function buildParentCabinetView(
 
         return (
           freezeableStatuses.includes(status as SubscriptionStatus) &&
+          !(
+            status === SubscriptionStatus.PAYMENT_DUE &&
+            enrollment.nextPaymentDueAt &&
+            enrollment.nextPaymentDueAt <= now
+          ) &&
           latestPayment?.status !== PaymentStatus.UNDER_REVIEW &&
           latestFreezeRequest?.status !==
             SubscriptionFreezeRequestStatus.PENDING
