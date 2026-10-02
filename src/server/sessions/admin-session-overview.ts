@@ -1,5 +1,6 @@
 import {
   AttendanceStatus,
+  Prisma,
   SessionStatus,
   StudentEnrollmentStatus,
   SubscriptionStatus,
@@ -64,7 +65,7 @@ const participantInclude = {
     }
   },
   attendances: true
-} as const;
+} satisfies Prisma.TrainingSessionInclude;
 
 export type AdminSessionRow = Awaited<
   ReturnType<typeof getAdminSessions>
