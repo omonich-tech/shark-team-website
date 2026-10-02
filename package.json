@@ -37,7 +37,7 @@
     "notifications:run": "tsx scripts/process-notifications.ts",
     "smoke:telegram": "tsx scripts/smoke-telegram-http.ts",
     "smoke:admin-cms": "tsx scripts/smoke-admin-cms.ts",
-    "verify:production-env": "tsx scripts/verify-production-env.ts",
+    "verify:production-env": "tsx scripts/verify-production-env.ts && npm run verify:schema-version",
     "security:scan": "node scripts/check-repo-secrets.mjs",
     "smoke:production": "tsx scripts/smoke-production.ts",
     "maintenance:run": "tsx scripts/run-maintenance.ts",
