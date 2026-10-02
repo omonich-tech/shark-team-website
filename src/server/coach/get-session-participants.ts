@@ -160,6 +160,7 @@ export async function getCoachSessionParticipants(
       startsAt: session.startsAt,
       endsAt: session.endsAt,
       status: session.status,
+      completedAt: session.completedAt,
       groupId: session.groupId,
       groupAgeMin: session.group.ageMin,
       groupAgeMax: session.group.ageMax,
