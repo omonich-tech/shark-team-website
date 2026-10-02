@@ -141,6 +141,9 @@ enum NotificationType {
   SUBSCRIPTION_PAUSED
   SUBSCRIPTION_ENDED
   REGULAR_ABSENCE_NOTICE
+  REGULAR_SESSION_REMINDER
+  REGULAR_SESSION_CANCELLED
+  REGULAR_SESSION_RESCHEDULED
   STUDENT_PROGRESS_UPDATE
 }
 
@@ -399,6 +402,7 @@ model TrainingSession {
   leads        Lead[]
   trialBookings TrialBooking[]
   attendances   Attendance[]
+  notifications Notification[]
 
   @@unique([groupId, startsAt])
   @@unique([scheduleRuleId, sourceDate])
@@ -898,6 +902,8 @@ model Notification {
   subscriptionPaymentId String?
   attendanceId     String?
   progressAssessmentId String?
+  trainingSessionId String?
+  contextJson       Json?
   scheduledAt      DateTime
   sentAt           DateTime?
   attempts         Int                 @default(0)
@@ -914,6 +920,7 @@ model Notification {
   subscriptionPayment SubscriptionPayment? @relation(fields: [subscriptionPaymentId], references: [id], onDelete: SetNull)
   attendance Attendance? @relation(fields: [attendanceId], references: [id], onDelete: SetNull)
   progressAssessment StudentProgressAssessment? @relation(fields: [progressAssessmentId], references: [id], onDelete: SetNull)
+  trainingSession TrainingSession? @relation(fields: [trainingSessionId], references: [id], onDelete: SetNull)
 
   @@index([status, scheduledAt])
   @@index([leadId])
@@ -923,6 +930,7 @@ model Notification {
   @@index([subscriptionPaymentId])
   @@index([attendanceId])
   @@index([progressAssessmentId])
+  @@index([trainingSessionId])
 }
 
 

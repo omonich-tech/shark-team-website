@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { advanceSubscriptionLifecycle } from "@/server/billing/subscription-lifecycle";
 import { isCronAuthorized } from "@/server/jobs/auth";
 import { processDueTelegramNotifications } from "@/server/notifications/telegram-notifications";
+import { queueUpcomingRegularSessionReminders } from "@/server/notifications/regular-session-notifications";
 
 export async function POST(request: NextRequest) {
   if (!isCronAuthorized(request)) {
@@ -13,11 +14,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const lifecycle = await advanceSubscriptionLifecycle();
+    const regularSessionReminders =
+      await queueUpcomingRegularSessionReminders();
     const notifications = await processDueTelegramNotifications();
 
     return NextResponse.json({
       ok: true,
       lifecycle,
+      regularSessionReminders,
       notifications
     });
   } catch (error) {
