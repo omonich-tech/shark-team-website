@@ -215,6 +215,9 @@ jobs:
       - name: Smoke test coach session completion
         run: npm run smoke:coach-session-completion
 
+      - name: Smoke test admin sessions operations
+        run: npm run smoke:admin-sessions
+
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
         env:
