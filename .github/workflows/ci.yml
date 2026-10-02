@@ -218,6 +218,21 @@ jobs:
       - name: Smoke test admin sessions operations
         run: npm run smoke:admin-sessions
 
+      - name: Visual smoke admin sessions
+        run: npm run visual:admin-sessions
+
+      - name: Upload admin sessions screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-sessions-ui
+          path: |
+            artifacts/admin-sessions-list.png
+            artifacts/admin-session-detail.png
+            artifacts/admin-sessions-visual.json
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
         env:
