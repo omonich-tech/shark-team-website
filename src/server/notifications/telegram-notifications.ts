@@ -938,6 +938,29 @@ export async function processDueTelegramNotifications(
         skipped += 1;
         continue;
       }
+
+      if (attendance.session.status === "SCHEDULED") {
+        await prisma.notification.update({
+          where: { id: notification.id },
+          data: {
+            scheduledAt: new Date(now.getTime() + 15 * 60_000),
+            lastError: "WAITING_FOR_SESSION_COMPLETION"
+          }
+        });
+        continue;
+      }
+
+      if (attendance.session.status !== "COMPLETED") {
+        await prisma.notification.update({
+          where: { id: notification.id },
+          data: {
+            status: NotificationStatus.SKIPPED,
+            lastError: "SESSION_NOT_COMPLETED"
+          }
+        });
+        skipped += 1;
+        continue;
+      }
     }
 
     if (
