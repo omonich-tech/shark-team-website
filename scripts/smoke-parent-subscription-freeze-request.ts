@@ -21,48 +21,61 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 async function main() {
-  const enrollment = await prisma.studentEnrollment.findFirst({
+  const group = await prisma.trainingGroup.findFirst({
     where: {
-      status: StudentEnrollmentStatus.ACTIVE,
-      subscriptionStatus: SubscriptionStatus.ACTIVE,
-      currentPeriodEnd: { not: null },
-      nextPaymentDueAt: { not: null },
-      freezeRequests: {
-        none: {
-          status: SubscriptionFreezeRequestStatus.PENDING
-        }
-      },
-      payments: {
-        none: {
-          status: "UNDER_REVIEW"
-        }
-      }
-    },
-    include: {
-      child: {
-        include: {
-          parent: true
-        }
-      }
+      status: "ACTIVE"
     },
     orderBy: { createdAt: "asc" }
   });
 
-  assert(enrollment, "Active enrollment for freeze smoke not found");
+  assert(group, "Training group for freeze smoke not found");
+
+  const phone = "+998900077024";
+
+  await prisma.parent.deleteMany({
+    where: { phone }
+  });
+
+  const parent = await prisma.parent.create({
+    data: {
+      name: "CI Freeze Parent",
+      phone,
+      locale: "ru"
+    }
+  });
+
+  const child = await prisma.child.create({
+    data: {
+      parentId: parent.id,
+      name: "CI Freeze Child",
+      ageAtRegistration: 10
+    }
+  });
+
+  const originalPeriodStart = new Date("2026-10-01T00:00:00.000Z");
+  const originalPeriodEnd = new Date("2026-11-01T00:00:00.000Z");
+  const originalGraceUntil = new Date("2026-11-04T00:00:00.000Z");
+
+  const enrollment = await prisma.studentEnrollment.create({
+    data: {
+      childId: child.id,
+      groupId: group.id,
+      status: StudentEnrollmentStatus.ACTIVE,
+      subscriptionStatus: SubscriptionStatus.ACTIVE,
+      startDate: originalPeriodStart,
+      currentPeriodStart: originalPeriodStart,
+      currentPeriodEnd: originalPeriodEnd,
+      nextPaymentDueAt: originalPeriodEnd,
+      graceUntil: originalGraceUntil
+    }
+  });
 
   const telegramUserId = 777024n;
   const chatId = 777024n;
 
-  await prisma.telegramContact.upsert({
-    where: { telegramUserId },
-    update: {
-      parentId: enrollment.child.parentId,
-      leadId: null,
-      chatId,
-      locale: "ru"
-    },
-    create: {
-      parentId: enrollment.child.parentId,
+  await prisma.telegramContact.create({
+    data: {
+      parentId: parent.id,
       telegramUserId,
       chatId,
       username: "ci_parent_freeze",
@@ -75,7 +88,7 @@ async function main() {
   const cabinet = await buildParentCabinetView(
     telegramUserId,
     "subscription",
-    enrollment.childId,
+    child.id,
     new Date("2026-10-02T08:00:00.000Z")
   );
 
@@ -123,7 +136,7 @@ async function main() {
   let request = await prisma.subscriptionFreezeRequest.findFirst({
     where: {
       enrollmentId: enrollment.id,
-      parentId: enrollment.child.parentId,
+      parentId: parent.id,
       status: SubscriptionFreezeRequestStatus.PENDING
     },
     orderBy: { createdAt: "desc" }
@@ -217,6 +230,11 @@ async function main() {
       now.getTime() + 7 * 24 * 60 * 60 * 1000,
     "Freeze end date is incorrect"
   );
+  assert(
+    currentEnrollment?.currentPeriodEnd?.getTime() ===
+      originalPeriodEnd.getTime() + 7 * 24 * 60 * 60 * 1000,
+    "Paid period was not extended by the freeze duration"
+  );
 
   const approvedState =
     await prisma.subscriptionFreezeRequest.findUnique({
@@ -236,15 +254,34 @@ async function main() {
 
   assert(resumed.ok, "Freeze smoke cleanup resume failed");
 
-  await prisma.subscriptionFreezeRequest.deleteMany({
-    where: {
-      enrollmentId: enrollment.id,
-      reviewedBy: "ci:freeze"
-    }
+  currentEnrollment = await prisma.studentEnrollment.findUnique({
+    where: { id: enrollment.id }
   });
 
+  assert(
+    currentEnrollment?.subscriptionStatus === SubscriptionStatus.ACTIVE,
+    "Cleanup did not restore ACTIVE subscription"
+  );
+  assert(
+    currentEnrollment?.currentPeriodEnd?.getTime() ===
+      originalPeriodEnd.getTime(),
+    "Cleanup did not restore original paid period"
+  );
+
+  await prisma.notification.deleteMany({
+    where: { enrollmentId: enrollment.id }
+  });
+  await prisma.subscriptionFreezeRequest.deleteMany({
+    where: { enrollmentId: enrollment.id }
+  });
   await prisma.telegramContact.delete({
     where: { telegramUserId }
+  });
+  await prisma.child.delete({
+    where: { id: child.id }
+  });
+  await prisma.parent.delete({
+    where: { id: parent.id }
   });
 
   console.log("Parent subscription freeze request smoke test passed.");
