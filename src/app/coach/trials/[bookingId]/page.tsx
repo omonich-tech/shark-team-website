@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TrialAssessmentForm } from "@/components/coach/trial-assessment-form";
 import { formatCoachDate } from "@/lib/coach-format";
@@ -49,6 +50,12 @@ export default async function CoachTrialAssessmentPage({
   return (
     <>
       <section className="coach-page-head">
+        <Link
+          className="coach-back-link"
+          href={`/coach/sessions/${booking.session.id}`}
+        >
+          ← К занятию
+        </Link>
         <p className="eyebrow">ПРОБНОЕ ЗАНЯТИЕ</p>
         <h1>{booking.lead.childName}</h1>
         <p>
@@ -84,6 +91,7 @@ export default async function CoachTrialAssessmentPage({
         {canAssess || booking.assessment ? (
           <TrialAssessmentForm
             bookingId={booking.id}
+            sessionId={booking.session.id}
             initialScores={
               booking.assessment
                 ? {
