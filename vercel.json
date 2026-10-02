@@ -5,5 +5,6 @@
       "*": false,
       "main": true
     }
-  }
+  },
+  "buildCommand": "npm run db:migrate:deploy && npm run build"
 }
