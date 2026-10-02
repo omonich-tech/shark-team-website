@@ -2,8 +2,6 @@ import "dotenv/config";
 import {
   AbsenceReason,
   AttendanceStatus,
-  NotificationStatus,
-  NotificationType,
   StudentEnrollmentStatus
 } from "../src/generated/prisma/client";
 import { getPrisma } from "../src/lib/prisma";
@@ -11,7 +9,6 @@ import {
   setParentAttendanceReason
 } from "../src/server/attendance/absence-reason";
 import { markCoachAttendance } from "../src/server/coach/mark-attendance";
-import { processDueTelegramNotifications } from "../src/server/notifications/telegram-notifications";
 
 const prisma = getPrisma();
 
@@ -80,27 +77,17 @@ async function main() {
     "Unexpected absence reason before parent response"
   );
 
-  const notice = await prisma.notification.findUnique({
-    where: {
-      dedupeKey: "attendance:" + absent.attendance.id + ":absence"
-    }
-  });
+  const noticeBeforeCompletion =
+    await prisma.notification.findUnique({
+      where: {
+        dedupeKey: "attendance:" + absent.attendance.id + ":absence"
+      }
+    });
 
-  assert(notice, "Absence notification was not queued");
   assert(
-    notice.type === NotificationType.REGULAR_ABSENCE_NOTICE,
-    "Wrong absence notification type"
+    noticeBeforeCompletion === null,
+    "Absence follow-up must wait for session completion"
   );
-  assert(
-    notice.status === NotificationStatus.PENDING,
-    "Absence notification should start PENDING"
-  );
-
-  const sent = await processDueTelegramNotifications(
-    new Date(Date.now() + 60_000)
-  );
-
-  assert(sent.sent >= 1, "Absence notification was not sent");
 
   const reason = await setParentAttendanceReason({
     telegramUserId: BigInt(777001),

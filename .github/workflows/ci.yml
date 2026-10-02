@@ -212,6 +212,9 @@ jobs:
       - name: Smoke test regular session notifications
         run: npm run smoke:regular-session-notifications
 
+      - name: Smoke test coach session completion
+        run: npm run smoke:coach-session-completion
+
       - name: Smoke test coach dashboard
         run: npm run smoke:coach
         env:

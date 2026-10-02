@@ -29,7 +29,7 @@ export default async function CoachSessionPage({
         </h1>
         <p>
           {formatCoachDate(data.session.startsAt)} ·{" "}
-          {data.session.branchName}
+          {data.session.branchName} · {data.session.status}
         </p>
       </section>
 
@@ -42,6 +42,7 @@ export default async function CoachSessionPage({
         <AttendancePanel
           sessionId={data.session.id}
           initialParticipants={data.participants}
+          initialSessionStatus={data.session.status}
         />
       </section>
     </>
