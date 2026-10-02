@@ -13,6 +13,7 @@ import { getPrisma } from "../src/lib/prisma";
 import {
   buildParentBillingHistoryIndex,
   buildParentBillingHistoryPage,
+  buildParentCabinetHome,
   buildParentCabinetView,
   handleParentBillingHistoryCallback
 } from "../src/server/telegram/parent-cabinet";
@@ -383,6 +384,61 @@ async function main() {
     !denied.ok && denied.error === "CHILD_NOT_AVAILABLE",
     "Foreign parent accessed another child's billing history"
   );
+
+  const archiveParent = await prisma.parent.create({
+    data: {
+      name: "CI Archived Billing Parent",
+      phone: "+998900077027",
+      locale: "ru"
+    }
+  });
+  const archiveChild = await prisma.child.create({
+    data: {
+      parentId: archiveParent.id,
+      name: "CI Archived Billing Child",
+      ageAtRegistration: 12
+    }
+  });
+  await prisma.studentEnrollment.create({
+    data: {
+      childId: archiveChild.id,
+      groupId: base.groupId,
+      status: StudentEnrollmentStatus.ENDED,
+      subscriptionStatus: SubscriptionStatus.ENDED,
+      startDate: new Date("2025-01-01T00:00:00.000Z"),
+      endDate: new Date("2025-02-01T00:00:00.000Z"),
+      endReason: "CI archived"
+    }
+  });
+  const archiveTelegramUserId = 777027n;
+  await prisma.telegramContact.create({
+    data: {
+      parentId: archiveParent.id,
+      telegramUserId: archiveTelegramUserId,
+      chatId: archiveTelegramUserId,
+      locale: "ru"
+    }
+  });
+
+  const archivedHome = await buildParentCabinetHome(
+    archiveTelegramUserId
+  );
+
+  assert(
+    archivedHome.ok &&
+      archivedHome.text.includes("История оплат"),
+    "Ended-only child lost access to billing history"
+  );
+
+  await prisma.telegramContact.delete({
+    where: { telegramUserId: archiveTelegramUserId }
+  });
+  await prisma.child.delete({
+    where: { id: archiveChild.id }
+  });
+  await prisma.parent.delete({
+    where: { id: archiveParent.id }
+  });
 
   const webhookResponse = await fetch(
     baseUrl + "/api/telegram/webhook",
