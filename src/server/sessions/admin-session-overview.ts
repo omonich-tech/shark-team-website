@@ -8,7 +8,7 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 
-const participantInclude = {
+const participantInclude = Prisma.validator<Prisma.TrainingSessionInclude>()({
   group: {
     include: {
       branch: true,
@@ -72,7 +72,7 @@ export type AdminSessionRow = Awaited<
 >[number];
 
 function buildParticipants(
-  session: Awaited<ReturnType<typeof getAdminSessionById>>
+  session: SessionWithAdminContext | null
 ) {
   if (!session) return [];
 
@@ -150,7 +150,7 @@ function buildParticipants(
 }
 
 function summarizeSession(
-  session: NonNullable<Awaited<ReturnType<typeof getAdminSessionById>>>,
+  session: SessionWithAdminContext,
   now: Date
 ) {
   const participants = buildParticipants(session);
