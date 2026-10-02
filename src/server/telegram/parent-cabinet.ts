@@ -213,6 +213,15 @@ function childMenu(childId: string, locale: Locale) {
         {
           text:
             locale === "uz"
+              ? "🧾 To‘lovlar tarixi"
+              : "🧾 История оплат",
+          callback_data: "parent:billing:" + childId
+        }
+      ],
+      [
+        {
+          text:
+            locale === "uz"
               ? "🚫 Kelmaslik haqida xabar berish"
               : "🚫 Сообщить об отсутствии",
           callback_data: "parent:absence:" + childId
@@ -1018,6 +1027,474 @@ export async function buildParentCabinetView(
 
 
 
+
+export async function buildParentBillingHistoryIndex(
+  telegramUserId: bigint,
+  childId: string
+): Promise<ParentCabinetResponse> {
+  const contact = await getVerifiedContact(telegramUserId);
+  const locale = localeOf(contact?.locale);
+
+  if (!contact?.parentId) {
+    return {
+      ok: false,
+      error: "PARENT_NOT_LINKED",
+      locale,
+      text:
+        locale === "uz"
+          ? "Ota-ona profili hali ulanmagan."
+          : "Профиль родителя ещё не связан."
+    };
+  }
+
+  const prisma = getPrisma();
+  const child = await prisma.child.findFirst({
+    where: {
+      id: childId,
+      parentId: contact.parentId
+    },
+    include: {
+      enrollments: {
+        include: {
+          group: {
+            include: {
+              sport: true,
+              branch: true
+            }
+          },
+          payments: {
+            orderBy: { sequence: "desc" }
+          },
+          freezeRequests: {
+            orderBy: { createdAt: "desc" }
+          }
+        },
+        orderBy: { createdAt: "desc" }
+      }
+    }
+  });
+
+  if (!child) {
+    return {
+      ok: false,
+      error: "CHILD_NOT_AVAILABLE",
+      locale,
+      text:
+        locale === "uz"
+          ? "Bu bola sizning kabinetingizda mavjud emas."
+          : "Этот ребёнок недоступен в вашем кабинете."
+    };
+  }
+
+  const paidTotal = child.enrollments.reduce(
+    (sum, enrollment) =>
+      sum +
+      enrollment.payments
+        .filter((payment) => payment.status === PaymentStatus.PAID)
+        .reduce((paymentSum, payment) => paymentSum + payment.amountUzs, 0),
+    0
+  );
+  const paidCount = child.enrollments.reduce(
+    (sum, enrollment) =>
+      sum +
+      enrollment.payments.filter(
+        (payment) => payment.status === PaymentStatus.PAID
+      ).length,
+    0
+  );
+
+  const lines =
+    locale === "uz"
+      ? [
+          "🧾 <b>" + escapeHtml(child.name) + " · To‘lovlar tarixi</b>",
+          "",
+          "Tasdiqlangan to‘lovlar: <b>" + paidCount + "</b>",
+          "Jami to‘langan: <b>" + formatMoney(paidTotal) + " UZS</b>",
+          "",
+          child.enrollments.length > 0
+            ? "Abonementni tanlang:"
+            : "Abonementlar tarixi topilmadi."
+        ]
+      : [
+          "🧾 <b>" + escapeHtml(child.name) + " · История оплат</b>",
+          "",
+          "Подтверждённых платежей: <b>" + paidCount + "</b>",
+          "Всего оплачено: <b>" + formatMoney(paidTotal) + " UZS</b>",
+          "",
+          child.enrollments.length > 0
+            ? "Выберите абонемент:"
+            : "История абонементов пока пуста."
+        ];
+
+  const rows = child.enrollments.map((enrollment) => {
+    const sportName =
+      locale === "uz"
+        ? enrollment.group.sport.nameUz
+        : enrollment.group.sport.nameRu;
+    const status =
+      enrollment.subscriptionStatus ?? enrollment.status;
+
+    return [
+      {
+        text:
+          "🧾 " +
+          sportName +
+          " · " +
+          subscriptionStatusLabel(status, locale),
+        callback_data: "bh:" + enrollment.id + ":0"
+      }
+    ];
+  });
+
+  return {
+    ok: true,
+    locale,
+    text: lines.join("\n"),
+    replyMarkup: {
+      inline_keyboard: [
+        ...rows,
+        [
+          {
+            text: locale === "uz" ? "⬅️ Orqaga" : "⬅️ Назад",
+            callback_data: "parent:child:" + child.id
+          }
+        ],
+        [homeButton(locale)]
+      ]
+    }
+  };
+}
+
+type BillingHistoryEvent = {
+  at: Date;
+  text: string;
+};
+
+function billingAuditLabel(action: string, locale: Locale) {
+  const ru: Record<string, string> = {
+    FREEZE_SUBSCRIPTION: "Ручная заморозка администратором",
+    RESUME_SUBSCRIPTION: "Абонемент возобновлён",
+    END_SUBSCRIPTION: "Абонемент прекращён"
+  };
+  const uz: Record<string, string> = {
+    FREEZE_SUBSCRIPTION: "Administrator abonementni muzlatdi",
+    RESUME_SUBSCRIPTION: "Abonement qayta faollashtirildi",
+    END_SUBSCRIPTION: "Abonement yakunlandi"
+  };
+
+  return (locale === "uz" ? uz : ru)[action] ?? action;
+}
+
+export async function buildParentBillingHistoryPage(
+  telegramUserId: bigint,
+  enrollmentId: string,
+  page = 0
+): Promise<ParentCabinetResponse> {
+  const contact = await getVerifiedContact(telegramUserId);
+  const locale = localeOf(contact?.locale);
+
+  if (!contact?.parentId) {
+    return {
+      ok: false,
+      error: "PARENT_NOT_LINKED",
+      locale,
+      text:
+        locale === "uz"
+          ? "Ota-ona profili hali ulanmagan."
+          : "Профиль родителя ещё не связан."
+    };
+  }
+
+  const prisma = getPrisma();
+  const enrollment = await prisma.studentEnrollment.findFirst({
+    where: {
+      id: enrollmentId,
+      child: {
+        parentId: contact.parentId
+      }
+    },
+    include: {
+      child: true,
+      group: {
+        include: {
+          sport: true,
+          branch: true
+        }
+      },
+      payments: {
+        orderBy: { createdAt: "desc" }
+      },
+      freezeRequests: {
+        orderBy: { createdAt: "desc" }
+      }
+    }
+  });
+
+  if (!enrollment) {
+    return {
+      ok: false,
+      error: "CHILD_NOT_AVAILABLE",
+      locale,
+      text:
+        locale === "uz"
+          ? "Bu abonement sizning kabinetingizda mavjud emas."
+          : "Этот абонемент недоступен в вашем кабинете."
+    };
+  }
+
+  const auditLogs = await prisma.auditLog.findMany({
+    where: {
+      entityType: "StudentEnrollment",
+      entityId: enrollment.id,
+      action: {
+        in: [
+          "FREEZE_SUBSCRIPTION",
+          "RESUME_SUBSCRIPTION",
+          "END_SUBSCRIPTION"
+        ]
+      }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  const events: BillingHistoryEvent[] = [];
+
+  events.push({
+    at: enrollment.startDate,
+    text:
+      locale === "uz"
+        ? "🎫 Abonement boshlandi"
+        : "🎫 Абонемент начат"
+  });
+
+  if (enrollment.endDate) {
+    events.push({
+      at: enrollment.endDate,
+      text:
+        locale === "uz"
+          ? "⛔ Abonement yakunlandi" +
+            (enrollment.endReason
+              ? " · " + escapeHtml(enrollment.endReason)
+              : "")
+          : "⛔ Абонемент завершён" +
+            (enrollment.endReason
+              ? " · " + escapeHtml(enrollment.endReason)
+              : "")
+    });
+  }
+
+  for (const payment of enrollment.payments) {
+    const eventDate =
+      payment.paidAt ??
+      payment.reviewedAt ??
+      payment.submittedAt ??
+      payment.createdAt;
+    const kind =
+      payment.sequence === 1
+        ? locale === "uz"
+          ? "Birinchi abonement"
+          : "Первый абонемент"
+        : locale === "uz"
+          ? "Uzaytirish №" + payment.sequence
+          : "Продление №" + payment.sequence;
+    const period =
+      payment.periodStart && payment.periodEnd
+        ? " · " +
+          formatDate(payment.periodStart, locale) +
+          " → " +
+          formatDate(payment.periodEnd, locale)
+        : "";
+
+    events.push({
+      at: eventDate,
+      text:
+        "💳 <b>" +
+        escapeHtml(kind) +
+        "</b> · " +
+        formatMoney(payment.amountUzs) +
+        " UZS · " +
+        escapeHtml(paymentStatusLabel(payment.status, locale)) +
+        escapeHtml(period)
+    });
+  }
+
+  for (const request of enrollment.freezeRequests) {
+    const statusLabel =
+      request.status === SubscriptionFreezeRequestStatus.APPROVED
+        ? locale === "uz"
+          ? "tasdiqlandi"
+          : "одобрена"
+        : request.status === SubscriptionFreezeRequestStatus.REJECTED
+          ? locale === "uz"
+            ? "rad etildi"
+            : "отклонена"
+          : request.status === SubscriptionFreezeRequestStatus.CANCELLED
+            ? locale === "uz"
+              ? "bekor qilindi"
+              : "отменена"
+            : locale === "uz"
+              ? "tekshiruvda"
+              : "ожидает решения";
+
+    events.push({
+      at: request.reviewedAt ?? request.createdAt,
+      text:
+        "❄️ " +
+        (locale === "uz" ? "Muzlatish so‘rovi" : "Заявка на заморозку") +
+        " · " +
+        request.days +
+        (locale === "uz" ? " kun" : " дней") +
+        " · " +
+        escapeHtml(parentFreezeReasonLabel(request.reason, locale)) +
+        " · " +
+        statusLabel
+    });
+  }
+
+  for (const log of auditLogs) {
+    events.push({
+      at: log.createdAt,
+      text: "⚙️ " + escapeHtml(billingAuditLabel(log.action, locale))
+    });
+  }
+
+  events.sort((a, b) => b.at.getTime() - a.at.getTime());
+
+  const pageSize = 6;
+  const pageCount = Math.max(1, Math.ceil(events.length / pageSize));
+  const safePage = Math.min(Math.max(0, page), pageCount - 1);
+  const pageEvents = events.slice(
+    safePage * pageSize,
+    safePage * pageSize + pageSize
+  );
+
+  const sportName =
+    locale === "uz"
+      ? enrollment.group.sport.nameUz
+      : enrollment.group.sport.nameRu;
+  const branchName =
+    locale === "uz"
+      ? enrollment.group.branch.publicNameUz
+      : enrollment.group.branch.publicNameRu;
+  const status =
+    enrollment.subscriptionStatus ?? enrollment.status;
+  const paidTotal = enrollment.payments
+    .filter((payment) => payment.status === PaymentStatus.PAID)
+    .reduce((sum, payment) => sum + payment.amountUzs, 0);
+
+  const lines =
+    locale === "uz"
+      ? [
+          "🧾 <b>" + escapeHtml(enrollment.child.name) + " · " +
+            escapeHtml(sportName) + "</b>",
+          escapeHtml(enrollment.group.internalName) +
+            " · " +
+            escapeHtml(branchName),
+          "Holat: <b>" +
+            escapeHtml(subscriptionStatusLabel(status, locale)) +
+            "</b>",
+          "Jami to‘langan: <b>" +
+            formatMoney(paidTotal) +
+            " UZS</b>",
+          "Abonement boshlangan: " +
+            escapeHtml(formatDate(enrollment.startDate, locale)),
+          enrollment.endDate
+            ? "Abonement yakunlangan: " +
+              escapeHtml(formatDate(enrollment.endDate, locale))
+            : "",
+          "",
+          "<b>Tarix · " + (safePage + 1) + "/" + pageCount + "</b>",
+          ...pageEvents.map(
+            (event) =>
+              "• " +
+              escapeHtml(formatDate(event.at, locale)) +
+              " · " +
+              event.text
+          )
+        ].filter(Boolean)
+      : [
+          "🧾 <b>" + escapeHtml(enrollment.child.name) + " · " +
+            escapeHtml(sportName) + "</b>",
+          escapeHtml(enrollment.group.internalName) +
+            " · " +
+            escapeHtml(branchName),
+          "Статус: <b>" +
+            escapeHtml(subscriptionStatusLabel(status, locale)) +
+            "</b>",
+          "Всего оплачено: <b>" +
+            formatMoney(paidTotal) +
+            " UZS</b>",
+          "Абонемент начат: " +
+            escapeHtml(formatDate(enrollment.startDate, locale)),
+          enrollment.endDate
+            ? "Абонемент завершён: " +
+              escapeHtml(formatDate(enrollment.endDate, locale))
+            : "",
+          "",
+          "<b>История · " + (safePage + 1) + "/" + pageCount + "</b>",
+          ...pageEvents.map(
+            (event) =>
+              "• " +
+              escapeHtml(formatDate(event.at, locale)) +
+              " · " +
+              event.text
+          )
+        ].filter(Boolean);
+
+  const navRow: Array<{ text: string; callback_data: string }> = [];
+  if (safePage > 0) {
+    navRow.push({
+      text: "⬅️",
+      callback_data: "bh:" + enrollment.id + ":" + (safePage - 1)
+    });
+  }
+  if (safePage < pageCount - 1) {
+    navRow.push({
+      text: "➡️",
+      callback_data: "bh:" + enrollment.id + ":" + (safePage + 1)
+    });
+  }
+
+  return {
+    ok: true,
+    locale,
+    text: lines.join("\n"),
+    replyMarkup: {
+      inline_keyboard: [
+        ...(navRow.length > 0 ? [navRow] : []),
+        [
+          {
+            text:
+              locale === "uz"
+                ? "⬅️ Barcha abonementlar"
+                : "⬅️ Все абонементы",
+            callback_data: "parent:billing:" + enrollment.childId
+          }
+        ],
+        [homeButton(locale)]
+      ]
+    }
+  };
+}
+
+export async function handleParentBillingHistoryCallback(
+  telegramUserId: bigint,
+  data: string
+): Promise<ParentCabinetResponse | null> {
+  if (!data.startsWith("bh:")) return null;
+
+  const [, enrollmentId, pageRaw] = data.split(":");
+  if (!enrollmentId) return null;
+
+  const page = Number(pageRaw ?? "0");
+
+  return buildParentBillingHistoryPage(
+    telegramUserId,
+    enrollmentId,
+    Number.isInteger(page) ? page : 0
+  );
+}
+
 export async function buildParentAbsenceSessionPicker(
   telegramUserId: bigint,
   childId: string,
@@ -1775,6 +2252,13 @@ export async function handleParentCabinetCallback(
 
   if (action === "absence" && childId) {
     return buildParentAbsenceSessionPicker(
+      telegramUserId,
+      childId
+    );
+  }
+
+  if (action === "billing" && childId) {
+    return buildParentBillingHistoryIndex(
       telegramUserId,
       childId
     );
