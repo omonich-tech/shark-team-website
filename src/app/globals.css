@@ -2478,7 +2478,7 @@ h3 {
 }
 
 
-/* Sessions UI polish */
+/* Sessions UI polish: assessment navigation, status refresh, responsive admin filters. */
 .coach-back-link {
   display: inline-flex;
   align-items: center;
