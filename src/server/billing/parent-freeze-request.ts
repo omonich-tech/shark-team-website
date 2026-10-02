@@ -46,6 +46,13 @@ function localeOf(value: string | null | undefined): "ru" | "uz" {
   return value === "uz" ? "uz" : "ru";
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 export async function createParentFreezeRequest(input: {
   telegramUserId: bigint;
   enrollmentId: string;
@@ -315,20 +322,24 @@ export async function reviewParentFreezeRequest(input: {
         ? [
             "❌ <b>Abonementni muzlatish so‘rovi rad etildi</b>",
             "",
-            "Bola: <b>" + request.enrollment.child.name + "</b>",
-            "Yo‘nalish: " + sportName,
+            "Bola: <b>" + escapeHtml(request.enrollment.child.name) + "</b>",
+            "Yo‘nalish: " + escapeHtml(sportName),
             "Muddat: " + request.days + " kun",
-            "Sabab: " + reason,
-            decisionNote ? "Administrator izohi: " + decisionNote : ""
+            "Sabab: " + escapeHtml(reason),
+            decisionNote
+              ? "Administrator izohi: " + escapeHtml(decisionNote)
+              : ""
           ].filter(Boolean).join("\n")
         : [
             "❌ <b>Запрос на заморозку абонемента отклонён</b>",
             "",
-            "Ребёнок: <b>" + request.enrollment.child.name + "</b>",
-            "Направление: " + sportName,
+            "Ребёнок: <b>" + escapeHtml(request.enrollment.child.name) + "</b>",
+            "Направление: " + escapeHtml(sportName),
             "Срок: " + request.days + " дней",
-            "Причина: " + reason,
-            decisionNote ? "Комментарий администратора: " + decisionNote : ""
+            "Причина: " + escapeHtml(reason),
+            decisionNote
+              ? "Комментарий администратора: " + escapeHtml(decisionNote)
+              : ""
           ].filter(Boolean).join("\n");
 
     await sendTelegramMessage({
