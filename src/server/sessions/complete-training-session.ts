@@ -72,8 +72,15 @@ export async function completeCoachTrainingSession(input: {
     }
   });
 
+  const participantIds = new Set(
+    data.participants.map((participant) => participant.childId)
+  );
+
   const attendances = await prisma.attendance.findMany({
-    where: { sessionId: input.sessionId },
+    where: {
+      sessionId: input.sessionId,
+      childId: { in: Array.from(participantIds) }
+    },
     include: {
       child: {
         select: {
@@ -197,7 +204,9 @@ export async function reopenTrainingSession(input: {
         type: NotificationType.REGULAR_ABSENCE_NOTICE,
         status: NotificationStatus.PENDING,
         attendance: {
-          sessionId: input.sessionId
+          is: {
+            sessionId: input.sessionId
+          }
         }
       },
       data: {
