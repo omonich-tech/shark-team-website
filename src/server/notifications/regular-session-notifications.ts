@@ -31,9 +31,14 @@ async function activeSessionEnrollments(sessionId: string) {
           enrollments: {
             where: {
               status: StudentEnrollmentStatus.ACTIVE,
-              subscriptionStatus: {
-                in: eligibleSubscriptionStatuses()
-              }
+              OR: [
+                { subscriptionStatus: null },
+                {
+                  subscriptionStatus: {
+                    in: eligibleSubscriptionStatuses()
+                  }
+                }
+              ]
             },
             include: {
               child: {
@@ -83,9 +88,14 @@ export async function queueUpcomingRegularSessionReminders(
           enrollments: {
             where: {
               status: StudentEnrollmentStatus.ACTIVE,
-              subscriptionStatus: {
-                in: eligibleSubscriptionStatuses()
-              }
+              OR: [
+                { subscriptionStatus: null },
+                {
+                  subscriptionStatus: {
+                    in: eligibleSubscriptionStatuses()
+                  }
+                }
+              ]
             },
             include: {
               child: true
