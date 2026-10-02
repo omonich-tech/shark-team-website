@@ -59,7 +59,8 @@
     "smoke:parent-subscription-payment": "tsx scripts/smoke-parent-subscription-payment.ts",
     "smoke:parent-subscription-freeze-request": "tsx scripts/smoke-parent-subscription-freeze-request.ts",
     "smoke:parent-billing-history": "tsx scripts/smoke-parent-billing-history.ts",
-    "smoke:regular-session-notifications": "tsx scripts/smoke-regular-session-notifications.ts"
+    "smoke:regular-session-notifications": "tsx scripts/smoke-regular-session-notifications.ts",
+    "smoke:coach-session-completion": "tsx scripts/smoke-coach-session-completion.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
