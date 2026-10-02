@@ -26,12 +26,29 @@ function plusMinutes(date: Date, minutes: number) {
 }
 
 async function main() {
-  const group = await prisma.trainingGroup.findFirst({
+  const baseGroup = await prisma.trainingGroup.findFirst({
     where: { status: "ACTIVE" },
     orderBy: { createdAt: "asc" }
   });
 
-  assert(group, "Group for session completion smoke not found");
+  assert(baseGroup, "Group for session completion smoke not found");
+
+  const group = await prisma.trainingGroup.create({
+    data: {
+      id: "CI-COMPLETION-" + Date.now(),
+      branchId: baseGroup.branchId,
+      sportId: baseGroup.sportId,
+      primaryCoachId: baseGroup.primaryCoachId,
+      internalName: "CI Session Completion",
+      status: baseGroup.status,
+      enrollmentStatus: baseGroup.enrollmentStatus,
+      ageMin: 8,
+      ageMax: 14,
+      capacityRegular: 10,
+      capacityTrial: 0,
+      startDate: plusMinutes(new Date(), -24 * 60)
+    }
+  });
 
   const now = new Date();
   const startsAt = plusMinutes(now, -90);
@@ -364,6 +381,9 @@ async function main() {
     where: {
       id: { in: [parentA.id, parentB.id] }
     }
+  });
+  await prisma.trainingGroup.delete({
+    where: { id: group.id }
   });
 
   console.log("Coach session completion smoke test passed.");
