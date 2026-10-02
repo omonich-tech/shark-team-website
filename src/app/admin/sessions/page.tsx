@@ -232,7 +232,7 @@ export default async function AdminSessionsPage({
           </div>
         </div>
 
-        <form className="admin-editor-grid" method="get">
+        <form className="admin-session-filters" method="get">
           <input type="hidden" name="scope" value={scope} />
 
           <label className="admin-field">
@@ -283,7 +283,7 @@ export default async function AdminSessionsPage({
             </select>
           </label>
 
-          <div className="subscription-action-row">
+          <div className="subscription-action-row admin-session-filter-actions">
             <button className="button primary" type="submit">
               Применить
             </button>
