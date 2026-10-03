@@ -63,6 +63,31 @@ jobs:
               "
 
           echo
+          echo "=== Upcoming regular-session reminder candidates (next 36h) ==="
+          docker run --rm postgres:18-alpine \
+            psql "$PRODUCTION_DATABASE_URL" \
+              --no-psqlrc \
+              --set=ON_ERROR_STOP=1 \
+              --pset=footer=off \
+              --command "
+                SELECT
+                  COUNT(*) AS eligible_enrollments,
+                  COUNT(DISTINCT s.id) AS sessions
+                FROM \"TrainingSession\" s
+                JOIN \"TrainingGroup\" g ON g.id = s.\"groupId\"
+                JOIN \"StudentEnrollment\" e ON e.\"groupId\" = g.id
+                WHERE
+                  s.status::text = 'SCHEDULED'
+                  AND s.\"startsAt\" > NOW()
+                  AND s.\"startsAt\" <= NOW() + INTERVAL '36 hours'
+                  AND e.status::text = 'ACTIVE'
+                  AND (
+                    e.\"subscriptionStatus\" IS NULL
+                    OR e.\"subscriptionStatus\"::text IN ('ACTIVE', 'PAYMENT_DUE', 'PAST_DUE')
+                  );
+              "
+
+          echo
           echo "=== Due now: sanitized recipient preview ==="
           docker run --rm postgres:18-alpine \
             psql "$PRODUCTION_DATABASE_URL" \
