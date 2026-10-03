@@ -19,13 +19,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN?.trim()) {
-    return NextResponse.json(
-      { ok: false, error: "BLOB_READ_WRITE_TOKEN_MISSING" },
-      { status: 503 }
-    );
-  }
-
   let uploadedUrl: string | null = null;
 
   try {
