@@ -2476,3 +2476,92 @@ h3 {
     width: fit-content;
   }
 }
+
+
+/* Sessions UI polish: assessment navigation, status refresh, responsive admin filters. */
+.coach-back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-bottom: 14px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--white);
+  color: #175cd3;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-back-link:hover {
+  border-color: rgba(20, 121, 243, 0.35);
+  background: #eef4ff;
+}
+
+.coach-form-success-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.coach-form-success-row a {
+  color: #175cd3;
+  font-weight: 800;
+}
+
+.admin-session-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+  padding: 20px 22px 22px;
+}
+
+.admin-session-filters .admin-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-session-filters .admin-field > span {
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-session-filters select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.admin-session-filters select:focus {
+  outline: 2px solid rgba(20, 121, 243, 0.16);
+  border-color: var(--blue);
+}
+
+.admin-session-filter-actions {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
+@media (max-width: 1000px) {
+  .admin-session-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-session-filters {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
