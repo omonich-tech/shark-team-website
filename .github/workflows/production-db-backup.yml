@@ -32,6 +32,14 @@ jobs:
             exit 1
           fi
 
+          case "$PRODUCTION_DATABASE_URL" in
+            postgresql://*|postgres://*) ;;
+            *)
+              echo "PRODUCTION_DATABASE_URL must contain the full PostgreSQL connection URL."
+              exit 1
+              ;;
+          esac
+
           if [ -z "$BACKUP_ENCRYPTION_KEY" ]; then
             echo "PRODUCTION_BACKUP_ENCRYPTION_KEY is not configured."
             exit 1
