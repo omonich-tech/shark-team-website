@@ -1,0 +1,62 @@
+name: Production Media Readiness Check
+
+on:
+  push:
+    branches:
+      - ops/notification-audit-20261003
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PRODUCTION_APP_URL: https://shark-team-website.vercel.app
+      CRON_SECRET: ${{ secrets.PRODUCTION_CRON_SECRET }}
+
+    steps:
+      - name: Wait for media readiness endpoint and test Blob
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$CRON_SECRET" ]; then
+            echo "PRODUCTION_CRON_SECRET is not configured."
+            exit 1
+          fi
+
+          URL="${PRODUCTION_APP_URL%/}/api/jobs/media-readiness"
+
+          for attempt in $(seq 1 30); do
+            RESPONSE_FILE="$(mktemp)"
+            HTTP_CODE=$(curl \
+              --silent \
+              --show-error \
+              --location \
+              --max-time 30 \
+              --output "$RESPONSE_FILE" \
+              --write-out "%{http_code}" \
+              --request POST \
+              --header "Authorization: Bearer $CRON_SECRET" \
+              "$URL" || true)
+
+            BODY="$(cat "$RESPONSE_FILE" 2>/dev/null || true)"
+            echo "Attempt $attempt: HTTP $HTTP_CODE"
+            echo "$BODY"
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              exit 0
+            fi
+
+            if [ "$HTTP_CODE" = "503" ]; then
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "Media readiness endpoint did not become available."
+          exit 1
