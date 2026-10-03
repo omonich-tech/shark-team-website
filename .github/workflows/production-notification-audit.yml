@@ -1,0 +1,102 @@
+name: Production Notification Audit
+
+on:
+  push:
+    branches:
+      - ops/notification-audit-20261003
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+
+    steps:
+      - name: Check audit configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$PRODUCTION_DATABASE_URL" in
+            postgresql://*|postgres://*) ;;
+            *)
+              echo "PRODUCTION_DATABASE_URL must contain the full PostgreSQL connection URL."
+              exit 1
+              ;;
+          esac
+
+      - name: Audit notification queue without sending
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== Queue summary (PENDING / FAILED) ==="
+          docker run --rm postgres:18-alpine \
+            psql "$PRODUCTION_DATABASE_URL" \
+              --no-psqlrc \
+              --set=ON_ERROR_STOP=1 \
+              --pset=footer=off \
+              --command "
+                SELECT
+                  n.\"status\"::text AS status,
+                  n.\"type\"::text AS type,
+                  COUNT(*) AS total,
+                  COUNT(*) FILTER (WHERE n.\"scheduledAt\" <= NOW()) AS due_now,
+                  COUNT(*) FILTER (
+                    WHERE EXISTS (
+                      SELECT 1
+                      FROM \"TelegramContact\" tc
+                      WHERE
+                        (n.\"parentId\" IS NOT NULL AND tc.\"parentId\" = n.\"parentId\")
+                        OR
+                        (n.\"leadId\" IS NOT NULL AND tc.\"leadId\" = n.\"leadId\")
+                    )
+                  ) AS with_telegram_contact
+                FROM \"Notification\" n
+                WHERE n.\"status\"::text IN ('PENDING', 'FAILED')
+                GROUP BY n.\"status\", n.\"type\"
+                ORDER BY n.\"status\", n.\"type\";
+              "
+
+          echo
+          echo "=== Due now: sanitized recipient preview ==="
+          docker run --rm postgres:18-alpine \
+            psql "$PRODUCTION_DATABASE_URL" \
+              --no-psqlrc \
+              --set=ON_ERROR_STOP=1 \
+              --pset=footer=off \
+              --command "
+                SELECT
+                  LEFT(n.id, 8) AS notification,
+                  n.\"type\"::text AS type,
+                  n.\"status\"::text AS status,
+                  TO_CHAR(n.\"scheduledAt\" AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD HH24:MI') AS scheduled_tashkent,
+                  COALESCE(p.name, l.\"parentName\", '—') AS recipient,
+                  COALESCE(l.\"childName\", '—') AS child,
+                  CASE
+                    WHEN EXISTS (
+                      SELECT 1
+                      FROM \"TelegramContact\" tc
+                      WHERE
+                        (n.\"parentId\" IS NOT NULL AND tc.\"parentId\" = n.\"parentId\")
+                        OR
+                        (n.\"leadId\" IS NOT NULL AND tc.\"leadId\" = n.\"leadId\")
+                    )
+                    THEN 'YES'
+                    ELSE 'NO'
+                  END AS telegram_contact,
+                  n.attempts,
+                  COALESCE(n.\"lastError\", '') AS last_error
+                FROM \"Notification\" n
+                LEFT JOIN \"Parent\" p ON p.id = n.\"parentId\"
+                LEFT JOIN \"Lead\" l ON l.id = n.\"leadId\"
+                WHERE
+                  n.\"status\"::text IN ('PENDING', 'FAILED')
+                  AND n.\"scheduledAt\" <= NOW()
+                ORDER BY n.\"scheduledAt\" ASC
+                LIMIT 50;
+              "
