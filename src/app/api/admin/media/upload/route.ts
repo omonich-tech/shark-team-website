@@ -155,10 +155,23 @@ export async function POST(request: NextRequest) {
     .replace(/^-+|-+$/g, "")
     .slice(-80) || "media";
 
-  const stored = await storeMediaFile(
-    file,
-    `shark/${targetType.toLowerCase()}/${targetId}/${Date.now()}-${baseName}.${extension}`
-  );
+  let stored: Awaited<ReturnType<typeof storeMediaFile>>;
+
+  try {
+    stored = await storeMediaFile(
+      file,
+      `shark/${targetType.toLowerCase()}/${targetId}/${Date.now()}-${baseName}.${extension}`
+    );
+  } catch (error) {
+    console.error("Media upload storage failed", {
+      message: error instanceof Error ? error.message : "unknown"
+    });
+
+    return NextResponse.json(
+      { ok: false, error: "MEDIA_STORAGE_UNAVAILABLE" },
+      { status: 503 }
+    );
+  }
 
   const prisma = getPrisma();
 
