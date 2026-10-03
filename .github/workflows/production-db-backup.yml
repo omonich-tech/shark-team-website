@@ -1,0 +1,155 @@
+name: Production DB Backup
+
+on:
+  schedule:
+    # 21:30 UTC = 02:30 Asia/Tashkent, before the 03:00 maintenance job.
+    - cron: "30 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.PRODUCTION_BACKUP_ENCRYPTION_KEY }}
+
+    steps:
+      - name: Check backup configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$PRODUCTION_DATABASE_URL" ]; then
+            echo "PRODUCTION_DATABASE_URL is not configured."
+            exit 1
+          fi
+
+          if [ -z "$BACKUP_ENCRYPTION_KEY" ]; then
+            echo "PRODUCTION_BACKUP_ENCRYPTION_KEY is not configured."
+            exit 1
+          fi
+
+      - name: Prepare backup metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          STAMP="$(TZ=Asia/Tashkent date +'%Y%m%d-%H%M%S')"
+          DOW="$(TZ=Asia/Tashkent date +'%u')"
+          DOM="$(TZ=Asia/Tashkent date +'%d')"
+
+          echo "stamp=$STAMP" >> "$GITHUB_OUTPUT"
+          echo "dump=backup/shark-team-postgres-$STAMP.dump" >> "$GITHUB_OUTPUT"
+
+          if [ "$DOW" = "7" ]; then
+            echo "weekly=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "weekly=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$DOM" = "01" ]; then
+            echo "monthly=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "monthly=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PostgreSQL 18 dump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DUMP="${{ steps.meta.outputs.dump }}"
+          mkdir -p backup
+
+          docker run --rm             -e DATABASE_URL="$PRODUCTION_DATABASE_URL"             postgres:18-alpine             sh -c 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges'             > "$DUMP"
+
+          test -s "$DUMP"
+
+      - name: Verify dump can be restored
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DUMP="${{ steps.meta.outputs.dump }}"
+
+          docker run -d --rm             --name shark-backup-restore-test             -e POSTGRES_USER=postgres             -e POSTGRES_PASSWORD=restore-test             -e POSTGRES_DB=restore_test             -v "$PWD:/workspace:ro"             postgres:18-alpine >/dev/null
+
+          cleanup() {
+            docker rm -f shark-backup-restore-test >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for i in {1..30}; do
+            if docker exec shark-backup-restore-test               pg_isready -U postgres -d restore_test >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+
+          docker exec shark-backup-restore-test             pg_restore               -U postgres               -d restore_test               --no-owner               --no-privileges               "/workspace/$DUMP"
+
+          TABLE_COUNT="$(docker exec shark-backup-restore-test             psql -U postgres -d restore_test -Atc             "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';")"
+
+          if [ "$TABLE_COUNT" -lt 1 ]; then
+            echo "Restore test completed but no public tables were found."
+            exit 1
+          fi
+
+          echo "Restore verification succeeded with $TABLE_COUNT public tables."
+
+      - name: Encrypt backup
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DUMP="${{ steps.meta.outputs.dump }}"
+          ENCRYPTED="$DUMP.enc"
+
+          openssl enc             -aes-256-cbc             -pbkdf2             -iter 250000             -salt             -in "$DUMP"             -out "$ENCRYPTED"             -pass env:BACKUP_ENCRYPTION_KEY
+
+          sha256sum "$ENCRYPTED" > "$ENCRYPTED.sha256"
+          rm -f "$DUMP"
+
+      - name: Upload daily encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: shark-postgres-daily-${{ steps.meta.outputs.stamp }}
+          path: |
+            ${{ steps.meta.outputs.dump }}.enc
+            ${{ steps.meta.outputs.dump }}.enc.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload weekly encrypted backup
+        if: steps.meta.outputs.weekly == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: shark-postgres-weekly-${{ steps.meta.outputs.stamp }}
+          path: |
+            ${{ steps.meta.outputs.dump }}.enc
+            ${{ steps.meta.outputs.dump }}.enc.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 45
+
+      - name: Upload monthly encrypted backup
+        if: steps.meta.outputs.monthly == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: shark-postgres-monthly-${{ steps.meta.outputs.stamp }}
+          path: |
+            ${{ steps.meta.outputs.dump }}.enc
+            ${{ steps.meta.outputs.dump }}.enc.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
