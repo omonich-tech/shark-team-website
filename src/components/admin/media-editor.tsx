@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type TargetOption = {
   value: string;
@@ -42,6 +43,7 @@ export function MediaEditor({
   targets: TargetOption[];
   initialItems: MediaItem[];
 }) {
+  const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [targetKey, setTargetKey] = useState(
     targets[0] ? `${targets[0].type}:${targets[0].value}` : ""
@@ -100,6 +102,7 @@ export function MediaEditor({
       setItems((current) => [payload.asset, ...current]);
       setState("saved");
       setMessage("Файл загружен.");
+      router.refresh();
       form.reset();
       setAltRu("");
       setAltUz("");
@@ -155,6 +158,7 @@ export function MediaEditor({
     );
     setState("saved");
     setMessage("Файл удалён.");
+    router.refresh();
   }
 
   return (
