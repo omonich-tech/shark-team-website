@@ -55,3 +55,33 @@ jobs:
             echo "Notification worker returned HTTP $HTTP_CODE"
             exit 1
           fi
+
+      - name: Probe manual-card production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="${PRODUCTION_APP_URL%/}/api/public/payments/manual/init"
+          RESPONSE_FILE="$(mktemp)"
+
+          HTTP_CODE=$(curl \
+            --silent \
+            --show-error \
+            --location \
+            --max-time 30 \
+            --output "$RESPONSE_FILE" \
+            --write-out "%{http_code}" \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data '{"bookingId":"nonexistent-production-config-probe"}' \
+            "$URL")
+
+          BODY="$(cat "$RESPONSE_FILE")"
+          echo "$BODY"
+
+          if [ "$HTTP_CODE" = "400" ] && echo "$BODY" | grep -q '"BOOKING_NOT_FOUND"'; then
+            echo "Manual-card configuration is present."
+            exit 0
+          fi
+
+          echo "Unexpected manual-card configuration probe result: HTTP $HTTP_CODE"
+          exit 1
