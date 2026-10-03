@@ -490,6 +490,10 @@ The production PostgreSQL database is provisioned in Railway.
 
 The public Vercel application must use Railway's public PostgreSQL connection string as its production `DATABASE_URL`. Changes to Vercel environment variables require a new deployment before runtime functions can see them.
 
+## Vercel Blob media storage
+
+Production media uploads use Vercel Blob. Connect a public Blob store to the Vercel project and enable the read-write connection environment variable (or OIDC-supported Blob auth). After creating or changing the Blob connection, create a fresh production deployment so runtime functions receive the new storage credentials.
+
 ## Production admin access
 
 Production admin authentication is configured through Vercel environment variables. Secret values are never committed to the repository. Any change to production environment variables requires a fresh Vercel deployment before runtime routes can use them.
