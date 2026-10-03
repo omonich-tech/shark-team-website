@@ -70,7 +70,14 @@ jobs:
           DUMP="${{ steps.meta.outputs.dump }}"
           mkdir -p backup
 
-          docker run --rm             -e DATABASE_URL="$PRODUCTION_DATABASE_URL"             postgres:18-alpine             sh -c 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges'             > "$DUMP"
+          docker run --rm \
+            postgres:18-alpine \
+            pg_dump \
+              --dbname="$PRODUCTION_DATABASE_URL" \
+              --format=custom \
+              --no-owner \
+              --no-privileges \
+            > "$DUMP"
 
           test -s "$DUMP"
 
