@@ -65,7 +65,9 @@ async function main() {
       nameUz: "Basketbol",
       ageMin: 6,
       ageMax: 15,
-      sortOrder: 1
+      sortOrder: 1,
+      shortDescriptionRu: "Командная игра, координация и уверенность.",
+      shortDescriptionUz: "Jamoaviy o‘yin, koordinatsiya va ishonch."
     },
     create: {
       id: SPORT_ID,
@@ -75,7 +77,9 @@ async function main() {
       nameUz: "Basketbol",
       ageMin: 6,
       ageMax: 15,
-      sortOrder: 1
+      sortOrder: 1,
+      shortDescriptionRu: "Командная игра, координация и уверенность.",
+      shortDescriptionUz: "Jamoaviy o‘yin, koordinatsiya va ishonch."
     }
   });
 
@@ -272,18 +276,18 @@ async function main() {
       status: ContentStatus.PUBLISHED,
       heroEyebrowRu: "SHARK TEAM · ТАШКЕНТ",
       heroEyebrowUz: "SHARK TEAM · TOSHKENT",
-      heroTitleRu: "Баскетбол для детей в Ташкенте",
-      heroTitleUz: "Toshkentda bolalar uchun basketbol",
+      heroTitleRu: "Спорт, в который хочется возвращаться",
+      heroTitleUz: "Qayta-qayta kelgingiz keladigan sport",
       heroLeadRu:
-        "Три возрастные группы, понятное расписание и платное пробное занятие в действующей группе.",
+        "Спортивные секции для детей в Ташкенте. Баскетбол, футбол, волейбол, лёгкая атлетика и художественная гимнастика.",
       heroLeadUz:
-        "Uchta yosh guruhi, aniq jadval va amaldagi guruhda pullik sinov mashg‘uloti.",
-      seoTitleRu: "SHARK TEAM — детский баскетбол в Ташкенте",
-      seoTitleUz: "SHARK TEAM — Toshkentda bolalar basketboli",
+        "Toshkentdagi bolalar sport seksiyalari. Basketbol, futbol, voleybol, yengil atletika va badiiy gimnastika.",
+      seoTitleRu: "SHARK TEAM — детские спортивные секции в Ташкенте",
+      seoTitleUz: "SHARK TEAM — Toshkentdagi bolalar sport seksiyalari",
       seoDescriptionRu:
-        "Детская баскетбольная секция SHARK TEAM в Ташкенте.",
+        "SHARK TEAM — баскетбол, футбол, волейбол, лёгкая атлетика и художественная гимнастика для детей в Ташкенте.",
       seoDescriptionUz:
-        "Toshkentdagi SHARK TEAM bolalar basketbol seksiyasi.",
+        "SHARK TEAM — Toshkentda bolalar uchun basketbol, futbol, voleybol, yengil atletika va badiiy gimnastika.",
       publishedAt: new Date()
     }
   });
