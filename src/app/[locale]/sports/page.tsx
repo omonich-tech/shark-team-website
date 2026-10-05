@@ -43,7 +43,11 @@ export default async function SportsPage({
 
             return (
               <Link
-                className="sport-catalog-card"
+                className={
+                  entry.slug === "rhythmic-gymnastics"
+                    ? "sport-catalog-card sport-catalog-card-long-title"
+                    : "sport-catalog-card"
+                }
                 href={`/${locale}/sports/${entry.slug}`}
                 key={entry.slug}
               >
