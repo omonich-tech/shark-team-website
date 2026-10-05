@@ -4,33 +4,33 @@
 
 INSERT INTO "Sport" (
   "id", "slug", "status", "nameRu", "nameUz",
-  "shortDescriptionRu", "shortDescriptionUz", "sortOrder"
+  "shortDescriptionRu", "shortDescriptionUz", "sortOrder", "updatedAt"
 )
 VALUES
   (
     'SP-FOOTBALL-01', 'football', 'ACTIVE', 'Футбол', 'Futbol',
     'Техника, скорость и командное мышление.',
     'Texnika, tezlik va jamoaviy fikrlash.',
-    2
+    2, CURRENT_TIMESTAMP
   ),
   (
     'SP-VOLLEYBALL-01', 'volleyball', 'ACTIVE', 'Волейбол', 'Voleybol',
     'Реакция, координация и работа в команде.',
     'Reaksiya, koordinatsiya va jamoada ishlash.',
-    3
+    3, CURRENT_TIMESTAMP
   ),
   (
     'SP-ATHLETICS-01', 'athletics', 'ACTIVE', 'Лёгкая атлетика', 'Yengil atletika',
     'Скорость, выносливость и сильная двигательная база.',
     'Tezlik, chidamlilik va kuchli harakat bazasi.',
-    4
+    4, CURRENT_TIMESTAMP
   ),
   (
     'SP-RHYTHMIC-GYMNASTICS-01', 'rhythmic-gymnastics', 'ACTIVE',
     'Художественная гимнастика', 'Badiiy gimnastika',
     'Гибкость, координация, дисциплина и грация.',
     'Egiluvchanlik, koordinatsiya, intizom va nafislik.',
-    5
+    5, CURRENT_TIMESTAMP
   )
 ON CONFLICT ("slug") DO UPDATE SET
   "nameRu" = EXCLUDED."nameRu",
