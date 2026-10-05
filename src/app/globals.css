@@ -5381,3 +5381,19 @@ h3 {
     display: none !important;
   }
 }
+
+
+/* Long sport names: keep card hierarchy without clipping */
+.public-site .sport-catalog-card-long-title .sport-catalog-body h2 {
+  font-size: clamp(28px, 2.55vw, 38px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  max-width: 100%;
+}
+
+@media (max-width: 680px) {
+  .public-site .sport-catalog-card-long-title .sport-catalog-body h2 {
+    font-size: clamp(27px, 8vw, 34px);
+    line-height: 1.04;
+  }
+}
