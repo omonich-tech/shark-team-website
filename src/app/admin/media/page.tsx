@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminMediaPage() {
   const prisma = getPrisma();
 
-  const [branches, coaches, sports, groups, home, items] = await Promise.all([
+  const [branches, coaches, sports, groups, pages, items] = await Promise.all([
     prisma.branch.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.coach.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.sport.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
@@ -14,18 +14,27 @@ export default async function AdminMediaPage() {
       include: { branch: true, sport: true },
       orderBy: [{ branchId: "asc" }, { ageMin: "asc" }]
     }),
-    prisma.contentPage.findUniqueOrThrow({ where: { slug: "home" } }),
+    prisma.contentPage.findMany({
+      where: { slug: { in: ["home", "about", "contacts"] } },
+      orderBy: { slug: "asc" }
+    }),
     prisma.mediaAsset.findMany({
       orderBy: [{ createdAt: "desc" }]
     })
   ]);
 
+  const pageLabels: Record<string, string> = {
+    home: "Главная",
+    about: "О нас",
+    contacts: "Контакты"
+  };
+
   const targets = [
-    {
-      value: home.id,
-      label: "Страница · Главная",
+    ...pages.map((page) => ({
+      value: page.id,
+      label: `Страница · ${pageLabels[page.slug] ?? page.slug}`,
       type: "PAGE"
-    },
+    })),
     ...sports.map((sport) => ({
       value: sport.id,
       label: `Спорт · ${sport.nameRu}`,
@@ -55,7 +64,7 @@ export default async function AdminMediaPage() {
           <p className="eyebrow">SITE</p>
           <h1>Медиа</h1>
           <p className="admin-page-note">
-            Единая медиатека для главной, видов спорта, филиалов, тренеров и групп.
+            Единая медиатека для страниц сайта, видов спорта, филиалов, тренеров и групп.
           </p>
         </div>
         <span className="admin-count">{items.length} файлов</span>
