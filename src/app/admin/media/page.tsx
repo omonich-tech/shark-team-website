@@ -33,7 +33,10 @@ export default async function AdminMediaPage() {
   const targets = [
     ...pages.map((page) => ({
       value: page.id,
-      label: `Страница · ${pageLabels[page.slug] ?? page.slug}`,
+      label:
+        page.slug === "brand"
+          ? "Бренд · Логотип"
+          : `Страница · ${pageLabels[page.slug] ?? page.slug}`,
       type: "PAGE"
     })),
     ...sports.map((sport) => ({
