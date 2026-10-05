@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PRODUCTION_APP_URL: https://shark-team-website.vercel.app
+      PRODUCTION_APP_URL: https://sharkteam.uz
       CRON_SECRET: ${{ secrets.PRODUCTION_CRON_SECRET }}
 
     steps:
