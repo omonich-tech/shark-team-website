@@ -5,9 +5,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const age = Number(request.nextUrl.searchParams.get("age"));
+  const sport =
+    request.nextUrl.searchParams.get("sport")?.trim() || "basketball";
+  const branch =
+    request.nextUrl.searchParams.get("branch")?.trim() || "school-117";
 
   try {
-    const result = await getTrialOptions(age);
+    const result = await getTrialOptions(age, sport, branch);
 
     return NextResponse.json(result, {
       status: result.ok ? 200 : 400
