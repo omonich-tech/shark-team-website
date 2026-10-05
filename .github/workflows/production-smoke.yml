@@ -25,8 +25,8 @@ jobs:
         shell: bash
         run: |
           if [ -z "$PRODUCTION_APP_URL" ]; then
-            echo "PRODUCTION_APP_URL=https://shark-team-website.vercel.app" >> "$GITHUB_ENV"
-            echo "Using default Vercel production domain."
+            echo "PRODUCTION_APP_URL=https://sharkteam.uz" >> "$GITHUB_ENV"
+            echo "Using canonical SHARK TEAM production domain."
           fi
 
       - name: Wait for database readiness
@@ -93,6 +93,28 @@ jobs:
           check "/ru" "200"
           check "/uz" "200"
           check "/ru/branches" "200"
+
+      - name: Verify canonical domain and SEO URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ROBOTS="$(curl --silent --show-error --location --max-time 45 https://sharkteam.uz/robots.txt)"
+          SITEMAP="$(curl --silent --show-error --location --max-time 45 https://sharkteam.uz/sitemap.xml)"
+
+          echo "$ROBOTS" | grep -Fq "https://sharkteam.uz/sitemap.xml"
+          echo "$SITEMAP" | grep -Fq "https://sharkteam.uz/ru"
+          if echo "$SITEMAP" | grep -Fq "shark-team-website.vercel.app"; then
+            echo "Sitemap still references the old Vercel domain."
+            exit 1
+          fi
+
+          HEADERS="$(curl --silent --show-error --max-time 45 --head https://www.sharkteam.uz/)"
+          echo "$HEADERS"
+
+          echo "$HEADERS" | grep -Eq "^HTTP/[^ ]+ 308"
+          echo "$HEADERS" | grep -Eiq "^location: https://sharkteam\.uz/?"
+
 
       - name: Verify private routes remain protected
         shell: bash
