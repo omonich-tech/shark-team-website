@@ -48,37 +48,38 @@ export default async function SportPage({
     }
   });
 
-  const [media, trialPrice] = sport
-    ? await Promise.all([
-        prisma.mediaAsset.findMany({
-          where: {
-            targetType: MediaTargetType.SPORT,
-            targetId: sport.id,
-            OR: [
-              { containsMinors: false },
-              {
-                containsMinors: true,
-                consentStatus: MediaConsentStatus.APPROVED
-              }
-            ]
-          },
-          orderBy: [
-            { isPrimary: "desc" },
-            { sortOrder: "asc" },
-            { createdAt: "asc" }
+  const media = sport
+    ? await prisma.mediaAsset.findMany({
+        where: {
+          targetType: MediaTargetType.SPORT,
+          targetId: sport.id,
+          OR: [
+            { containsMinors: false },
+            {
+              containsMinors: true,
+              consentStatus: MediaConsentStatus.APPROVED
+            }
           ]
-        }),
-        prisma.price.findFirst({
-          where: {
-            sportId: sport.id,
-            productType: PriceProductType.TRIAL,
-            status: LifecycleStatus.ACTIVE,
-            validTo: null
-          },
-          orderBy: { validFrom: "desc" }
-        })
-      ])
-    : [[], null];
+        },
+        orderBy: [
+          { isPrimary: "desc" },
+          { sortOrder: "asc" },
+          { createdAt: "asc" }
+        ]
+      })
+    : [];
+
+  const trialPrice = sport
+    ? await prisma.price.findFirst({
+        where: {
+          sportId: sport.id,
+          productType: PriceProductType.TRIAL,
+          status: LifecycleStatus.ACTIVE,
+          OR: [{ validTo: null }, { validTo: { gt: new Date() } }]
+        },
+        orderBy: { validFrom: "desc" }
+      })
+    : null;
 
   const hero = media.find((item) => item.contentType?.startsWith("image/"));
   const name =
