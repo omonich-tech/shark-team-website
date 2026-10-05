@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { PublicLocale } from "@/lib/public-i18n";
 import { ThemeToggle } from "@/components/public/theme-toggle";
+import { BrandLogo } from "@/components/public/brand-logo";
 import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 
 const labels = {
@@ -61,25 +62,13 @@ export async function PublicShell({
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand" href={`/${locale}`} aria-label="SHARK TEAM">
-            {brandLogo ? (
-              <span
-                className="brand-logo-image"
-                role="img"
-                aria-label={
-                  (locale === "ru" ? brandLogo.altRu : brandLogo.altUz) ??
-                  "SHARK TEAM"
-                }
-                style={{ backgroundImage: `url("${brandLogo.url}")` }}
-              />
-            ) : (
-              <>
-                <span className="brand-mark" aria-hidden="true">▲</span>
-                <span className="brand-word">
-                  <strong>SHARK</strong>
-                  <small>TEAM</small>
-                </span>
-              </>
-            )}
+            <BrandLogo
+              url={brandLogo?.url}
+              alt={
+                (locale === "ru" ? brandLogo?.altRu : brandLogo?.altUz) ??
+                "SHARK TEAM"
+              }
+            />
           </Link>
 
           <nav className="site-nav" aria-label="Primary navigation">
@@ -117,25 +106,14 @@ export async function PublicShell({
       <footer className="site-footer">
         <div className="site-footer-brand">
           <Link className="brand" href={`/${locale}`} aria-label="SHARK TEAM">
-            {brandLogo ? (
-              <span
-                className="brand-logo-image footer-brand-logo-image"
-                role="img"
-                aria-label={
-                  (locale === "ru" ? brandLogo.altRu : brandLogo.altUz) ??
-                  "SHARK TEAM"
-                }
-                style={{ backgroundImage: `url("${brandLogo.url}")` }}
-              />
-            ) : (
-              <>
-                <span className="brand-mark" aria-hidden="true">▲</span>
-                <span className="brand-word">
-                  <strong>SHARK</strong>
-                  <small>TEAM</small>
-                </span>
-              </>
-            )}
+            <BrandLogo
+              url={brandLogo?.url}
+              alt={
+                (locale === "ru" ? brandLogo?.altRu : brandLogo?.altUz) ??
+                "SHARK TEAM"
+              }
+              footer
+            />
           </Link>
           <p>
             {locale === "ru"
