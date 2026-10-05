@@ -186,7 +186,17 @@ export default async function PublicHome({
                 href={`/${locale}/sports/${entry.slug}`}
                 key={entry.slug}
               >
-                <div className="shark-sport-photo" style={imageStyle(photo?.url)}>
+                <div
+                  className="shark-sport-photo"
+                  style={imageStyle(photo?.url)}
+                  role={photo ? "img" : undefined}
+                  aria-label={
+                    photo
+                      ? (locale === "ru" ? photo.altRu : photo.altUz) ??
+                        (locale === "ru" ? entry.nameRu : entry.nameUz)
+                      : undefined
+                  }
+                >
                   <span className="shark-sport-index">{entry.mark}</span>
                   <span className={isLive ? "shark-status live" : "shark-status"}>
                     {isLive
@@ -268,7 +278,17 @@ export default async function PublicHome({
 
             return (
               <article className="shark-coach-card" key={coach.id}>
-                <div className="shark-coach-photo" style={imageStyle(photo?.url)}>
+                <div
+                  className="shark-coach-photo"
+                  style={imageStyle(photo?.url)}
+                  role={photo ? "img" : undefined}
+                  aria-label={
+                    photo
+                      ? (locale === "ru" ? photo.altRu : photo.altUz) ??
+                        coach.firstName
+                      : undefined
+                  }
+                >
                   {!photo ? <span>{coach.firstName.slice(0, 1)}</span> : null}
                 </div>
                 <div>
@@ -316,7 +336,17 @@ export default async function PublicHome({
 
             return (
               <Link className="shark-branch-card" href={`/${locale}/branches/${branch.slug}`} key={branch.id}>
-                <div className="shark-branch-photo" style={imageStyle(photo?.url)} />
+                <div
+                  className="shark-branch-photo"
+                  style={imageStyle(photo?.url)}
+                  role={photo ? "img" : undefined}
+                  aria-label={
+                    photo
+                      ? (locale === "ru" ? photo.altRu : photo.altUz) ??
+                        (locale === "ru" ? branch.publicNameRu : branch.publicNameUz)
+                      : undefined
+                  }
+                />
                 <div>
                   <span>{locale === "ru" ? branch.districtRu : branch.districtUz}</span>
                   <h3>{locale === "ru" ? branch.publicNameRu : branch.publicNameUz}</h3>
