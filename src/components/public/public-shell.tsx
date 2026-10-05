@@ -9,6 +9,8 @@ const labels = {
     sports: "Виды спорта",
     branches: "Филиалы",
     coaches: "Тренеры",
+    about: "О нас",
+    contacts: "Контакты",
     trial: "Пробное",
     language: "UZ",
     menu: "Меню"
@@ -18,6 +20,8 @@ const labels = {
     sports: "Sport turlari",
     branches: "Filiallar",
     coaches: "Murabbiylar",
+    about: "Biz haqimizda",
+    contacts: "Kontaktlar",
     trial: "Sinov",
     language: "RU",
     menu: "Menyu"
@@ -38,7 +42,9 @@ export function PublicShell({
     [`/${locale}`, copy.home],
     [`/${locale}/sports`, copy.sports],
     [`/${locale}/branches`, copy.branches],
-    [`/${locale}/coaches`, copy.coaches]
+    [`/${locale}/coaches`, copy.coaches],
+    [`/${locale}/about`, copy.about],
+    [`/${locale}/contacts`, copy.contacts]
   ] as const;
 
   return (
@@ -105,6 +111,8 @@ export function PublicShell({
           <Link href={`/${locale}/sports`}>{copy.sports}</Link>
           <Link href={`/${locale}/branches`}>{copy.branches}</Link>
           <Link href={`/${locale}/coaches`}>{copy.coaches}</Link>
+          <Link href={`/${locale}/about`}>{copy.about}</Link>
+          <Link href={`/${locale}/contacts`}>{copy.contacts}</Link>
           <Link href={`/${locale}/trial`}>{copy.trial}</Link>
         </div>
 
