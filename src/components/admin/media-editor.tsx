@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type TargetOption = {
@@ -45,9 +45,7 @@ export function MediaEditor({
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
-  const [targetKey, setTargetKey] = useState(
-    targets[0] ? `${targets[0].type}:${targets[0].value}` : ""
-  );
+  const [targetKey, setTargetKey] = useState("");
   const [category, setCategory] = useState("MAIN");
   const [containsMinors, setContainsMinors] = useState(false);
   const [consentStatus, setConsentStatus] = useState("NOT_REQUIRED");
@@ -58,17 +56,6 @@ export function MediaEditor({
     "idle" | "uploading" | "error" | "saved"
   >("idle");
   const [message, setMessage] = useState("");
-
-  const targetLabels = useMemo(
-    () =>
-      new Map(
-        targets.map((target) => [
-          `${target.type}:${target.value}`,
-          target.label
-        ])
-      ),
-    [targets]
-  );
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -115,6 +102,7 @@ export function MediaEditor({
       setMessage("Файл загружен.");
       router.refresh();
       form.reset();
+      setTargetKey("");
       setAltRu("");
       setAltUz("");
     } catch {
@@ -187,6 +175,9 @@ export function MediaEditor({
               value={targetKey}
               onChange={(event) => setTargetKey(event.target.value)}
             >
+              <option value="" disabled>
+                Выберите объект
+              </option>
               {targets.map((target) => (
                 <option
                   value={`${target.type}:${target.value}`}
@@ -309,7 +300,9 @@ export function MediaEditor({
       <section className="admin-panel">
         <div className="admin-panel-head">
           <h2>Медиатека</h2>
-          <p>Здесь же меняются главное фото, порядок и alt-тексты.</p>
+          <p>
+            Здесь можно менять объект, главное фото, порядок и alt-тексты.
+          </p>
         </div>
 
         <div className="admin-table-wrap">
@@ -328,10 +321,6 @@ export function MediaEditor({
             </thead>
             <tbody>
               {items.map((item) => {
-                const targetLabel =
-                  targetLabels.get(`${item.targetType}:${item.targetId}`) ??
-                  `${item.targetType} · ${item.targetId}`;
-
                 return (
                   <tr key={item.id}>
                     <td>
@@ -361,7 +350,28 @@ export function MediaEditor({
                       </small>
                     </td>
 
-                    <td className="admin-wrap-cell">{targetLabel}</td>
+                    <td className="admin-wrap-cell">
+                      <select
+                        value={`${item.targetType}:${item.targetId}`}
+                        onChange={(event) => {
+                          const [targetType, targetId] =
+                            event.target.value.split(":");
+
+                          if (targetType && targetId) {
+                            void update(item, { targetType, targetId });
+                          }
+                        }}
+                      >
+                        {targets.map((target) => (
+                          <option
+                            value={`${target.type}:${target.value}`}
+                            key={`${target.type}:${target.value}`}
+                          >
+                            {target.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
                     <td>
                       <select
