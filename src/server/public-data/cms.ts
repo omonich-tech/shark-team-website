@@ -1,5 +1,6 @@
 import {
   ContentStatus,
+  MediaCategory,
   MediaConsentStatus,
   MediaTargetType
 } from "@/generated/prisma/client";
@@ -25,7 +26,7 @@ export async function getPublishedHomeCms() {
     }
   });
 
-  const [faq, media] = await Promise.all([
+  const [faq, pageMedia] = await Promise.all([
     prisma.faqItem.findMany({
       where: {
         status: ContentStatus.PUBLISHED
@@ -52,10 +53,35 @@ export async function getPublishedHomeCms() {
       : Promise.resolve([])
   ]);
 
+  const legacyHero =
+    pageMedia.length === 0
+      ? await prisma.mediaAsset.findMany({
+          where: {
+            AND: [
+              publicMediaConsent,
+              {
+                isPrimary: true,
+                category: MediaCategory.MAIN,
+                targetType: {
+                  in: [
+                    MediaTargetType.BRANCH,
+                    MediaTargetType.SPORT,
+                    MediaTargetType.COACH,
+                    MediaTargetType.GROUP
+                  ]
+                }
+              }
+            ]
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1
+        })
+      : [];
+
   return {
     content,
     faq,
-    media
+    media: pageMedia.length > 0 ? pageMedia : legacyHero
   };
 }
 
