@@ -343,7 +343,11 @@ export function MediaEditor({
                         aria-label="Открыть оригинал"
                       >
                         {item.contentType?.startsWith("image/") ? (
-                          <img src={item.url} alt="" />
+                          <span
+                            className="admin-media-preview-image"
+                            aria-hidden="true"
+                            style={{ backgroundImage: `url("${item.url}")` }}
+                          />
                         ) : item.contentType?.startsWith("video/") ? (
                           <video src={item.url} muted preload="metadata" />
                         ) : (
