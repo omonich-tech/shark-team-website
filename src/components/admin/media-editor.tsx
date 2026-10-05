@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type TargetOption = {
@@ -59,6 +59,17 @@ export function MediaEditor({
   >("idle");
   const [message, setMessage] = useState("");
 
+  const targetLabels = useMemo(
+    () =>
+      new Map(
+        targets.map((target) => [
+          `${target.type}:${target.value}`,
+          target.label
+        ])
+      ),
+    [targets]
+  );
+
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -112,10 +123,7 @@ export function MediaEditor({
     }
   }
 
-  async function update(
-    item: MediaItem,
-    patch: Partial<MediaItem>
-  ) {
+  async function update(item: MediaItem, patch: Partial<MediaItem>) {
     const response = await fetch(`/api/admin/media/${item.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -164,6 +172,14 @@ export function MediaEditor({
   return (
     <div className="media-editor">
       <form className="admin-panel admin-editor-panel" onSubmit={upload}>
+        <div className="admin-panel-head">
+          <h2>Загрузить фото или видео</h2>
+          <p>
+            Один файл можно привязать к главной, виду спорта, филиалу,
+            тренеру или конкретной группе.
+          </p>
+        </div>
+
         <div className="admin-editor-grid">
           <label className="admin-field">
             <span>Объект</span>
@@ -255,6 +271,7 @@ export function MediaEditor({
             <input
               value={altRu}
               onChange={(event) => setAltRu(event.target.value)}
+              placeholder="Что изображено на фото"
             />
           </label>
 
@@ -263,6 +280,7 @@ export function MediaEditor({
             <input
               value={altUz}
               onChange={(event) => setAltUz(event.target.value)}
+              placeholder="Rasmda nima tasvirlangan"
             />
           </label>
         </div>
@@ -291,106 +309,165 @@ export function MediaEditor({
       <section className="admin-panel">
         <div className="admin-panel-head">
           <h2>Медиатека</h2>
+          <p>Здесь же меняются главное фото, порядок и alt-тексты.</p>
         </div>
+
         <div className="admin-table-wrap">
-          <table className="admin-table">
+          <table className="admin-table admin-media-table">
             <thead>
               <tr>
+                <th>Превью</th>
                 <th>Объект</th>
                 <th>Категория</th>
-                <th>Файл</th>
-                <th>Дети</th>
-                <th>Согласие</th>
+                <th>Alt RU / UZ</th>
+                <th>Порядок</th>
+                <th>Дети / согласие</th>
                 <th>Главный</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    {item.targetType}
-                    <br />
-                    {item.targetId}
-                  </td>
-                  <td>
-                    <select
-                      value={item.category}
-                      onChange={(event) =>
-                        void update(item, {
-                          category: event.target.value
-                        })
-                      }
-                    >
-                      {categories.map((value) => (
-                        <option value={value} key={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {item.contentType ?? "media"}
-                    </a>
-                    <br />
-                    <small>
-                      {item.size
-                        ? `${Math.round(item.size / 1024)} KB`
-                        : "—"}
-                    </small>
-                  </td>
-                  <td>{item.containsMinors ? "Да" : "Нет"}</td>
-                  <td>
-                    {item.containsMinors ? (
+              {items.map((item) => {
+                const targetLabel =
+                  targetLabels.get(`${item.targetType}:${item.targetId}`) ??
+                  `${item.targetType} · ${item.targetId}`;
+
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      <a
+                        className="admin-media-preview"
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="Открыть оригинал"
+                      >
+                        {item.contentType?.startsWith("image/") ? (
+                          <img src={item.url} alt="" />
+                        ) : item.contentType?.startsWith("video/") ? (
+                          <video src={item.url} muted preload="metadata" />
+                        ) : (
+                          <span>MEDIA</span>
+                        )}
+                      </a>
+                      <small>
+                        {item.size
+                          ? `${Math.round(item.size / 1024)} KB`
+                          : "—"}
+                      </small>
+                    </td>
+
+                    <td className="admin-wrap-cell">{targetLabel}</td>
+
+                    <td>
                       <select
-                        value={item.consentStatus}
+                        value={item.category}
                         onChange={(event) =>
                           void update(item, {
-                            consentStatus: event.target.value
+                            category: event.target.value
                           })
                         }
                       >
-                        <option value="PENDING">Pending</option>
-                        <option value="APPROVED">Approved</option>
-                        <option value="REJECTED">Rejected</option>
+                        {categories.map((value) => (
+                          <option value={value} key={value}>
+                            {value}
+                          </option>
+                        ))}
                       </select>
-                    ) : (
-                      "Not required"
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      className="admin-inline-button"
-                      type="button"
-                      onClick={() =>
-                        void update(item, {
-                          isPrimary: !item.isPrimary
-                        })
-                      }
-                    >
-                      {item.isPrimary ? "Да" : "Нет"}
-                    </button>
-                  </td>
-                  <td>
-                    <button
-                      className="admin-danger-link"
-                      type="button"
-                      onClick={() => void remove(item)}
-                    >
-                      Удалить
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    <td>
+                      <div className="admin-media-alt-fields">
+                        <input
+                          defaultValue={item.altRu ?? ""}
+                          placeholder="Alt RU"
+                          onBlur={(event) => {
+                            const value = event.currentTarget.value;
+                            if (value !== (item.altRu ?? "")) {
+                              void update(item, { altRu: value });
+                            }
+                          }}
+                        />
+                        <input
+                          defaultValue={item.altUz ?? ""}
+                          placeholder="Alt UZ"
+                          onBlur={(event) => {
+                            const value = event.currentTarget.value;
+                            if (value !== (item.altUz ?? "")) {
+                              void update(item, { altUz: value });
+                            }
+                          }}
+                        />
+                      </div>
+                    </td>
+
+                    <td>
+                      <input
+                        className="admin-media-sort"
+                        type="number"
+                        defaultValue={item.sortOrder}
+                        onBlur={(event) => {
+                          const value = Number(event.currentTarget.value);
+                          if (
+                            Number.isInteger(value) &&
+                            value !== item.sortOrder
+                          ) {
+                            void update(item, { sortOrder: value });
+                          }
+                        }}
+                      />
+                    </td>
+
+                    <td>
+                      {item.containsMinors ? (
+                        <select
+                          value={item.consentStatus}
+                          onChange={(event) =>
+                            void update(item, {
+                              consentStatus: event.target.value
+                            })
+                          }
+                        >
+                          <option value="PENDING">Ожидается</option>
+                          <option value="APPROVED">Разрешено</option>
+                          <option value="REJECTED">Запрещено</option>
+                        </select>
+                      ) : (
+                        <span className="admin-media-safe">Без детей</span>
+                      )}
+                    </td>
+
+                    <td>
+                      <button
+                        className="admin-inline-button"
+                        type="button"
+                        onClick={() =>
+                          void update(item, {
+                            isPrimary: !item.isPrimary
+                          })
+                        }
+                      >
+                        {item.isPrimary ? "Да" : "Нет"}
+                      </button>
+                    </td>
+
+                    <td>
+                      <button
+                        className="admin-danger-link"
+                        type="button"
+                        onClick={() => void remove(item)}
+                      >
+                        Удалить
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
-                    Медиа пока нет. Можно загрузить позже.
+                  <td colSpan={8}>
+                    Медиа пока нет. Загрузите первый файл выше.
                   </td>
                 </tr>
               ) : null}
