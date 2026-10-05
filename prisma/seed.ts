@@ -269,6 +269,17 @@ async function main() {
   });
 
   await prisma.contentPage.upsert({
+    where: { slug: "brand" },
+    update: {},
+    create: {
+      id: "PAGE-BRAND-01",
+      slug: "brand",
+      status: ContentStatus.PUBLISHED,
+      publishedAt: new Date()
+    }
+  });
+
+  await prisma.contentPage.upsert({
     where: { slug: "home" },
     update: {},
     create: {
