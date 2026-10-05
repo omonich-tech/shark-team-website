@@ -41,10 +41,11 @@ export async function PublicShell({
   const brandPage = await tryGetPublishedContentPage("brand");
   const brandLogo =
     brandPage?.media.find(
-      (item) => item.isPrimary && item.contentType?.startsWith("image/")
-    ) ??
-    brandPage?.media.find((item) => item.contentType?.startsWith("image/")) ??
-    null;
+      (item) =>
+        item.isPrimary &&
+        item.category === "MAIN" &&
+        item.contentType?.startsWith("image/")
+    ) ?? null;
 
   const nav = [
     [`/${locale}`, copy.home],
