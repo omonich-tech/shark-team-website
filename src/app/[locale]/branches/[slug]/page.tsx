@@ -84,7 +84,7 @@ export default async function PublicBranchPage({
           {data.groups.map((group) => (
             <article className="sport-group-row" key={group.id}>
               <div>
-                <span>{pickLocalized(locale, group.sport.name)} · {group.ageMin}–{group.ageMax} {locale === "ru" ? "лет" : "yosh"}</span>
+                <span>{`${pickLocalized(locale, group.sport.name)} · ${group.ageMin}–${group.ageMax} ${locale === "ru" ? "лет" : "yosh"}`}</span>
                 <h3>
                   {group.schedule[0]
                     ? `${group.schedule[0].start}–${group.schedule[0].end}`
