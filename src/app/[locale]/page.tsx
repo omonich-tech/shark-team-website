@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
 import { SPORT_CATALOG } from "@/lib/sport-catalog";
 import { tryGetPublishedHomeCms } from "@/server/public-data/cms";
+import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 import { tryGetPublicHomeData } from "@/server/public-data/home";
 
 export const dynamic = "force-dynamic";
@@ -22,9 +23,10 @@ export default async function PublicHome({
     notFound();
   }
 
-  const [cms, data] = await Promise.all([
+  const [cms, data, aboutPage] = await Promise.all([
     tryGetPublishedHomeCms(),
-    tryGetPublicHomeData()
+    tryGetPublicHomeData(),
+    tryGetPublishedContentPage("about")
   ]);
 
   const defaults =
@@ -93,6 +95,40 @@ export default async function PublicHome({
   const trainingVideo =
     cms.media.find((item) => item.contentType?.startsWith("video/")) ?? null;
 
+
+  const aboutHero =
+    aboutPage?.media.find(
+      (item) => item.isPrimary && item.contentType?.startsWith("image/")
+    ) ??
+    aboutPage?.media.find((item) => item.contentType?.startsWith("image/")) ??
+    null;
+
+  const aboutText =
+    (locale === "ru"
+      ? aboutPage?.content.bodyRu
+      : aboutPage?.content.bodyUz)?.split(/\n\s*\n/)[0] ??
+    (locale === "ru"
+      ? "SHARK TEAM — спортивная среда, в которой ребёнок развивается через регулярные тренировки, команду и понятную систему прогресса."
+      : "SHARK TEAM — bola muntazam mashg‘ulot, jamoa va tushunarli rivojlanish tizimi orqali o‘sadigan sport muhiti.");
+
+  const activeGroupCount =
+    data?.sports.reduce((total, sport) => total + sport.groups.length, 0) ?? 0;
+
+  const aboutStats =
+    locale === "ru"
+      ? [
+          [String(data?.sports.length ?? 0), "видов спорта"],
+          [String(data?.branches.length ?? 0), "филиалов"],
+          [String(data?.coaches.length ?? 0), "тренеров"],
+          [String(activeGroupCount), "активных групп"]
+        ]
+      : [
+          [String(data?.sports.length ?? 0), "sport turi"],
+          [String(data?.branches.length ?? 0), "filial"],
+          [String(data?.coaches.length ?? 0), "murabbiy"],
+          [String(activeGroupCount), "faol guruh"]
+        ];
+
   const benefits =
     locale === "ru"
       ? [
@@ -153,6 +189,44 @@ export default async function PublicHome({
           <div className="shark-hero-sports">
             {SPORT_CATALOG.map((sport) => (
               <span key={sport.slug}>{locale === "ru" ? sport.nameRu : sport.nameUz}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="content-section shark-about-preview">
+        <div className="shark-about-preview-copy">
+          <p className="eyebrow">
+            {locale === "ru" ? "О SHARK TEAM" : "SHARK TEAM HAQIDA"}
+          </p>
+          <h2>
+            {locale === "ru"
+              ? aboutPage?.content.heroTitleRu ?? "Спорт формирует больше, чем физическую форму"
+              : aboutPage?.content.heroTitleUz ?? "Sport jismoniy tayyorgarlikdan ko‘proq narsani shakllantiradi"}
+          </h2>
+          <p>{aboutText}</p>
+          <Link className="shark-text-link" href={`/${locale}/about`}>
+            {locale === "ru" ? "Подробнее о SHARK TEAM →" : "SHARK TEAM haqida batafsil →"}
+          </Link>
+        </div>
+
+        <div
+          className={aboutHero ? "shark-about-preview-visual has-photo" : "shark-about-preview-visual"}
+          style={imageStyle(aboutHero?.url)}
+          role={aboutHero ? "img" : undefined}
+          aria-label={
+            aboutHero
+              ? (locale === "ru" ? aboutHero.altRu : aboutHero.altUz) ??
+                "SHARK TEAM"
+              : undefined
+          }
+        >
+          <div className="shark-about-stats">
+            {aboutStats.map(([value, label]) => (
+              <div key={label}>
+                <strong>{value}</strong>
+                <span>{label}</span>
+              </div>
             ))}
           </div>
         </div>
