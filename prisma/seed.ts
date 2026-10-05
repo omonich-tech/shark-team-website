@@ -292,6 +292,66 @@ async function main() {
     }
   });
 
+
+  await prisma.contentPage.upsert({
+    where: { slug: "about" },
+    update: {},
+    create: {
+      id: "PAGE-ABOUT-01",
+      slug: "about",
+      status: ContentStatus.PUBLISHED,
+      heroEyebrowRu: "О SHARK TEAM",
+      heroEyebrowUz: "SHARK TEAM HAQIDA",
+      heroTitleRu: "Спорт формирует больше, чем физическую форму",
+      heroTitleUz: "Sport jismoniy tayyorgarlikdan ko‘proq narsani shakllantiradi",
+      heroLeadRu:
+        "SHARK TEAM — детская спортивная среда, где ребёнок тренируется, развивается и становится частью команды.",
+      heroLeadUz:
+        "SHARK TEAM — bola mashq qiladigan, rivojlanadigan va jamoaning bir qismiga aylanadigan sport muhiti.",
+      bodyRu:
+        "Мы строим SHARK TEAM как систему спортивных секций для детей в Ташкенте. Наша задача — дать ребёнку понятную, регулярную и безопасную спортивную среду: сильного тренера, подходящую возрастную группу, команду и возможность видеть собственный прогресс.\n\nМы не привязываем бренд к одному виду спорта. Ребёнок может выбрать направление, которое подходит ему по интересу, характеру и физическим данным, а родитель — видеть понятную организацию занятий и коммуникацию.",
+      bodyUz:
+        "SHARK TEAM’ni Toshkentdagi bolalar sport seksiyalari tizimi sifatida qurmoqdamiz. Maqsadimiz — bolaga tushunarli, muntazam va xavfsiz sport muhitini berish: kuchli murabbiy, yoshiga mos guruh, jamoa va o‘z rivojlanishini ko‘rish imkoniyati.\n\nBrendni bitta sport turi bilan cheklamaymiz. Bola qiziqishi, xarakteri va jismoniy imkoniyatlariga mos yo‘nalishni tanlashi, ota-ona esa mashg‘ulotlar va muloqot qanday tashkil etilganini aniq ko‘rishi mumkin.",
+      seoTitleRu: "О SHARK TEAM — детские спортивные секции в Ташкенте",
+      seoTitleUz: "SHARK TEAM haqida — Toshkentdagi bolalar sport seksiyalari",
+      seoDescriptionRu:
+        "Подход SHARK TEAM к детскому спорту, развитию, тренерам и спортивной среде.",
+      seoDescriptionUz:
+        "SHARK TEAM bolalar sporti, rivojlanish, murabbiylar va sport muhiti haqida.",
+      publishedAt: new Date()
+    }
+  });
+
+  await prisma.contentPage.upsert({
+    where: { slug: "contacts" },
+    update: {},
+    create: {
+      id: "PAGE-CONTACTS-01",
+      slug: "contacts",
+      status: ContentStatus.PUBLISHED,
+      heroEyebrowRu: "СВЯЗЬ С SHARK TEAM",
+      heroEyebrowUz: "SHARK TEAM BILAN ALOQA",
+      heroTitleRu: "Контакты и филиалы",
+      heroTitleUz: "Kontaktlar va filiallar",
+      heroLeadRu:
+        "Выберите удобный способ связи или найдите ближайший активный филиал SHARK TEAM.",
+      heroLeadUz:
+        "Qulay aloqa usulini tanlang yoki eng yaqin faol SHARK TEAM filialini toping.",
+      bodyRu:
+        "По вопросам записи, пробного занятия, расписания и оплаты можно связаться с SHARK TEAM через указанные каналы. Данные филиалов ниже обновляются автоматически из админки.",
+      bodyUz:
+        "Yozilish, sinov mashg‘uloti, jadval va to‘lov bo‘yicha SHARK TEAM bilan quyidagi kanallar orqali bog‘lanishingiz mumkin. Filiallar ma’lumotlari admin paneldan avtomatik yangilanadi.",
+      contactTelegram: "https://t.me/sharkteam_uz_bot",
+      seoTitleRu: "Контакты SHARK TEAM — спортивные секции в Ташкенте",
+      seoTitleUz: "SHARK TEAM kontaktlari — Toshkentdagi sport seksiyalari",
+      seoDescriptionRu:
+        "Контакты, филиалы и способы связи с SHARK TEAM в Ташкенте.",
+      seoDescriptionUz:
+        "Toshkentdagi SHARK TEAM kontaktlari, filiallari va aloqa usullari.",
+      publishedAt: new Date()
+    }
+  });
+
   console.log("Seeded SHARK TEAM School 117 core data.");
 }
 
