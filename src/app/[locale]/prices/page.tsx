@@ -44,8 +44,8 @@ export default async function PricesPage({
         <h1>{locale === "ru" ? "Стоимость занятий SHARK TEAM" : "SHARK TEAM mashg‘ulotlari narxi"}</h1>
         <p className="lead">
           {locale === "ru"
-            ? "Здесь публикуются только действующие цены из админки."
-            : "Bu yerda faqat admin paneldagi amaldagi narxlar ko‘rsatiladi."}
+            ? "Актуальная стоимость занятий и пробных тренировок SHARK TEAM."
+            : "SHARK TEAM mashg‘ulotlari va sinov darslarining amaldagi narxlari."}
         </p>
       </section>
 
