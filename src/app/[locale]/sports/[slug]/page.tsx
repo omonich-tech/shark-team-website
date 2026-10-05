@@ -178,8 +178,8 @@ export default async function SportPage({
             </h2>
             <p>
               {locale === "ru"
-                ? "Как только направление будет открыто в конкретном филиале, оно автоматически появится здесь из админки."
-                : "Yo‘nalish ma’lum filialda ochilishi bilan u admin paneldan avtomatik ravishda shu yerda paydo bo‘ladi."}
+                ? "Группы и расписание для этого направления скоро появятся."
+                : "Bu yo‘nalish uchun guruhlar va jadval tez orada paydo bo‘ladi."}
             </p>
           </div>
         </section>
