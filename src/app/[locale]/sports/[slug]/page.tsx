@@ -138,9 +138,7 @@ export default async function SportPage({
               return (
                 <article className="sport-group-row" key={group.id}>
                   <div>
-                    <span>
-                      {group.ageMin}–{group.ageMax} {locale === "ru" ? "лет" : "yosh"}
-                    </span>
+                    <span>{`${group.ageMin}–${group.ageMax} ${locale === "ru" ? "лет" : "yosh"}`}</span>
                     <h3>
                       {locale === "ru"
                         ? group.branch.publicNameRu
