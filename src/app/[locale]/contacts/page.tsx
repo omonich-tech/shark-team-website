@@ -193,7 +193,7 @@ export default async function ContactsPage({
         <div className="section-heading shark-section-heading">
           <div>
             <p className="eyebrow">
-              {locale === "ru" ? "ФИЛИАЛЫ" : "FILIALlar"}
+              {locale === "ru" ? "ФИЛИАЛЫ" : "FILIALLAR"}
             </p>
             <h2>
               {locale === "ru"
