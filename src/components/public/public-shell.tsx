@@ -1,25 +1,26 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { PublicLocale } from "@/lib/public-i18n";
+import { ThemeToggle } from "@/components/public/theme-toggle";
 
 const labels = {
   ru: {
-    basketball: "Баскетбол",
-    branch: "Филиал",
-    schedule: "Расписание",
-    prices: "Цены",
-    coaches: "Тренер",
+    home: "Главная",
+    sports: "Виды спорта",
+    branches: "Филиалы",
+    coaches: "Тренеры",
     trial: "Пробное",
-    language: "UZ"
+    language: "UZ",
+    menu: "Меню"
   },
   uz: {
-    basketball: "Basketbol",
-    branch: "Filial",
-    schedule: "Jadval",
-    prices: "Narxlar",
-    coaches: "Murabbiy",
+    home: "Bosh sahifa",
+    sports: "Sport turlari",
+    branches: "Filiallar",
+    coaches: "Murabbiylar",
     trial: "Sinov",
-    language: "RU"
+    language: "RU",
+    menu: "Menyu"
   }
 } as const;
 
@@ -33,44 +34,83 @@ export function PublicShell({
   const copy = labels[locale];
   const otherLocale = locale === "ru" ? "uz" : "ru";
 
+  const nav = [
+    [`/${locale}`, copy.home],
+    [`/${locale}/sports`, copy.sports],
+    [`/${locale}/branches`, copy.branches],
+    [`/${locale}/coaches`, copy.coaches]
+  ] as const;
+
   return (
-    <>
+    <div className="public-site">
       <header className="site-header">
         <div className="site-header-inner">
-          <Link className="brand" href={`/${locale}`}>
-            <span className="brand-mark">S</span>
-            <span>SHARK TEAM</span>
+          <Link className="brand" href={`/${locale}`} aria-label="SHARK TEAM">
+            <span className="brand-mark" aria-hidden="true">▲</span>
+            <span className="brand-word">
+              <strong>SHARK</strong>
+              <small>TEAM</small>
+            </span>
           </Link>
 
           <nav className="site-nav" aria-label="Primary navigation">
-            <Link href={`/${locale}/basketball`}>{copy.basketball}</Link>
-            <Link href={`/${locale}/branches/school-117`}>{copy.branch}</Link>
-            <Link href={`/${locale}/schedule`}>{copy.schedule}</Link>
-            <Link href={`/${locale}/prices`}>{copy.prices}</Link>
-            <Link href={`/${locale}/coaches`}>{copy.coaches}</Link>
-            <Link href={`/${locale}/trial`}>{copy.trial}</Link>
+            {nav.map(([href, label]) => (
+              <Link href={href} key={href}>{label}</Link>
+            ))}
           </nav>
 
-          <Link className="language-switch" href={`/${otherLocale}`}>
-            {copy.language}
-          </Link>
+          <div className="site-header-actions">
+            <ThemeToggle />
+            <Link className="language-switch" href={`/${otherLocale}`}>
+              {copy.language}
+            </Link>
+            <Link className="button primary header-trial" href={`/${locale}/trial`}>
+              {copy.trial}
+            </Link>
+
+            <details className="mobile-menu">
+              <summary aria-label={copy.menu}>☰</summary>
+              <div className="mobile-menu-panel">
+                {nav.map(([href, label]) => (
+                  <Link href={href} key={href}>{label}</Link>
+                ))}
+                <Link className="button primary" href={`/${locale}/trial`}>
+                  {copy.trial}
+                </Link>
+              </div>
+            </details>
+          </div>
         </div>
       </header>
 
       {children}
 
       <footer className="site-footer">
-        <div>
-          <strong>SHARK TEAM</strong>
+        <div className="site-footer-brand">
+          <Link className="brand" href={`/${locale}`}>
+            <span className="brand-mark" aria-hidden="true">▲</span>
+            <span className="brand-word">
+              <strong>SHARK</strong>
+              <small>TEAM</small>
+            </span>
+          </Link>
           <p>
             {locale === "ru"
               ? "Детские спортивные секции в Ташкенте."
               : "Toshkentdagi bolalar sport seksiyalari."}
           </p>
         </div>
+
+        <div className="site-footer-links">
+          <Link href={`/${locale}/sports`}>{copy.sports}</Link>
+          <Link href={`/${locale}/branches`}>{copy.branches}</Link>
+          <Link href={`/${locale}/coaches`}>{copy.coaches}</Link>
+          <Link href={`/${locale}/trial`}>{copy.trial}</Link>
+        </div>
+
         <span>© 2026 SHARK TEAM</span>
       </footer>
-    </>
+    </div>
   );
 }
 
@@ -81,13 +121,13 @@ export function DataUnavailable({ locale }: { locale: PublicLocale }) {
         <p className="eyebrow">SHARK TEAM</p>
         <h1>
           {locale === "ru"
-            ? "Данные филиала временно недоступны"
-            : "Filial ma’lumotlari vaqtincha mavjud emas"}
+            ? "Данные временно недоступны"
+            : "Ma’lumotlar vaqtincha mavjud emas"}
         </h1>
         <p>
           {locale === "ru"
-            ? "Сайт работает, но постоянная база данных ещё не подключена или временно недоступна."
-            : "Sayt ishlamoqda, ammo doimiy ma’lumotlar bazasi hali ulanmagan yoki vaqtincha mavjud emas."}
+            ? "Сайт работает, но база данных временно недоступна. Попробуйте ещё раз немного позже."
+            : "Sayt ishlamoqda, ammo ma’lumotlar bazasi vaqtincha mavjud emas. Birozdan keyin qayta urinib ko‘ring."}
         </p>
       </section>
     </main>
