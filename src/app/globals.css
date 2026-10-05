@@ -5397,3 +5397,32 @@ h3 {
     line-height: 1.04;
   }
 }
+
+
+/* Uploaded SHARK TEAM brand logo */
+.public-site .brand-logo-image {
+  width: 154px;
+  height: 48px;
+  display: block;
+  flex: 0 0 auto;
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: contain;
+}
+
+.public-site .footer-brand-logo-image {
+  width: 176px;
+  height: 56px;
+}
+
+@media (max-width: 680px) {
+  .public-site .brand-logo-image {
+    width: 132px;
+    height: 40px;
+  }
+
+  .public-site .footer-brand-logo-image {
+    width: 154px;
+    height: 48px;
+  }
+}
