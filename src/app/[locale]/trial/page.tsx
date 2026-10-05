@@ -18,11 +18,14 @@ export const metadata: Metadata = {
 };
 
 export default async function TrialPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ sport?: string; branch?: string }>;
 }) {
   const { locale } = await params;
+  const requested = await searchParams;
 
   if (!isPublicLocale(locale)) {
     notFound();
@@ -53,23 +56,29 @@ export default async function TrialPage({
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
   });
 
-  const choices = sports.map((sport) => ({
-    slug: sport.slug,
-    nameRu: sport.nameRu,
-    nameUz: sport.nameUz,
-    branches: Array.from(
-      new Map(
-        sport.groups.map((group) => [
-          group.branch.slug,
-          {
-            slug: group.branch.slug,
-            nameRu: group.branch.publicNameRu,
-            nameUz: group.branch.publicNameUz
-          }
-        ])
-      ).values()
-    )
-  }));
+  const choices = sports
+    .map((sport) => ({
+      slug: sport.slug,
+      nameRu: sport.nameRu,
+      nameUz: sport.nameUz,
+      branches: Array.from(
+        new Map(
+          sport.groups.map((group) => [
+            group.branch.slug,
+            {
+              slug: group.branch.slug,
+              nameRu: group.branch.publicNameRu,
+              nameUz: group.branch.publicNameUz
+            }
+          ])
+        ).values()
+      ).sort((a, b) =>
+        a.slug === requested.branch ? -1 : b.slug === requested.branch ? 1 : 0
+      )
+    }))
+    .sort((a, b) =>
+      a.slug === requested.sport ? -1 : b.slug === requested.sport ? 1 : 0
+    );
 
   return (
     <main className="page-main">
