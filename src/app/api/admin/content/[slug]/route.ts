@@ -54,6 +54,14 @@ export async function PATCH(
     heroTitleUz: optionalString(body.heroTitleUz, 180),
     heroLeadRu: optionalString(body.heroLeadRu, 700),
     heroLeadUz: optionalString(body.heroLeadUz, 700),
+    bodyRu: optionalString(body.bodyRu, 6000),
+    bodyUz: optionalString(body.bodyUz, 6000),
+    contactPhone: optionalString(body.contactPhone, 80),
+    contactTelegram: optionalString(body.contactTelegram, 300),
+    contactInstagram: optionalString(body.contactInstagram, 300),
+    contactEmail: optionalString(body.contactEmail, 180),
+    contactHoursRu: optionalString(body.contactHoursRu, 300),
+    contactHoursUz: optionalString(body.contactHoursUz, 300),
     seoTitleRu: optionalString(body.seoTitleRu, 180),
     seoTitleUz: optionalString(body.seoTitleUz, 180),
     seoDescriptionRu: optionalString(body.seoDescriptionRu, 320),
@@ -72,7 +80,8 @@ export async function PATCH(
     (!fields.heroTitleRu ||
       !fields.heroTitleUz ||
       !fields.heroLeadRu ||
-      !fields.heroLeadUz)
+      !fields.heroLeadUz ||
+      (slug === "about" && (!fields.bodyRu || !fields.bodyUz)))
   ) {
     return NextResponse.json(
       { ok: false, error: "PUBLISHED_CONTENT_INCOMPLETE" },
