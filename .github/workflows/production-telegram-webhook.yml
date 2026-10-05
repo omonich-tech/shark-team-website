@@ -26,8 +26,8 @@ jobs:
         shell: bash
         run: |
           if [ -z "$PRODUCTION_APP_URL" ]; then
-            echo "PRODUCTION_APP_URL=https://shark-team-website.vercel.app" >> "$GITHUB_ENV"
-            echo "Using default Vercel production domain."
+            echo "PRODUCTION_APP_URL=https://sharkteam.uz" >> "$GITHUB_ENV"
+            echo "Using canonical SHARK TEAM production domain."
           fi
 
       - name: Check webhook configuration secret
