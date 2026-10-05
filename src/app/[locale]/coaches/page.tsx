@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
-import { DataUnavailable } from "@/components/public/public-shell";
-import { CoachCard } from "@/components/public/school117-blocks";
+import {
+  LifecycleStatus,
+  MediaConsentStatus,
+  MediaTargetType
+} from "@/generated/prisma/client";
+import { getPrisma } from "@/lib/prisma";
 import { isPublicLocale } from "@/lib/public-i18n";
-import { tryGetSchool117PublicData } from "@/server/public-data/school-117";
 
 export const dynamic = "force-dynamic";
 
@@ -12,31 +15,119 @@ export default async function CoachesPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  if (!isPublicLocale(locale)) notFound();
 
-  if (!isPublicLocale(locale)) {
-    notFound();
-  }
+  const prisma = getPrisma();
+  const coaches = await prisma.coach.findMany({
+    where: { status: LifecycleStatus.ACTIVE },
+    include: {
+      sportLinks: {
+        where: { status: LifecycleStatus.ACTIVE },
+        include: { sport: true }
+      },
+      branchLinks: {
+        where: { status: LifecycleStatus.ACTIVE },
+        include: { branch: true }
+      }
+    },
+    orderBy: { createdAt: "asc" }
+  });
 
-  const data = await tryGetSchool117PublicData();
-
-  if (!data) {
-    return <DataUnavailable locale={locale} />;
-  }
+  const media = coaches.length
+    ? await prisma.mediaAsset.findMany({
+        where: {
+          targetType: MediaTargetType.COACH,
+          targetId: { in: coaches.map((coach) => coach.id) },
+          OR: [
+            { containsMinors: false },
+            {
+              containsMinors: true,
+              consentStatus: MediaConsentStatus.APPROVED
+            }
+          ]
+        },
+        orderBy: [
+          { isPrimary: "desc" },
+          { sortOrder: "asc" },
+          { createdAt: "asc" }
+        ]
+      })
+    : [];
 
   return (
     <main className="page-main">
-      <section className="page-hero compact">
-        <p className="eyebrow">{locale === "ru" ? "ТРЕНЕРЫ" : "MURABBIYLAR"}</p>
-        <h1>{locale === "ru" ? "Тренер SHARK TEAM" : "SHARK TEAM murabbiyi"}</h1>
+      <section className="page-hero compact shark-page-hero">
+        <p className="eyebrow">{locale === "ru" ? "КОМАНДА" : "JAMOA"}</p>
+        <h1>{locale === "ru" ? "Тренеры SHARK TEAM" : "SHARK TEAM murabbiylari"}</h1>
         <p className="lead">
           {locale === "ru"
-            ? "Публично показываем только подтверждённые данные. Биография и фотографии будут добавляться через админку позже."
-            : "Ochiq sahifada faqat tasdiqlangan ma’lumotlar ko‘rsatiladi. Biografiya va suratlar keyin admin panel orqali qo‘shiladi."}
+            ? "Каждый тренер связан со своими видами спорта, филиалами и группами. Данные редактируются из единой админки."
+            : "Har bir murabbiy o‘z sport turi, filiali va guruhlari bilan bog‘langan. Ma’lumotlar yagona admin paneldan boshqariladi."}
         </p>
       </section>
 
       <section className="content-section">
-        <CoachCard data={data} locale={locale} />
+        <div className="coach-catalog-grid">
+          {coaches.map((coach) => {
+            const photo = media.find(
+              (item) =>
+                item.targetId === coach.id &&
+                item.contentType?.startsWith("image/")
+            );
+            const sports = coach.sportLinks
+              .map((link) =>
+                locale === "ru" ? link.sport.nameRu : link.sport.nameUz
+              )
+              .join(" · ");
+            const branches = coach.branchLinks
+              .map((link) =>
+                locale === "ru"
+                  ? link.branch.publicNameRu
+                  : link.branch.publicNameUz
+              )
+              .join(" · ");
+            const bio =
+              locale === "ru" ? coach.publicBioRu : coach.publicBioUz;
+
+            return (
+              <article className="coach-profile-card" key={coach.id}>
+                <div
+                  className="coach-profile-photo"
+                  style={
+                    photo
+                      ? { backgroundImage: `url("${photo.url}")` }
+                      : undefined
+                  }
+                >
+                  {!photo ? <span>{coach.firstName.slice(0, 1)}</span> : null}
+                </div>
+                <div className="coach-profile-body">
+                  <p className="eyebrow">{sports || "SHARK TEAM"}</p>
+                  <h2>
+                    {[coach.firstName, coach.lastName].filter(Boolean).join(" ")}
+                  </h2>
+                  {coach.experienceYears ? (
+                    <strong>
+                      {locale === "ru"
+                        ? `Опыт ${coach.experienceYears}+ лет`
+                        : `Tajriba ${coach.experienceYears}+ yil`}
+                    </strong>
+                  ) : null}
+                  {bio ? <p>{bio}</p> : null}
+                  {branches ? <small>{branches}</small> : null}
+                </div>
+              </article>
+            );
+          })}
+
+          {coaches.length === 0 ? (
+            <div className="shark-coming-soon">
+              {locale === "ru"
+                ? "Тренеры появятся после публикации в админке."
+                : "Murabbiylar admin panelda e’lon qilingach paydo bo‘ladi."}
+            </div>
+          ) : null}
+        </div>
       </section>
     </main>
   );
