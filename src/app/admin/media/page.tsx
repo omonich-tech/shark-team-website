@@ -15,7 +15,7 @@ export default async function AdminMediaPage() {
       orderBy: [{ branchId: "asc" }, { ageMin: "asc" }]
     }),
     prisma.contentPage.findMany({
-      where: { slug: { in: ["home", "about", "contacts"] } },
+      where: { slug: { in: ["brand", "home", "about", "contacts"] } },
       orderBy: { slug: "asc" }
     }),
     prisma.mediaAsset.findMany({
@@ -24,6 +24,7 @@ export default async function AdminMediaPage() {
   ]);
 
   const pageLabels: Record<string, string> = {
+    brand: "Бренд · Логотип",
     home: "Главная",
     about: "О нас",
     contacts: "Контакты"
