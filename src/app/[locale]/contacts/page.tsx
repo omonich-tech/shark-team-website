@@ -175,8 +175,8 @@ export default async function ContactsPage({
           <div className="shark-coming-soon">
             <p>
               {locale === "ru"
-                ? "Общие контакты пока не заполнены. Их можно добавить в админке → Контент."
-                : "Umumiy kontaktlar hali kiritilmagan. Ularni admin panel → Kontent orqali qo‘shish mumkin."}
+                ? "Контактные данные скоро появятся."
+                : "Kontakt ma’lumotlari tez orada paydo bo‘ladi."}
             </p>
           </div>
         )}
