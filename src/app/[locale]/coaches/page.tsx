@@ -118,8 +118,8 @@ export default async function CoachesPage({
           {coaches.length === 0 ? (
             <div className="shark-coming-soon">
               {locale === "ru"
-                ? "Тренеры появятся после публикации в админке."
-                : "Murabbiylar admin panelda e’lon qilingach paydo bo‘ladi."}
+                ? "Информация о тренерах скоро появится."
+                : "Murabbiylar haqida ma’lumot tez orada paydo bo‘ladi."}
             </div>
           ) : null}
         </div>
