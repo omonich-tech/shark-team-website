@@ -433,7 +433,7 @@ export default async function PublicHome({
 
           {!data?.branches.length ? (
             <div className="shark-coming-soon">
-              <h3>{locale === "ru" ? "Филиалы появятся здесь автоматически" : "Filiallar shu yerda avtomatik ko‘rinadi"}</h3>
+              <h3>{locale === "ru" ? "Новые филиалы скоро появятся" : "Yangi filiallar tez orada paydo bo‘ladi"}</h3>
               <p>{locale === "ru" ? "Новые активные филиалы будут появляться здесь." : "Yangi faol filiallar shu yerda paydo bo‘ladi."}</p>
             </div>
           ) : null}
