@@ -4267,3 +4267,28 @@ h3 {
     min-width: 980px;
   }
 }
+
+
+.booking-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.booking-choice-grid label {
+  display: block;
+}
+
+.booking-choice-grid label > span {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--ps-muted, #344054);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+@media (max-width: 760px) {
+  .booking-choice-grid {
+    grid-template-columns: 1fr;
+  }
+}
