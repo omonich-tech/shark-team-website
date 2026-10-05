@@ -44,7 +44,7 @@ Core:
 ```
 DATABASE_URL=
 DATABASE_POOL_MAX=3
-NEXT_PUBLIC_APP_URL=https://<production-domain>
+NEXT_PUBLIC_APP_URL=https://sharkteam.uz
 
 ADMIN_USERNAME=
 ADMIN_PASSWORD=
@@ -96,9 +96,10 @@ POST_TRIAL_FEEDBACK_MINUTES=30
 Media:
 
 ```
-BLOB_READ_WRITE_TOKEN=
 MEDIA_DRY_RUN=false
 ```
+
+Vercel Blob must be connected to the project. OIDC-backed Blob authentication is preferred; a read-write token may also be used when explicitly configured.
 
 Optional:
 
@@ -182,7 +183,7 @@ Never commit the card number to GitHub.
 Merchant endpoint:
 
 ```
-POST https://<production-domain>/api/payments/payme/merchant
+POST https://sharkteam.uz/api/payments/payme/merchant
 ```
 
 Configure the Payme Business cash desk with the production endpoint and production credentials.
@@ -213,7 +214,7 @@ npm run telegram:set-webhook
 Webhook:
 
 ```
-POST https://<production-domain>/api/telegram/webhook
+POST https://sharkteam.uz/api/telegram/webhook
 ```
 
 The webhook is fail-closed. If `TELEGRAM_WEBHOOK_SECRET` is missing or incorrect, requests are rejected.
@@ -474,7 +475,7 @@ The repository includes provider-independent production scheduling:
 Configure repository secrets:
 
 ```
-PRODUCTION_APP_URL=
+PRODUCTION_APP_URL=https://sharkteam.uz
 PRODUCTION_CRON_SECRET=
 ```
 
