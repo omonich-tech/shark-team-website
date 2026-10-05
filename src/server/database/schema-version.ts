@@ -1,2 +1,2 @@
 export const EXPECTED_LATEST_MIGRATION =
-  "20261005170000_about_contacts_content";
+  "20261005193000_brand_logo_slot";
