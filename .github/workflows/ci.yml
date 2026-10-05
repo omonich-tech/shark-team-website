@@ -162,6 +162,10 @@ jobs:
           curl -fsS http://127.0.0.1:3000/uz | grep -q "Basketbol"
           curl -fsS http://127.0.0.1:3000/ru/branches/school-117 | grep -q "Школа"
           curl -fsS http://127.0.0.1:3000/api/public/branches/school-117 | grep -q "BR-SCHOOL-117-01"
+          curl -fsS http://127.0.0.1:3000/ru/about | grep -q "Спорт формирует"
+          curl -fsS http://127.0.0.1:3000/uz/about | grep -q "Sport jismoniy"
+          curl -fsS http://127.0.0.1:3000/ru/contacts | grep -q "Контакты и филиалы"
+          curl -fsS http://127.0.0.1:3000/uz/contacts | grep -q "Kontaktlar va filiallar"
           curl -fsS http://127.0.0.1:3000/ru/trial | grep -q "Подберите"
 
       - name: Smoke test trial lead flow

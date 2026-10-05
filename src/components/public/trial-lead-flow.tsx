@@ -3,6 +3,17 @@
 import { FormEvent, useMemo, useState } from "react";
 import type { PublicLocale } from "@/lib/public-i18n";
 
+type TrialChoice = {
+  slug: string;
+  nameRu: string;
+  nameUz: string;
+  branches: Array<{
+    slug: string;
+    nameRu: string;
+    nameUz: string;
+  }>;
+};
+
 type TrialOptions =
   | {
       ok: false;
@@ -16,8 +27,10 @@ type TrialOptions =
         id: string;
         ageMin: number;
         ageMax: number;
+        branchSlug: string;
         branchNameRu: string;
         branchNameUz: string;
+        sportSlug: string;
         sportNameRu: string;
         sportNameUz: string;
         coachName: string;
@@ -54,10 +67,15 @@ type ManualCardPayment = {
 
 const copy = {
   ru: {
+    sportLabel: "Вид спорта",
+    sportPlaceholder: "Выберите вид спорта",
+    branchLabel: "Филиал",
+    branchPlaceholder: "Выберите филиал",
     ageLabel: "Возраст ребёнка",
     agePlaceholder: "Выберите возраст",
     loading: "Ищем подходящую группу…",
-    noGroup: "Для этого возраста подходящая группа пока не найдена.",
+    noChoices: "Сейчас нет групп, открытых для онлайн-записи на пробное.",
+    noGroup: "Для выбранных параметров подходящая группа пока не найдена.",
     capacityPending:
       "Онлайн-запись на пробное для этой группы пока не открыта.",
     noSessions: "Свободные даты пока не опубликованы.",
@@ -85,10 +103,15 @@ const copy = {
     error: "Не удалось оформить бронь. Проверьте данные и попробуйте ещё раз."
   },
   uz: {
+    sportLabel: "Sport turi",
+    sportPlaceholder: "Sport turini tanlang",
+    branchLabel: "Filial",
+    branchPlaceholder: "Filialni tanlang",
     ageLabel: "Bolaning yoshi",
     agePlaceholder: "Yoshni tanlang",
     loading: "Mos guruhni qidirmoqdamiz…",
-    noGroup: "Bu yosh uchun mos guruh hozircha topilmadi.",
+    noChoices: "Hozir sinovga onlayn yozilish uchun ochiq guruhlar yo‘q.",
+    noGroup: "Tanlangan parametrlar uchun mos guruh hozircha topilmadi.",
     capacityPending:
       "Bu guruh uchun onlayn sinov yozuvi hozircha ochilmagan.",
     noSessions: "Bo‘sh sanalar hozircha e’lon qilinmagan.",
@@ -144,8 +167,19 @@ function moneyLabel(amount: number, locale: PublicLocale) {
   );
 }
 
-export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
+export function TrialLeadFlow({
+  locale,
+  choices
+}: {
+  locale: PublicLocale;
+  choices: TrialChoice[];
+}) {
   const t = copy[locale];
+  const initialSport = choices[0]?.slug ?? "";
+  const initialBranch = choices[0]?.branches[0]?.slug ?? "";
+
+  const [sportSlug, setSportSlug] = useState(initialSport);
+  const [branchSlug, setBranchSlug] = useState(initialBranch);
   const [age, setAge] = useState("");
   const [options, setOptions] = useState<TrialOptions | null>(null);
   const [loading, setLoading] = useState(false);
@@ -163,6 +197,10 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     "success" | "error" | "full" | null
   >(null);
 
+  const selectedSport =
+    choices.find((choice) => choice.slug === sportSlug) ?? choices[0] ?? null;
+  const availableBranches = selectedSport?.branches ?? [];
+
   const selectedSession = useMemo(() => {
     if (!options?.ok) return null;
     return (
@@ -171,9 +209,38 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     );
   }, [options, selectedSessionId]);
 
+  function resetSelection() {
+    setAge("");
+    setOptions(null);
+    setSelectedSessionId("");
+    setReservation(null);
+    setManualPayment(null);
+    setTelegramLink(null);
+    setPaymentUnavailable(false);
+    setResult(null);
+  }
+
+  function changeSport(nextSport: string) {
+    setSportSlug(nextSport);
+    const sport = choices.find((choice) => choice.slug === nextSport);
+    setBranchSlug(sport?.branches[0]?.slug ?? "");
+    resetSelection();
+  }
+
+  function changeBranch(nextBranch: string) {
+    setBranchSlug(nextBranch);
+    resetSelection();
+  }
+
   async function fetchOptions(nextAge: string) {
+    const query = new URLSearchParams({
+      age: nextAge,
+      sport: sportSlug,
+      branch: branchSlug
+    });
+
     const response = await fetch(
-      `/api/public/trial-options?age=${encodeURIComponent(nextAge)}`,
+      `/api/public/trial-options?${query.toString()}`,
       { cache: "no-store" }
     );
 
@@ -190,7 +257,7 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     setPaymentUnavailable(false);
     setResult(null);
 
-    if (!nextAge) return;
+    if (!nextAge || !sportSlug || !branchSlug) return;
 
     setLoading(true);
 
@@ -329,24 +396,59 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
     }
   }
 
+  if (choices.length === 0) {
+    return <div className="booking-message">{t.noChoices}</div>;
+  }
+
   return (
     <div className="booking-flow">
       <div className="booking-step">
         <span className="step-number">1</span>
-        <div className="booking-field-wrap">
-          <label htmlFor="child-age">{t.ageLabel}</label>
-          <select
-            id="child-age"
-            value={age}
-            onChange={(event) => void loadOptions(event.target.value)}
-          >
-            <option value="">{t.agePlaceholder}</option>
-            {Array.from({ length: 10 }, (_, index) => index + 6).map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
+        <div className="booking-field-wrap booking-choice-grid">
+          <label>
+            <span>{t.sportLabel}</span>
+            <select
+              value={sportSlug}
+              onChange={(event) => changeSport(event.target.value)}
+            >
+              <option value="" disabled>{t.sportPlaceholder}</option>
+              {choices.map((choice) => (
+                <option key={choice.slug} value={choice.slug}>
+                  {locale === "ru" ? choice.nameRu : choice.nameUz}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>{t.branchLabel}</span>
+            <select
+              value={branchSlug}
+              onChange={(event) => changeBranch(event.target.value)}
+            >
+              <option value="" disabled>{t.branchPlaceholder}</option>
+              {availableBranches.map((branch) => (
+                <option key={branch.slug} value={branch.slug}>
+                  {locale === "ru" ? branch.nameRu : branch.nameUz}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>{t.ageLabel}</span>
+            <select
+              value={age}
+              onChange={(event) => void loadOptions(event.target.value)}
+            >
+              <option value="">{t.agePlaceholder}</option>
+              {Array.from({ length: 12 }, (_, index) => index + 6).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -361,6 +463,10 @@ export function TrialLeadFlow({ locale }: { locale: PublicLocale }) {
           <div className="booking-summary">
             <span>{t.groupTitle}</span>
             <strong>
+              {locale === "ru"
+                ? options.group.sportNameRu
+                : options.group.sportNameUz}
+              {" · "}
               {options.group.ageMin}–{options.group.ageMax}{" "}
               {locale === "ru" ? "лет" : "yosh"}
             </strong>

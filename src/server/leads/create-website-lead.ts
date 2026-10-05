@@ -78,11 +78,9 @@ export async function createWebsiteLead(input: CreateWebsiteLeadInput) {
         ageMin: { lte: input.childAge },
         ageMax: { gte: input.childAge },
         branch: {
-          slug: "school-117",
           status: LifecycleStatus.ACTIVE
         },
         sport: {
-          slug: "basketball",
           status: LifecycleStatus.ACTIVE
         }
       }

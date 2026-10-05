@@ -3,6 +3,7 @@ import {
   AttendanceStatus,
   OperationalAlertStatus,
   OperationalAlertType,
+  SessionStatus,
   StudentEnrollmentStatus
 } from "../src/generated/prisma/client";
 import { getPrisma } from "../src/lib/prisma";
@@ -29,7 +30,7 @@ async function main() {
 
   assert(enrollment, "Attendance alert enrollment not found");
 
-  const sessions = await prisma.trainingSession.findMany({
+  let sessions = await prisma.trainingSession.findMany({
     where: {
       groupId: enrollment.groupId,
       startsAt: { gte: enrollment.startDate },
@@ -45,7 +46,73 @@ async function main() {
     take: 3
   });
 
-  assert(sessions.length >= 3, "Need at least three sessions for attendance alert test");
+  const createdSessionIds: string[] = [];
+
+  if (sessions.length < 3) {
+    const missing = 3 - sessions.length;
+    const base = new Date(
+      Math.max(
+        enrollment.startDate.getTime() + 6 * 60 * 60 * 1000,
+        Date.now() - 10 * 24 * 60 * 60 * 1000
+      )
+    );
+
+    for (let index = 0; index < missing; index += 1) {
+      let startsAt = new Date(
+        base.getTime() + (index + 1) * 7 * 60 * 60 * 1000 + 37 * 60 * 1000
+      );
+
+      while (
+        await prisma.trainingSession.findUnique({
+          where: {
+            groupId_startsAt: {
+              groupId: enrollment.groupId,
+              startsAt
+            }
+          },
+          select: { id: true }
+        })
+      ) {
+        startsAt = new Date(startsAt.getTime() + 11 * 60 * 1000);
+      }
+
+      const created = await prisma.trainingSession.create({
+        data: {
+          groupId: enrollment.groupId,
+          coachId: enrollment.group.primaryCoachId,
+          startsAt,
+          endsAt: new Date(startsAt.getTime() + 60 * 60 * 1000),
+          status: SessionStatus.SCHEDULED,
+          regularCapacity: enrollment.group.capacityRegular,
+          trialCapacity: 0,
+          trialBookingEnabled: false
+        }
+      });
+
+      createdSessionIds.push(created.id);
+    }
+
+    sessions = await prisma.trainingSession.findMany({
+      where: {
+        groupId: enrollment.groupId,
+        startsAt: { gte: enrollment.startDate },
+        trialBookings: {
+          none: {
+            lead: {
+              childId: enrollment.childId
+            }
+          }
+        }
+      },
+      orderBy: { startsAt: "asc" },
+      take: 3
+    });
+  }
+
+  assert(
+    sessions.length >= 3,
+    "Need at least three sessions for attendance alert test"
+  );
 
   await prisma.operationalAlert.deleteMany({
     where: {
@@ -82,17 +149,32 @@ async function main() {
   });
 
   assert(opened.risk, "Two consecutive absences did not open attendance risk");
-  assert(opened.consecutiveMisses === 2, "Attendance risk consecutive count is wrong");
+  assert(
+    opened.consecutiveMisses === 2,
+    "Attendance risk consecutive count is wrong"
+  );
 
   let alert = await prisma.operationalAlert.findUnique({
     where: { dedupeKey: "attendance-risk:" + enrollment.id }
   });
 
   assert(alert, "Persistent attendance risk alert was not created");
-  assert(alert.status === OperationalAlertStatus.OPEN, "Attendance risk alert is not OPEN");
-  assert(alert.type === OperationalAlertType.ATTENDANCE_RISK, "Attendance alert type is wrong");
-  assert(alert.childId === enrollment.childId, "Attendance alert child link is wrong");
-  assert(alert.groupId === enrollment.groupId, "Attendance alert group link is wrong");
+  assert(
+    alert.status === OperationalAlertStatus.OPEN,
+    "Attendance risk alert is not OPEN"
+  );
+  assert(
+    alert.type === OperationalAlertType.ATTENDANCE_RISK,
+    "Attendance alert type is wrong"
+  );
+  assert(
+    alert.childId === enrollment.childId,
+    "Attendance alert child link is wrong"
+  );
+  assert(
+    alert.groupId === enrollment.groupId,
+    "Attendance alert group link is wrong"
+  );
 
   const recoverySession = sessions[2];
   await prisma.attendance.create({
@@ -130,6 +212,12 @@ async function main() {
       sessionId: { in: sessions.map((session) => session.id) }
     }
   });
+
+  if (createdSessionIds.length > 0) {
+    await prisma.trainingSession.deleteMany({
+      where: { id: { in: createdSessionIds } }
+    });
+  }
 
   console.log("Attendance risk alert verification passed.");
 }

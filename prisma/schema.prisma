@@ -945,6 +945,14 @@ model ContentPage {
   heroTitleUz      String?
   heroLeadRu       String?
   heroLeadUz       String?
+  bodyRu           String?
+  bodyUz           String?
+  contactPhone     String?
+  contactTelegram  String?
+  contactInstagram String?
+  contactEmail     String?
+  contactHoursRu   String?
+  contactHoursUz   String?
   seoTitleRu       String?
   seoTitleUz       String?
   seoDescriptionRu String?

@@ -28,15 +28,15 @@ export async function generateMetadata({
       ? cms.content?.seoTitleRu
       : cms.content?.seoTitleUz) ??
     (locale === "ru"
-      ? "SHARK TEAM — детский баскетбол в Ташкенте"
-      : "SHARK TEAM — Toshkentda bolalar basketboli");
+      ? "SHARK TEAM — детские спортивные секции в Ташкенте"
+      : "SHARK TEAM — Toshkentdagi bolalar sport seksiyalari");
   const description =
     (locale === "ru"
       ? cms.content?.seoDescriptionRu
       : cms.content?.seoDescriptionUz) ??
     (locale === "ru"
-      ? "Детская баскетбольная секция SHARK TEAM в Ташкенте."
-      : "Toshkentdagi SHARK TEAM bolalar basketbol seksiyasi.");
+      ? "SHARK TEAM — баскетбол, футбол, волейбол, лёгкая атлетика и художественная гимнастика для детей в Ташкенте."
+      : "SHARK TEAM — Toshkentda bolalar uchun basketbol, futbol, voleybol, yengil atletika va badiiy gimnastika.");
 
   return {
     title: {

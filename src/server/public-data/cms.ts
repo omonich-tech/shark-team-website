@@ -18,49 +18,38 @@ const publicMediaConsent = {
 export async function getPublishedHomeCms() {
   const prisma = getPrisma();
 
-  const [content, faq, media] = await Promise.all([
-    prisma.contentPage.findFirst({
-      where: {
-        slug: "home",
-        status: ContentStatus.PUBLISHED
-      }
-    }),
+  const content = await prisma.contentPage.findFirst({
+    where: {
+      slug: "home",
+      status: ContentStatus.PUBLISHED
+    }
+  });
+
+  const [faq, media] = await Promise.all([
     prisma.faqItem.findMany({
       where: {
-        status: ContentStatus.PUBLISHED,
-        branchId: "BR-SCHOOL-117-01",
-        sportId: "SP-BASKETBALL-01"
+        status: ContentStatus.PUBLISHED
       },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
     }),
-    prisma.mediaAsset.findMany({
-      where: {
-        AND: [
-          publicMediaConsent,
-          {
-            OR: [
+    content
+      ? prisma.mediaAsset.findMany({
+          where: {
+            AND: [
+              publicMediaConsent,
               {
-                targetType: MediaTargetType.BRANCH,
-                targetId: "BR-SCHOOL-117-01"
-              },
-              {
-                targetType: MediaTargetType.COACH,
-                targetId: "CO-0001"
-              },
-              {
-                targetType: MediaTargetType.SPORT,
-                targetId: "SP-BASKETBALL-01"
+                targetType: MediaTargetType.PAGE,
+                targetId: content.id
               }
             ]
-          }
-        ]
-      },
-      orderBy: [
-        { isPrimary: "desc" },
-        { sortOrder: "asc" },
-        { createdAt: "asc" }
-      ]
-    })
+          },
+          orderBy: [
+            { isPrimary: "desc" },
+            { sortOrder: "asc" },
+            { createdAt: "asc" }
+          ]
+        })
+      : Promise.resolve([])
   ]);
 
   return {

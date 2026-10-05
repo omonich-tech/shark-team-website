@@ -6,54 +6,55 @@ export const dynamic = "force-dynamic";
 export default async function AdminMediaPage() {
   const prisma = getPrisma();
 
-  const [branch, coach, sport, groups, home, items] = await Promise.all([
-    prisma.branch.findUniqueOrThrow({
-      where: { id: "BR-SCHOOL-117-01" }
-    }),
-    prisma.coach.findUniqueOrThrow({
-      where: { id: "CO-0001" }
-    }),
-    prisma.sport.findUniqueOrThrow({
-      where: { id: "SP-BASKETBALL-01" }
-    }),
+  const [branches, coaches, sports, groups, pages, items] = await Promise.all([
+    prisma.branch.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.coach.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.sport.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
     prisma.trainingGroup.findMany({
-      where: { branchId: "BR-SCHOOL-117-01" },
-      orderBy: { ageMin: "asc" }
+      include: { branch: true, sport: true },
+      orderBy: [{ branchId: "asc" }, { ageMin: "asc" }]
     }),
-    prisma.contentPage.findUniqueOrThrow({
-      where: { slug: "home" }
+    prisma.contentPage.findMany({
+      where: { slug: { in: ["home", "about", "contacts"] } },
+      orderBy: { slug: "asc" }
     }),
     prisma.mediaAsset.findMany({
       orderBy: [{ createdAt: "desc" }]
     })
   ]);
 
+  const pageLabels: Record<string, string> = {
+    home: "Главная",
+    about: "О нас",
+    contacts: "Контакты"
+  };
+
   const targets = [
-    {
-      value: branch.id,
-      label: `Филиал · ${branch.publicNameRu}`,
-      type: "BRANCH"
-    },
-    {
-      value: coach.id,
-      label: `Тренер · ${coach.firstName}`,
-      type: "COACH"
-    },
-    {
+    ...pages.map((page) => ({
+      value: page.id,
+      label: `Страница · ${pageLabels[page.slug] ?? page.slug}`,
+      type: "PAGE"
+    })),
+    ...sports.map((sport) => ({
       value: sport.id,
       label: `Спорт · ${sport.nameRu}`,
       type: "SPORT"
-    },
+    })),
+    ...branches.map((branch) => ({
+      value: branch.id,
+      label: `Филиал · ${branch.publicNameRu}`,
+      type: "BRANCH"
+    })),
+    ...coaches.map((coach) => ({
+      value: coach.id,
+      label: `Тренер · ${[coach.firstName, coach.lastName].filter(Boolean).join(" ")}`,
+      type: "COACH"
+    })),
     ...groups.map((group) => ({
       value: group.id,
-      label: `Группа · ${group.ageMin}–${group.ageMax} лет`,
+      label: `Группа · ${group.sport.nameRu} · ${group.branch.publicNameRu} · ${group.ageMin}–${group.ageMax}`,
       type: "GROUP"
-    })),
-    {
-      value: home.id,
-      label: "Страница · Главная",
-      type: "PAGE"
-    }
+    }))
   ];
 
   return (
@@ -62,6 +63,9 @@ export default async function AdminMediaPage() {
         <div>
           <p className="eyebrow">SITE</p>
           <h1>Медиа</h1>
+          <p className="admin-page-note">
+            Единая медиатека для страниц сайта, видов спорта, филиалов, тренеров и групп.
+          </p>
         </div>
         <span className="admin-count">{items.length} файлов</span>
       </div>

@@ -6,11 +6,25 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 
-export async function getTrialOptions(age: number) {
+export async function getTrialOptions(
+  age: number,
+  sportSlug = "basketball",
+  branchSlug = "school-117"
+) {
   if (!Number.isInteger(age) || age < 6 || age > 17) {
     return {
       ok: false as const,
       error: "AGE_NOT_SUPPORTED" as const
+    };
+  }
+
+  if (
+    !/^[a-z0-9-]{2,80}$/.test(sportSlug) ||
+    !/^[a-z0-9-]{2,120}$/.test(branchSlug)
+  ) {
+    return {
+      ok: false as const,
+      error: "INVALID_SELECTION" as const
     };
   }
 
@@ -24,11 +38,11 @@ export async function getTrialOptions(age: number) {
       ageMin: { lte: age },
       ageMax: { gte: age },
       branch: {
-        slug: "school-117",
+        slug: branchSlug,
         status: LifecycleStatus.ACTIVE
       },
       sport: {
-        slug: "basketball",
+        slug: sportSlug,
         status: LifecycleStatus.ACTIVE
       }
     },
@@ -37,7 +51,7 @@ export async function getTrialOptions(age: number) {
       sport: true,
       primaryCoach: true
     },
-    orderBy: [{ ageMin: "asc" }]
+    orderBy: [{ ageMin: "asc" }, { createdAt: "asc" }]
   });
 
   if (!group) {
@@ -56,8 +70,10 @@ export async function getTrialOptions(age: number) {
         id: group.id,
         ageMin: group.ageMin,
         ageMax: group.ageMax,
+        branchSlug: group.branch.slug,
         branchNameRu: group.branch.publicNameRu,
         branchNameUz: group.branch.publicNameUz,
+        sportSlug: group.sport.slug,
         sportNameRu: group.sport.nameRu,
         sportNameUz: group.sport.nameUz,
         coachName: [group.primaryCoach.firstName, group.primaryCoach.lastName]
@@ -90,21 +106,15 @@ export async function getTrialOptions(age: number) {
       trialBookings: {
         where: {
           OR: [
-            {
-              status: TrialBookingStatus.CONFIRMED
-            },
-            {
-              status: TrialBookingStatus.PAYMENT_PENDING
-            },
+            { status: TrialBookingStatus.CONFIRMED },
+            { status: TrialBookingStatus.PAYMENT_PENDING },
             {
               status: TrialBookingStatus.HOLD,
               expiresAt: { gt: now }
             }
           ]
         },
-        select: {
-          id: true
-        }
+        select: { id: true }
       }
     },
     orderBy: { startsAt: "asc" },
@@ -130,8 +140,10 @@ export async function getTrialOptions(age: number) {
       id: group.id,
       ageMin: group.ageMin,
       ageMax: group.ageMax,
+      branchSlug: group.branch.slug,
       branchNameRu: group.branch.publicNameRu,
       branchNameUz: group.branch.publicNameUz,
+      sportSlug: group.sport.slug,
       sportNameRu: group.sport.nameRu,
       sportNameUz: group.sport.nameUz,
       coachName: [group.primaryCoach.firstName, group.primaryCoach.lastName]
