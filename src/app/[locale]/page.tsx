@@ -322,7 +322,7 @@ export default async function PublicHome({
               <span className="play-dot">▶</span>
               <div>
                 <strong>{locale === "ru" ? "Посмотреть, как проходят тренировки" : "Mashg‘ulotlar qanday o‘tishini ko‘ring"}</strong>
-                <p>{locale === "ru" ? "Видео можно загрузить в админке → Медиа." : "Videoni admin panel → Media orqali yuklash mumkin."}</p>
+                <p>{locale === "ru" ? "Скоро здесь появятся видео с тренировок SHARK TEAM." : "Tez orada bu yerda SHARK TEAM mashg‘ulotlaridan videolar paydo bo‘ladi."}</p>
               </div>
             </div>
           )}
@@ -380,7 +380,7 @@ export default async function PublicHome({
             <article className="shark-coach-card shark-empty-card">
               <div>
                 <h3>{locale === "ru" ? "Команда тренеров" : "Murabbiylar jamoasi"}</h3>
-                <p>{locale === "ru" ? "Тренеры появятся здесь после добавления в админке." : "Murabbiylar admin panelga qo‘shilgach shu yerda ko‘rinadi."}</p>
+                <p>{locale === "ru" ? "Информация о тренерах скоро появится." : "Murabbiylar haqida ma’lumot tez orada paydo bo‘ladi."}</p>
               </div>
             </article>
           ) : null}
@@ -434,7 +434,7 @@ export default async function PublicHome({
           {!data?.branches.length ? (
             <div className="shark-coming-soon">
               <h3>{locale === "ru" ? "Филиалы появятся здесь автоматически" : "Filiallar shu yerda avtomatik ko‘rinadi"}</h3>
-              <p>{locale === "ru" ? "Достаточно активировать филиал и группу в админке." : "Admin panelda filial va guruhni faollashtirish kifoya."}</p>
+              <p>{locale === "ru" ? "Новые активные филиалы будут появляться здесь." : "Yangi faol filiallar shu yerda paydo bo‘ladi."}</p>
             </div>
           ) : null}
         </div>
