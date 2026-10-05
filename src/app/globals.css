@@ -5426,3 +5426,35 @@ h3 {
     height: 48px;
   }
 }
+
+
+.public-site .brand {
+  min-width: 118px;
+  min-height: 40px;
+}
+
+.public-site .brand-logo-file {
+  width: auto;
+  max-width: 154px;
+  height: 48px;
+  display: block;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.public-site .footer-brand-logo-file {
+  max-width: 176px;
+  height: 56px;
+}
+
+@media (max-width: 680px) {
+  .public-site .brand-logo-file {
+    max-width: 132px;
+    height: 40px;
+  }
+
+  .public-site .footer-brand-logo-file {
+    max-width: 154px;
+    height: 48px;
+  }
+}
