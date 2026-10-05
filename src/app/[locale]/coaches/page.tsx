@@ -59,11 +59,6 @@ export default async function CoachesPage({
       <section className="page-hero compact shark-page-hero">
         <p className="eyebrow">{locale === "ru" ? "КОМАНДА" : "JAMOA"}</p>
         <h1>{locale === "ru" ? "Тренеры SHARK TEAM" : "SHARK TEAM murabbiylari"}</h1>
-        <p className="lead">
-          {locale === "ru"
-            ? "Каждый тренер связан со своими видами спорта, филиалами и группами. Данные редактируются из единой админки."
-            : "Har bir murabbiy o‘z sport turi, filiali va guruhlari bilan bog‘langan. Ma’lumotlar yagona admin paneldan boshqariladi."}
-        </p>
       </section>
 
       <section className="content-section">
