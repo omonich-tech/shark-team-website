@@ -1,25 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-
 type Theme = "light" | "dark";
 
-function preferredTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-
-  const saved = window.localStorage.getItem("shark-theme");
-  if (saved === "light" || saved === "dark") return saved;
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
 export function ThemeToggle() {
-  useEffect(() => {
-    document.documentElement.dataset.theme = preferredTheme();
-  }, []);
-
   function toggle() {
     const current =
       document.documentElement.dataset.theme === "dark" ? "dark" : "light";
