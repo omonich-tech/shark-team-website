@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 type Theme = "light" | "dark";
 
@@ -16,17 +16,15 @@ function preferredTheme(): Theme {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("light");
-
   useEffect(() => {
-    const next = preferredTheme();
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
+    document.documentElement.dataset.theme = preferredTheme();
   }, []);
 
   function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
+    const current =
+      document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    const next: Theme = current === "dark" ? "light" : "dark";
+
     window.localStorage.setItem("shark-theme", next);
     document.documentElement.dataset.theme = next;
   }
@@ -36,14 +34,10 @@ export function ThemeToggle() {
       className="theme-toggle"
       type="button"
       onClick={toggle}
-      aria-label={
-        theme === "dark"
-          ? "Включить светлую тему"
-          : "Включить тёмную тему"
-      }
-      title={theme === "dark" ? "Light mode" : "Dark mode"}
+      aria-label="Переключить светлую или тёмную тему"
+      title="Light / Dark"
     >
-      <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+      <span aria-hidden="true">◐</span>
     </button>
   );
 }
