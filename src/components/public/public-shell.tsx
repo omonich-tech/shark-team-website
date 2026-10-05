@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { PublicLocale } from "@/lib/public-i18n";
 import { ThemeToggle } from "@/components/public/theme-toggle";
+import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 
 const labels = {
   ru: {
@@ -28,7 +29,7 @@ const labels = {
   }
 } as const;
 
-export function PublicShell({
+export async function PublicShell({
   locale,
   children
 }: {
@@ -37,6 +38,13 @@ export function PublicShell({
 }) {
   const copy = labels[locale];
   const otherLocale = locale === "ru" ? "uz" : "ru";
+  const brandPage = await tryGetPublishedContentPage("brand");
+  const brandLogo =
+    brandPage?.media.find(
+      (item) => item.isPrimary && item.contentType?.startsWith("image/")
+    ) ??
+    brandPage?.media.find((item) => item.contentType?.startsWith("image/")) ??
+    null;
 
   const nav = [
     [`/${locale}`, copy.home],
@@ -52,11 +60,25 @@ export function PublicShell({
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand" href={`/${locale}`} aria-label="SHARK TEAM">
-            <span className="brand-mark" aria-hidden="true">▲</span>
-            <span className="brand-word">
-              <strong>SHARK</strong>
-              <small>TEAM</small>
-            </span>
+            {brandLogo ? (
+              <span
+                className="brand-logo-image"
+                role="img"
+                aria-label={
+                  (locale === "ru" ? brandLogo.altRu : brandLogo.altUz) ??
+                  "SHARK TEAM"
+                }
+                style={{ backgroundImage: `url("${brandLogo.url}")` }}
+              />
+            ) : (
+              <>
+                <span className="brand-mark" aria-hidden="true">▲</span>
+                <span className="brand-word">
+                  <strong>SHARK</strong>
+                  <small>TEAM</small>
+                </span>
+              </>
+            )}
           </Link>
 
           <nav className="site-nav" aria-label="Primary navigation">
@@ -93,12 +115,26 @@ export function PublicShell({
 
       <footer className="site-footer">
         <div className="site-footer-brand">
-          <Link className="brand" href={`/${locale}`}>
-            <span className="brand-mark" aria-hidden="true">▲</span>
-            <span className="brand-word">
-              <strong>SHARK</strong>
-              <small>TEAM</small>
-            </span>
+          <Link className="brand" href={`/${locale}`} aria-label="SHARK TEAM">
+            {brandLogo ? (
+              <span
+                className="brand-logo-image footer-brand-logo-image"
+                role="img"
+                aria-label={
+                  (locale === "ru" ? brandLogo.altRu : brandLogo.altUz) ??
+                  "SHARK TEAM"
+                }
+                style={{ backgroundImage: `url("${brandLogo.url}")` }}
+              />
+            ) : (
+              <>
+                <span className="brand-mark" aria-hidden="true">▲</span>
+                <span className="brand-word">
+                  <strong>SHARK</strong>
+                  <small>TEAM</small>
+                </span>
+              </>
+            )}
           </Link>
           <p>
             {locale === "ru"
