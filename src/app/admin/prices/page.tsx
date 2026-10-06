@@ -80,18 +80,19 @@ export default async function AdminPricesPage({
           <p className="eyebrow">FINANCE</p>
           <h1>Цены</h1>
         </div>
-        <span className="admin-count">Версионируются по дате</span>
+        <span className="admin-count admin-count-pill">История изменений сохраняется</span>
       </div>
 
-      <section className="admin-panel admin-editor-panel">
+      <section className="admin-panel admin-editor-panel admin-price-scope-panel">
         <div className="admin-panel-head">
           <div>
-            <h2>Объект цены</h2>
-            <small>Выберите филиал и вид спорта, для которых действует цена.</small>
+            <p className="admin-panel-kicker">Настройка</p>
+            <h2>Для чего задаём цену</h2>
+            <small>Выберите филиал и направление. Ниже появятся текущие цены и их история.</small>
           </div>
         </div>
 
-        <form className="admin-editor" method="get">
+        <form className="admin-editor admin-price-scope-form" method="get">
           <div className="admin-editor-grid">
             <label className="admin-field">
               <span>Филиал</span>
@@ -130,7 +131,7 @@ export default async function AdminPricesPage({
               type="submit"
               disabled={!selectedBranch || !selectedSport}
             >
-              Показать цены
+              Показать выбранные цены
             </button>
           </div>
         </form>
@@ -138,16 +139,18 @@ export default async function AdminPricesPage({
 
       {selectedBranch && selectedSport ? (
         <>
-          <section className="admin-panel admin-editor-panel">
-            <div className="admin-panel-head">
+          <section className="admin-panel admin-editor-panel admin-price-current-panel">
+            <div className="admin-panel-head admin-price-current-head">
               <div>
+                <p className="admin-panel-kicker">Текущие цены</p>
                 <h2>
                   {selectedBranch.publicNameRu} · {selectedSport.nameRu}
                 </h2>
                 <small>
-                  Изменение создаёт новую версию цены. Предыдущая остаётся в истории.
+                  Сохранение создаст новую версию. Предыдущие значения останутся в истории.
                 </small>
               </div>
+              <span className="admin-status">ACTIVE</span>
             </div>
 
             <PriceEditor
@@ -158,9 +161,12 @@ export default async function AdminPricesPage({
             />
           </section>
 
-          <section className="admin-panel">
+          <section className="admin-panel admin-price-history-panel">
             <div className="admin-panel-head">
-              <h2>История цен</h2>
+              <div>
+                <p className="admin-panel-kicker">История</p>
+                <h2>Изменения цен</h2>
+              </div>
             </div>
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -175,7 +181,13 @@ export default async function AdminPricesPage({
                 <tbody>
                   {prices.map((price) => (
                     <tr key={price.id}>
-                      <td>{price.productType}</td>
+                      <td>
+                        <strong className="admin-table-primary">
+                          {price.productType === PriceProductType.TRIAL
+                            ? "Пробное занятие"
+                            : "Абонемент"}
+                        </strong>
+                      </td>
                       <td>{formatAdminMoney(price.amount, price.currency)}</td>
                       <td>{formatAdminDate(price.validFrom)}</td>
                       <td>{formatAdminDate(price.validTo)}</td>
