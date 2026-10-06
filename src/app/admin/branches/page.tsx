@@ -7,6 +7,15 @@ export const dynamic = "force-dynamic";
 export default async function AdminBranchesPage() {
   const prisma = getPrisma();
   const branches = await prisma.branch.findMany({
+    include: {
+      sportLinks: {
+        where: { status: "ACTIVE" },
+        include: { sport: true }
+      },
+      _count: {
+        select: { groups: true }
+      }
+    },
     orderBy: [{ status: "asc" }, { createdAt: "asc" }]
   });
 
@@ -55,12 +64,18 @@ export default async function AdminBranchesPage() {
       <section className="admin-panel">
         <div className="admin-table-wrap">
           <table className="admin-table">
-            <thead><tr><th>Филиал</th><th>Адрес</th><th>Статус</th><th></th></tr></thead>
+            <thead><tr><th>Филиал</th><th>Адрес</th><th>Направления</th><th>Группы</th><th>Статус</th><th></th></tr></thead>
             <tbody>
               {branches.map((branch) => (
                 <tr key={branch.id}>
                   <td>{branch.publicNameRu}<br /><small>{branch.id}</small></td>
                   <td>{branch.addressRu}</td>
+                  <td>
+                    {branch.sportLinks.length
+                      ? branch.sportLinks.map((link) => link.sport.nameRu).join(" · ")
+                      : "—"}
+                  </td>
+                  <td>{branch._count.groups}</td>
                   <td><span className="admin-status">{branch.status}</span></td>
                   <td><Link href={`/admin/branches/${branch.id}`}>Открыть</Link></td>
                 </tr>
