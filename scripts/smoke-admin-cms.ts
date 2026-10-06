@@ -19,7 +19,7 @@ function cookieFrom(response: Response) {
 
 async function json(
   path: string,
-  method: "POST" | "PATCH",
+  method: "POST" | "PATCH" | "PUT",
   body: unknown,
   cookie: string
 ) {
@@ -137,6 +137,8 @@ async function main() {
     "PATCH",
     {
       status: "ACTIVE",
+      internalName: "CI Branch",
+      slug: "ci-branch",
       publicNameRu: "SHARK TEAM — CI Branch Updated",
       publicNameUz: "SHARK TEAM — CI filial yangilangan",
       districtRu: "CI район",
@@ -146,6 +148,13 @@ async function main() {
       landmarkRu: "CI ориентир",
       landmarkUz: "CI mo‘ljal"
     },
+    cookie
+  );
+
+  await json(
+    `/api/admin/branches/${branchId}/sports`,
+    "PUT",
+    { sportIds: [sportId] },
     cookie
   );
 
@@ -330,6 +339,13 @@ async function main() {
     ]);
 
   assert(createdBranch?.status === "ACTIVE", "Created branch was not activated");
+  const branchSport = await prisma.branchSport.findUnique({
+    where: { branchId_sportId: { branchId, sportId } }
+  });
+  assert(
+    branchSport?.status === "ACTIVE",
+    "Branch sport relation was not activated from Admin"
+  );
   assert(createdGroup?.status === "ACTIVE", "Created group was not activated");
   assert(sessions > 0, "Created active group did not generate Sessions");
   assert(auditCount >= 8, "Admin mutations were not audited");
