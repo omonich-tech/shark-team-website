@@ -33,13 +33,15 @@ async function main() {
 
   assert(dashboard.ok, "Admin dashboard did not render");
   assert(html.includes("Dashboard"), "Dashboard title is missing");
-  assert(html.includes("Операционный центр"), "Operations center heading is missing");
+  assert(html.includes("CONTROL CENTER"), "Control center label is missing");
   assert(html.includes("Требует внимания"), "Operational alerts block is missing");
-  assert(html.includes("Заполненность групп"), "Group capacity metric is missing");
-  assert(html.includes("Пробное → абонемент"), "Trial conversion metric is missing");
-  assert(html.includes("Выручка за месяц"), "Monthly revenue metric is missing");
-  assert(html.includes("Посещаемость · 30 дней"), "Attendance metric is missing");
-  assert(html.includes("Просрочено"), "Overdue payment metric is missing");
+  assert(html.includes("Заполненность"), "Group capacity metric is missing");
+  assert(html.includes("Путь клиента"), "Conversion funnel is missing");
+  assert(html.includes("Воронка по дням"), "Trend chart is missing");
+  assert(html.includes("Выручка"), "Revenue metric is missing");
+  assert(html.includes("Посещаемость"), "Attendance metric is missing");
+  assert(html.includes("Просрочено к оплате"), "Overdue payment metric is missing");
+  assert(html.includes("WEB ANALYTICS"), "Web analytics placeholder is missing");
 
   console.log("Operations dashboard HTTP smoke test passed.");
 }
