@@ -5831,3 +5831,118 @@ h3 {
     height: 48px;
   }
 }
+
+
+/* Branch CMS */
+.admin-branch-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-branch-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.admin-branch-summary > div {
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+.admin-branch-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-branch-summary strong {
+  display: block;
+  margin-top: 7px;
+  overflow: hidden;
+  color: var(--navy);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-choice-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dce4ee;
+  border-radius: 13px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.admin-choice-card:hover {
+  border-color: #b7c7d9;
+}
+
+.admin-choice-card.active {
+  border-color: rgba(20, 121, 243, 0.35);
+  background: #f3f8ff;
+  box-shadow: 0 0 0 2px rgba(20, 121, 243, 0.06);
+}
+
+.admin-choice-card input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--blue);
+}
+
+.admin-choice-card > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.admin-choice-card strong {
+  overflow: hidden;
+  color: #344054;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-choice-card small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .admin-branch-summary,
+  .admin-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-branch-head-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-branch-summary,
+  .admin-choice-grid {
+    grid-template-columns: 1fr;
+  }
+}
