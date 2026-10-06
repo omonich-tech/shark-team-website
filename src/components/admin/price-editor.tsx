@@ -78,44 +78,54 @@ export function PriceEditor({
   }
 
   return (
-    <form className="admin-editor" onSubmit={submit}>
-      <div className="admin-editor-grid">
-        <label className="admin-field">
-          <span>Пробное занятие, UZS</span>
-          <input
-            type="number"
-            min={0}
-            step={1000}
-            value={trial}
-            onChange={(event) =>
-              setTrial(
-                event.target.value === ""
-                  ? ""
-                  : Number(event.target.value)
-              )
-            }
-          />
+    <form className="admin-editor admin-price-editor" onSubmit={submit}>
+      <div className="admin-price-grid">
+        <label className="admin-price-card">
+          <span className="admin-price-card-kicker">Пробное занятие</span>
+          <strong>Разовый визит</strong>
+          <div className="admin-money-input">
+            <input
+              aria-label="Цена пробного занятия"
+              type="number"
+              min={0}
+              step={1000}
+              value={trial}
+              onChange={(event) =>
+                setTrial(
+                  event.target.value === ""
+                    ? ""
+                    : Number(event.target.value)
+                )
+              }
+            />
+            <span>UZS</span>
+          </div>
         </label>
 
-        <label className="admin-field">
-          <span>Абонемент / месяц, UZS</span>
-          <input
-            type="number"
-            min={0}
-            step={1000}
-            value={subscription}
-            onChange={(event) =>
-              setSubscription(
-                event.target.value === ""
-                  ? ""
-                  : Number(event.target.value)
-              )
-            }
-          />
+        <label className="admin-price-card">
+          <span className="admin-price-card-kicker">Абонемент</span>
+          <strong>Стоимость за месяц</strong>
+          <div className="admin-money-input">
+            <input
+              aria-label="Цена месячного абонемента"
+              type="number"
+              min={0}
+              step={1000}
+              value={subscription}
+              onChange={(event) =>
+                setSubscription(
+                  event.target.value === ""
+                    ? ""
+                    : Number(event.target.value)
+                )
+              }
+            />
+            <span>UZS</span>
+          </div>
         </label>
       </div>
 
-      <div className="admin-editor-actions">
+      <div className="admin-editor-actions admin-price-actions">
         <button className="button primary" disabled={state === "saving"}>
           {state === "saving" ? "Сохраняем…" : "Изменить цены"}
         </button>
