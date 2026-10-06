@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function PriceEditor({
   branchId,
@@ -13,6 +14,7 @@ export function PriceEditor({
   trialAmount: number | null;
   subscriptionAmount: number | null;
 }) {
+  const router = useRouter();
   const [trial, setTrial] = useState<number | "">(trialAmount ?? "");
   const [subscription, setSubscription] = useState<number | "">(
     subscriptionAmount ?? ""
@@ -66,6 +68,7 @@ export function PriceEditor({
       setMessage(
         "Новые цены созданы с текущей даты. История старых цен сохранена."
       );
+      router.refresh();
     } catch (error) {
       setState("error");
       setMessage(
