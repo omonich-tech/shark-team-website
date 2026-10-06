@@ -50,12 +50,18 @@ export async function PATCH(
     );
   }
 
+  const internalName = requiredString(body.internalName, 160);
   const publicNameRu = requiredString(body.publicNameRu, 160);
   const publicNameUz = requiredString(body.publicNameUz, 160);
   const addressRu = requiredString(body.addressRu, 300);
   const addressUz = requiredString(body.addressUz, 300);
+  const rawSlug = requiredString(body.slug, 120);
+  const slug = rawSlug
+    ?.toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
-  if (!publicNameRu || !publicNameUz || !addressRu || !addressUz) {
+  if (!internalName || !publicNameRu || !publicNameUz || !addressRu || !addressUz || !slug) {
     return NextResponse.json(
       { ok: false, error: "REQUIRED_FIELDS_MISSING" },
       { status: 400 }
@@ -68,6 +74,21 @@ export async function PATCH(
     return NextResponse.json(
       { ok: false, error: "INVALID_STATUS" },
       { status: 400 }
+    );
+  }
+
+  const conflictingSlug = await prisma.branch.findFirst({
+    where: {
+      slug,
+      id: { not: branchId }
+    },
+    select: { id: true }
+  });
+
+  if (conflictingSlug) {
+    return NextResponse.json(
+      { ok: false, error: "BRANCH_SLUG_EXISTS" },
+      { status: 409 }
     );
   }
 
@@ -90,6 +111,8 @@ export async function PATCH(
     where: { id: branchId },
     data: {
       status,
+      internalName,
+      slug,
       publicNameRu,
       publicNameUz,
       districtRu: optionalString(body.districtRu, 120),
