@@ -274,10 +274,10 @@ export default async function AdminDashboardPage({
   const confirmedTrials = trialBookings.filter(
     (booking) => booking.status === TrialBookingStatus.CONFIRMED
   ).length;
-  const pendingTrials = trialBookings.filter((booking) =>
-    [TrialBookingStatus.HOLD, TrialBookingStatus.PAYMENT_PENDING].includes(
-      booking.status
-    )
+  const pendingTrials = trialBookings.filter(
+    (booking) =>
+      booking.status === TrialBookingStatus.HOLD ||
+      booking.status === TrialBookingStatus.PAYMENT_PENDING
   ).length;
 
   const paidTrialRevenue = paidTrials.reduce(
