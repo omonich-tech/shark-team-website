@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminLogoutButton } from "@/components/admin/admin-logout-button";
+import { AdminSidebarNav } from "@/components/admin/admin-sidebar-nav";
 import { requireAdminSession } from "@/server/admin/auth";
 
 export const metadata: Metadata = {
@@ -13,29 +14,6 @@ export const metadata: Metadata = {
     follow: false
   }
 };
-
-const nav = [
-  ["/admin", "Dashboard"],
-  ["/admin/assistant", "AI-ассистент"],
-  ["/admin/leads", "Лиды"],
-  ["/admin/trials", "Пробные"],
-  ["/admin/parents", "Родители"],
-  ["/admin/children", "Ученики"],
-  ["/admin/payments", "Оплаты"],
-  ["/admin/subscriptions", "Абонементы"],
-  ["/admin/attendance", "Посещаемость"],
-  ["/admin/progress", "Прогресс"],
-  ["/admin/sports", "Виды спорта"],
-  ["/admin/branches", "Филиалы"],
-  ["/admin/coaches", "Тренеры"],
-  ["/admin/groups", "Группы"],
-  ["/admin/sessions", "Занятия"],
-  ["/admin/prices", "Цены"],
-  ["/admin/content", "Контент"],
-  ["/admin/faq", "FAQ"],
-  ["/admin/media", "Медиа"],
-  ["/admin/audit", "История"]
-] as const;
 
 export default async function AdminLayout({
   children
@@ -55,13 +33,7 @@ export default async function AdminLayout({
           <p className="admin-role">CRM · {session.sub}</p>
         </div>
 
-        <nav className="admin-nav">
-          {nav.map(([href, label]) => (
-            <Link href={href} key={href}>
-              {label}
-            </Link>
-          ))}
-        </nav>
+        <AdminSidebarNav />
 
         <AdminLogoutButton />
       </aside>
