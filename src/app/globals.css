@@ -870,10 +870,15 @@ h3 {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   padding: 26px 18px;
   border-right: 1px solid var(--border);
   background: var(--navy);
   color: var(--white);
+}
+
+.admin-sidebar > div {
+  flex: 0 0 auto;
 }
 
 .admin-brand {
@@ -897,8 +902,29 @@ h3 {
 
 .admin-nav {
   display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 5px;
-  margin-top: 34px;
+  margin-top: 24px;
+  padding-right: 4px;
+  padding-bottom: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(216, 228, 242, 0.28) transparent;
+}
+
+.admin-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-nav::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(216, 228, 242, 0.24);
 }
 
 .admin-nav a {
@@ -915,7 +941,8 @@ h3 {
 }
 
 .admin-logout {
-  margin-top: auto;
+  flex: 0 0 auto;
+  margin-top: 14px;
   padding: 11px 12px;
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 10px;
@@ -1350,10 +1377,16 @@ h3 {
   .admin-sidebar {
     position: static;
     height: auto;
+    overflow: visible;
   }
 
   .admin-nav {
+    flex: none;
+    min-height: auto;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    padding-right: 0;
+    padding-bottom: 0;
   }
 
   .admin-logout {
