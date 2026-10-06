@@ -19,13 +19,16 @@ export async function PUT(
 
   const { branchId } = await context.params;
   const body = await request.json();
-  const sportIds = Array.isArray(body.sportIds)
+  const rawSportIds: unknown = body.sportIds;
+  const sportIds: string[] | null = Array.isArray(rawSportIds)
     ? Array.from(
-        new Set(
-          body.sportIds.filter(
-            (value: unknown): value is string =>
-              typeof value === "string" && value.length > 0
-          )
+        new Set<string>(
+          rawSportIds.reduce<string[]>((items, value: unknown) => {
+            if (typeof value === "string" && value.trim()) {
+              items.push(value.trim());
+            }
+            return items;
+          }, [])
         )
       )
     : null;
@@ -67,7 +70,6 @@ export async function PUT(
     );
   }
 
-  const selected = new Set(sportIds);
 
   await prisma.$transaction(async (tx) => {
     await tx.branchSport.updateMany({
