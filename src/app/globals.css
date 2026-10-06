@@ -902,9 +902,10 @@ h3 {
 
 .admin-nav {
   display: grid;
+  align-content: start;
   flex: 1 1 auto;
   min-height: 0;
-  gap: 5px;
+  gap: 22px;
   margin-top: 24px;
   padding-right: 4px;
   padding-bottom: 12px;
@@ -927,17 +928,57 @@ h3 {
   background: rgba(216, 228, 242, 0.24);
 }
 
+.admin-nav-section {
+  display: grid;
+  gap: 7px;
+}
+
+.admin-nav-section-title {
+  margin: 0;
+  padding: 0 10px;
+  color: #7087a2;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-nav-section-links {
+  display: grid;
+  gap: 3px;
+}
+
 .admin-nav a {
-  padding: 11px 12px;
+  position: relative;
+  padding: 10px 12px;
   border-radius: 10px;
   color: #d8e4f2;
   font-size: 13px;
   font-weight: 700;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
 .admin-nav a:hover {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.07);
   color: var(--white);
+}
+
+.admin-nav a.active {
+  background: rgba(91, 156, 220, 0.19);
+  color: #ffffff;
+  box-shadow: inset 3px 0 0 #5bbcff;
+}
+
+.admin-nav a.active::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #5bbcff;
+  transform: translateY(-50%);
 }
 
 .admin-logout {
@@ -1383,10 +1424,18 @@ h3 {
   .admin-nav {
     flex: none;
     min-height: auto;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow: visible;
     padding-right: 0;
     padding-bottom: 0;
+  }
+
+  .admin-nav-section-title {
+    padding-inline: 4px;
+  }
+
+  .admin-nav a.active::after {
+    display: none;
   }
 
   .admin-logout {
@@ -1404,6 +1453,11 @@ h3 {
   }
 
   .admin-nav {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .admin-nav-section-links {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
