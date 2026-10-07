@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reserveTrialBooking } from "@/server/trial/reserve-trial-booking";
+import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
 import {
   consumeRateLimit,
   rateLimitedResponse
@@ -32,6 +33,12 @@ export async function POST(request: NextRequest) {
     const result = await reserveTrialBooking(leadId);
 
     if (result.ok) {
+      await recordLeadFunnelEvent({
+        leadId,
+        eventName: "trial_booking_created",
+        bookingId: result.booking.id,
+        dedupeKey: "booking:" + result.booking.id + ":created"
+      });
       return NextResponse.json(result, { status: 201 });
     }
 
