@@ -84,7 +84,11 @@ export async function PublicShell({
             <Link className="language-switch" href={`/${otherLocale}`}>
               {copy.language}
             </Link>
-            <Link className="button primary header-trial" href={`/${locale}/trial`}>
+            <Link
+              className="button primary header-trial"
+              data-analytics-event="trial_cta_click"
+              href={`/${locale}/trial`}
+            >
               {copy.trial}
             </Link>
 
@@ -94,7 +98,11 @@ export async function PublicShell({
                 {nav.map(([href, label]) => (
                   <Link href={href} key={href}>{label}</Link>
                 ))}
-                <Link className="button primary" href={`/${locale}/trial`}>
+                <Link
+                  className="button primary"
+                  data-analytics-event="trial_cta_click"
+                  href={`/${locale}/trial`}
+                >
                   {copy.trial}
                 </Link>
               </div>
@@ -130,7 +138,9 @@ export async function PublicShell({
           <Link href={`/${locale}/coaches`}>{copy.coaches}</Link>
           <Link href={`/${locale}/about`}>{copy.about}</Link>
           <Link href={`/${locale}/contacts`}>{copy.contacts}</Link>
-          <Link href={`/${locale}/trial`}>{copy.trial}</Link>
+          <Link data-analytics-event="trial_cta_click" href={`/${locale}/trial`}>
+            {copy.trial}
+          </Link>
         </div>
 
         <span>© 2026 SHARK TEAM</span>
