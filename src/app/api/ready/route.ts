@@ -39,6 +39,9 @@ export async function GET() {
       }),
       prisma.webPageView.findFirst({
         select: { id: true }
+      }),
+      prisma.webFunnelEvent.findFirst({
+        select: { id: true }
       })
     ]);
 
