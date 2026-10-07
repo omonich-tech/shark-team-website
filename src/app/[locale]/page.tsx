@@ -36,7 +36,7 @@ export default async function PublicHome({
           title: "Спорт, в который хочется возвращаться",
           lead: "Спортивные секции для детей в Ташкенте. Баскетбол, футбол, волейбол, лёгкая атлетика и художественная гимнастика.",
           sportsTitle: "Больше, чем одна команда",
-          sportsLead: "Пять направлений. Одна философия: движение, характер, дисциплина и уверенность.",
+          sportsLead: "Спортивные направления SHARK TEAM. Одна философия: движение, характер, дисциплина и уверенность.",
           whyTitle: "Почему выбирают SHARK TEAM",
           coachesTitle: "Наши тренеры",
           branchesTitle: "Наши филиалы",
@@ -55,7 +55,7 @@ export default async function PublicHome({
           title: "Qayta-qayta kelgingiz keladigan sport",
           lead: "Toshkentdagi bolalar sport seksiyalari. Basketbol, futbol, voleybol, yengil atletika va badiiy gimnastika.",
           sportsTitle: "Bitta jamoadan ko‘proq",
-          sportsLead: "Besh yo‘nalish. Bitta falsafa: harakat, xarakter, intizom va ishonch.",
+          sportsLead: "SHARK TEAM sport yo‘nalishlari. Bitta falsafa: harakat, xarakter, intizom va ishonch.",
           whyTitle: "Nega SHARK TEAM tanlanadi",
           coachesTitle: "Murabbiylarimiz",
           branchesTitle: "Filiallarimiz",
@@ -113,6 +113,28 @@ export default async function PublicHome({
 
   const activeGroupCount =
     data?.sports.reduce((total, sport) => total + sport.groups.length, 0) ?? 0;
+
+  const homeSports = data
+    ? data.sports.map((sport, index) => {
+        const fallback = SPORT_CATALOG.find((item) => item.slug === sport.slug);
+        return {
+          id: sport.id,
+          slug: sport.slug,
+          nameRu: sport.nameRu,
+          nameUz: sport.nameUz,
+          descriptionRu:
+            sport.shortDescriptionRu ?? fallback?.descriptionRu ?? "",
+          descriptionUz:
+            sport.shortDescriptionUz ?? fallback?.descriptionUz ?? "",
+          mark: fallback?.mark ?? String(index + 1).padStart(2, "0"),
+          groups: sport.groups
+        };
+      })
+    : SPORT_CATALOG.map((sport) => ({
+        id: sport.slug,
+        ...sport,
+        groups: [] as { id: string }[]
+      }));
 
   const aboutStats =
     locale === "ru"
@@ -177,7 +199,7 @@ export default async function PublicHome({
           </div>
 
           <div className="shark-hero-facts" aria-label="SHARK TEAM facts">
-            <div><strong>5</strong><span>{locale === "ru" ? "видов спорта" : "sport turi"}</span></div>
+            <div><strong>{data?.sports.length ?? SPORT_CATALOG.length}</strong><span>{locale === "ru" ? "видов спорта" : "sport turi"}</span></div>
             <div><strong>RU / UZ</strong><span>{locale === "ru" ? "два языка" : "ikki til"}</span></div>
             <div><strong>Ташкент</strong><span>{locale === "ru" ? "город запуска" : "start shahri"}</span></div>
           </div>
@@ -187,7 +209,7 @@ export default async function PublicHome({
           <div className="shark-hero-media-overlay" />
           <div className="shark-hero-watermark">SHARK</div>
           <div className="shark-hero-sports">
-            {SPORT_CATALOG.map((sport) => (
+            {homeSports.map((sport) => (
               <span key={sport.slug}>{locale === "ru" ? sport.nameRu : sport.nameUz}</span>
             ))}
           </div>
@@ -242,23 +264,20 @@ export default async function PublicHome({
         </div>
 
         <div className="shark-sports-grid">
-          {SPORT_CATALOG.map((entry) => {
-            const sport = data?.sports.find((item) => item.slug === entry.slug);
-            const photo = sport
-              ? data?.media.find(
-                  (item) =>
-                    item.targetType === "SPORT" &&
-                    item.targetId === sport.id &&
-                    item.contentType?.startsWith("image/")
-                )
-              : null;
-            const isLive = Boolean(sport?.groups.length);
+          {homeSports.map((sport) => {
+            const photo = data?.media.find(
+              (item) =>
+                item.targetType === "SPORT" &&
+                item.targetId === sport.id &&
+                item.contentType?.startsWith("image/")
+            );
+            const isLive = Boolean(sport.groups.length);
 
             return (
               <Link
                 className="shark-sport-card"
-                href={`/${locale}/sports/${entry.slug}`}
-                key={entry.slug}
+                href={`/${locale}/sports/${sport.slug}`}
+                key={sport.id}
               >
                 <div
                   className="shark-sport-photo"
@@ -267,11 +286,11 @@ export default async function PublicHome({
                   aria-label={
                     photo
                       ? (locale === "ru" ? photo.altRu : photo.altUz) ??
-                        (locale === "ru" ? entry.nameRu : entry.nameUz)
+                        (locale === "ru" ? sport.nameRu : sport.nameUz)
                       : undefined
                   }
                 >
-                  <span className="shark-sport-index">{entry.mark}</span>
+                  <span className="shark-sport-index">{sport.mark}</span>
                   <span className={isLive ? "shark-status live" : "shark-status"}>
                     {isLive
                       ? locale === "ru" ? "идёт набор" : "qabul ochiq"
@@ -279,12 +298,12 @@ export default async function PublicHome({
                   </span>
                 </div>
                 <div className="shark-sport-body">
-                  <h3>{locale === "ru" ? sport?.nameRu ?? entry.nameRu : sport?.nameUz ?? entry.nameUz}</h3>
-                  <p>
-                    {locale === "ru"
-                      ? sport?.shortDescriptionRu ?? entry.descriptionRu
-                      : sport?.shortDescriptionUz ?? entry.descriptionUz}
-                  </p>
+                  <h3>{locale === "ru" ? sport.nameRu : sport.nameUz}</h3>
+                  {(locale === "ru" ? sport.descriptionRu : sport.descriptionUz) ? (
+                    <p>
+                      {locale === "ru" ? sport.descriptionRu : sport.descriptionUz}
+                    </p>
+                  ) : null}
                   <span className="shark-arrow" aria-hidden="true">→</span>
                 </div>
               </Link>
