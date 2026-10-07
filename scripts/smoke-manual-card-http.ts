@@ -56,6 +56,10 @@ async function main() {
   assert(options.sessions.length > 0, "No trial session available");
 
   const selectedSessionId = options.sessions[0].id;
+  const analyticsSuffix = Date.now().toString(36);
+  const analyticsVisitorId = "manual-visitor-" + analyticsSuffix;
+  const analyticsSessionId = "manual-session-" + analyticsSuffix;
+  const analyticsPageViewId = "manual-page-" + analyticsSuffix;
 
   const lead = await postJson(`${baseUrl}/api/public/leads`, {
     parentName: "Manual Parent",
@@ -67,7 +71,10 @@ async function main() {
     landingPage: "/ru/trial",
     utmSource: "ci",
     utmMedium: "manual-card",
-    utmCampaign: "manual-payment"
+    utmCampaign: "manual-payment",
+    analyticsVisitorId,
+    analyticsSessionId,
+    analyticsPageViewId
   });
 
   assert(lead.status === 201 && lead.payload.ok, "Lead creation failed");
@@ -228,6 +235,27 @@ async function main() {
   assert(
     paid.trialBooking.status === TrialBookingStatus.CONFIRMED,
     "Booking was not CONFIRMED"
+  );
+
+  const funnelEvents = await prisma.webFunnelEvent.findMany({
+    where: { visitorId: analyticsVisitorId },
+    select: { eventName: true, paymentId: true }
+  });
+  const funnelNames = new Set(funnelEvents.map((event) => event.eventName));
+
+  assert(funnelNames.has("lead_created"), "Lead conversion event is missing");
+  assert(
+    funnelNames.has("trial_booking_created"),
+    "Booking conversion event is missing"
+  );
+  assert(funnelNames.has("payment_started"), "Payment-start event is missing");
+  assert(funnelNames.has("payment_success"), "Payment-success event is missing");
+  assert(
+    funnelEvents.some(
+      (event) =>
+        event.eventName === "payment_success" && event.paymentId === paymentId
+    ),
+    "Payment-success attribution is incorrect"
   );
 
   const confirmedLead = await prisma.lead.findUnique({
