@@ -17,6 +17,9 @@ export type CreateWebsiteLeadInput = {
   utmMedium?: string | null;
   utmCampaign?: string | null;
   utmContent?: string | null;
+  analyticsVisitorId?: string | null;
+  analyticsSessionId?: string | null;
+  analyticsPageViewId?: string | null;
 };
 
 function cleanText(value: string, maxLength = 120) {
@@ -111,7 +114,10 @@ export async function createWebsiteLead(input: CreateWebsiteLeadInput) {
       utmSource: optionalText(input.utmSource, 120),
       utmMedium: optionalText(input.utmMedium, 120),
       utmCampaign: optionalText(input.utmCampaign, 160),
-      utmContent: optionalText(input.utmContent, 160)
+      utmContent: optionalText(input.utmContent, 160),
+      analyticsVisitorId: optionalText(input.analyticsVisitorId, 80),
+      analyticsSessionId: optionalText(input.analyticsSessionId, 80),
+      analyticsPageViewId: optionalText(input.analyticsPageViewId, 80)
     }
   });
 
