@@ -391,6 +391,29 @@ export default async function AdminAnalyticsPage({
 
   const channelMap = new Map<string, ChannelRow>();
 
+  function channelRow(source: string) {
+    const current = channelMap.get(source);
+    if (current) return current;
+
+    const created: ChannelRow = {
+      source,
+      visitors: new Set<string>(),
+      leads: new Set<string>(),
+      bookings: new Set<string>(),
+      payments: new Set<string>()
+    };
+    channelMap.set(source, created);
+    return created;
+  }
+
+  if (!selectedSport && !selectedBranch) {
+    for (const view of views) {
+      const acquisition = acquisitionFromView(view);
+      if (selectedCampaign && acquisition.campaign !== selectedCampaign) continue;
+      channelRow(acquisition.source).visitors.add(view.visitorId);
+    }
+  }
+
   for (const event of funnelEvents) {
     const acquisition = acquisitionBySession.get(event.sessionId) ?? {
       source: "Direct",
@@ -402,17 +425,12 @@ export default async function AdminAnalyticsPage({
     if (selectedSport && event.sportSlug !== selectedSport) continue;
     if (selectedBranch && event.branchSlug !== selectedBranch) continue;
 
-    const key = acquisition.source;
-    const row =
-      channelMap.get(key) ?? {
-        source: key,
-        visitors: new Set<string>(),
-        leads: new Set<string>(),
-        bookings: new Set<string>(),
-        payments: new Set<string>()
-      };
+    const row = channelRow(acquisition.source);
 
-    row.visitors.add(event.visitorId);
+    if (selectedSport || selectedBranch) {
+      row.visitors.add(event.visitorId);
+    }
+
     if (event.eventName === "lead_created") row.leads.add(event.visitorId);
     if (event.eventName === "trial_booking_created") {
       row.bookings.add(event.visitorId);
@@ -420,8 +438,6 @@ export default async function AdminAnalyticsPage({
     if (event.eventName === "payment_success") {
       row.payments.add(event.visitorId);
     }
-
-    channelMap.set(key, row);
   }
 
   const channelRows = [...channelMap.values()]
