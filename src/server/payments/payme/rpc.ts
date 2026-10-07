@@ -422,11 +422,6 @@ async function performTransaction(id: RpcId, params: RpcParams) {
   }
 
   const prisma = getPrisma();
-  let funnelAttribution: {
-    leadId: string;
-    bookingId: string;
-    paymentId: string;
-  } | null = null;
 
   const response = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`
@@ -457,11 +452,6 @@ async function performTransaction(id: RpcId, params: RpcParams) {
     }
 
     if (transaction.state === 2) {
-      funnelAttribution = {
-        leadId: transaction.payment.trialBooking.lead.id,
-        bookingId: transaction.payment.trialBooking.id,
-        paymentId: transaction.payment.id
-      };
       return rpcResult(id, {
         transaction: transaction.id,
         perform_time: dateMs(transaction.merchantPerformTime),
@@ -501,11 +491,6 @@ async function performTransaction(id: RpcId, params: RpcParams) {
     });
 
     const lead = booking.lead;
-    funnelAttribution = {
-      leadId: lead.id,
-      bookingId: booking.id,
-      paymentId: transaction.payment.id
-    };
 
     const parent = await tx.parent.upsert({
       where: { phone: lead.phone },
@@ -644,13 +629,26 @@ async function performTransaction(id: RpcId, params: RpcParams) {
     });
   });
 
-  if (funnelAttribution) {
+  const completed = await prisma.paymeTransaction.findUnique({
+    where: { providerTransactionId },
+    include: {
+      payment: {
+        include: {
+          trialBooking: {
+            select: { id: true, leadId: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (completed?.state === 2) {
     await recordLeadFunnelEvent({
-      leadId: funnelAttribution.leadId,
+      leadId: completed.payment.trialBooking.leadId,
       eventName: "payment_success",
-      bookingId: funnelAttribution.bookingId,
-      paymentId: funnelAttribution.paymentId,
-      dedupeKey: "payment:" + funnelAttribution.paymentId + ":success"
+      bookingId: completed.payment.trialBooking.id,
+      paymentId: completed.payment.id,
+      dedupeKey: "payment:" + completed.payment.id + ":success"
     });
   }
 
