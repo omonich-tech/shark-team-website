@@ -189,6 +189,9 @@ jobs:
           TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
           TELEGRAM_ADMIN_USER_IDS: "999001"
 
+      - name: Prepare Payme smoke capacity
+        run: npm run db:prepare-payme-smoke
+
       - name: Smoke test Payme Merchant API
         run: npm run smoke:payme
 
