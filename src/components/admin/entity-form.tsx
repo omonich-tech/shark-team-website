@@ -11,7 +11,7 @@ type FieldOption = {
 export type AdminField = {
   name: string;
   label: string;
-  type?: "text" | "number" | "textarea" | "select";
+  type?: "text" | "number" | "date" | "textarea" | "select";
   options?: FieldOption[];
   required?: boolean;
   placeholder?: string;
@@ -125,7 +125,13 @@ export function AdminEntityForm({
                 </select>
               ) : (
                 <input
-                  type={field.type === "number" ? "number" : "text"}
+                  type={
+                    field.type === "number"
+                      ? "number"
+                      : field.type === "date"
+                        ? "date"
+                        : "text"
+                  }
                   required={field.required}
                   placeholder={field.placeholder}
                   value={value === null ? "" : String(value)}
