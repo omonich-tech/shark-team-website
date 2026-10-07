@@ -80,9 +80,21 @@ async function main() {
   });
   assert(click.status === 201, "Click was not created");
 
-  const [storedPage, storedClick] = await Promise.all([
+  const funnel = await post({
+    event: "funnel",
+    ...common,
+    eventName: "trial_cta_click",
+    sportSlug: "basketball",
+    branchSlug: "school-117"
+  });
+  assert(funnel.status === 201, "Funnel event was not created");
+
+  const [storedPage, storedClick, storedFunnel] = await Promise.all([
     prisma.webPageView.findUnique({ where: { id: pageViewId } }),
-    prisma.webClick.findFirst({ where: { pageViewId } })
+    prisma.webClick.findFirst({ where: { pageViewId } }),
+    prisma.webFunnelEvent.findFirst({
+      where: { visitorId, eventName: "trial_cta_click" }
+    })
   ]);
 
   assert(storedPage, "Page view is missing from database");
@@ -90,6 +102,9 @@ async function main() {
   assert(storedPage.maxScrollPercent === 72, "Scroll depth was not saved");
   assert(storedPage.utmSource === "ci-smoke", "UTM source was not saved");
   assert(storedClick?.label === "CI Trial CTA", "Click label was not saved");
+  assert(storedFunnel, "Funnel event was not saved");
+  assert(storedFunnel.sportSlug === "basketball", "Funnel sport attribution was lost");
+  assert(storedFunnel.branchSlug === "school-117", "Funnel branch attribution was lost");
 
   const login = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",
@@ -108,6 +123,7 @@ async function main() {
   assert(html.includes("Аналитика сайта"), "Analytics heading is missing");
   assert(html.includes("CI Trial CTA"), "Click data is missing from analytics");
   assert(html.includes("ci-smoke"), "Traffic source is missing from analytics");
+  assert(html.includes("Путь до оплаты"), "Conversion funnel is missing from analytics");
 
   console.log("Web analytics HTTP smoke test passed.");
 }
