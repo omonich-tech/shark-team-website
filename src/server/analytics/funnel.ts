@@ -14,8 +14,9 @@ export async function recordLeadFunnelEvent(input: {
   paymentId?: string | null;
   dedupeKey: string;
 }) {
-  const prisma = getPrisma();
-  const lead = await prisma.lead.findUnique({
+  try {
+    const prisma = getPrisma();
+    const lead = await prisma.lead.findUnique({
     where: { id: input.leadId },
     select: {
       analyticsVisitorId: true,
@@ -27,25 +28,28 @@ export async function recordLeadFunnelEvent(input: {
     }
   });
 
-  const visitorId = cleanId(lead?.analyticsVisitorId);
-  const sessionId = cleanId(lead?.analyticsSessionId);
-  if (!lead || !visitorId || !sessionId) return;
+    const visitorId = cleanId(lead?.analyticsVisitorId);
+    const sessionId = cleanId(lead?.analyticsSessionId);
+    if (!lead || !visitorId || !sessionId) return;
 
-  await prisma.webFunnelEvent.upsert({
-    where: { dedupeKey: input.dedupeKey },
-    update: {},
-    create: {
-      visitorId,
-      sessionId,
-      pageViewId: cleanId(lead.analyticsPageViewId),
-      eventName: input.eventName,
-      path: lead.landingPage,
-      sportSlug: lead.sport?.slug ?? null,
-      branchSlug: lead.branch?.slug ?? null,
-      leadId: input.leadId,
-      bookingId: input.bookingId ?? null,
-      paymentId: input.paymentId ?? null,
-      dedupeKey: input.dedupeKey
-    }
-  });
+    await prisma.webFunnelEvent.upsert({
+      where: { dedupeKey: input.dedupeKey },
+      update: {},
+      create: {
+        visitorId,
+        sessionId,
+        pageViewId: cleanId(lead.analyticsPageViewId),
+        eventName: input.eventName,
+        path: lead.landingPage,
+        sportSlug: lead.sport?.slug ?? null,
+        branchSlug: lead.branch?.slug ?? null,
+        leadId: input.leadId,
+        bookingId: input.bookingId ?? null,
+        paymentId: input.paymentId ?? null,
+        dedupeKey: input.dedupeKey
+      }
+    });
+  } catch (error) {
+    console.warn("Funnel analytics write skipped", error);
+  }
 }
