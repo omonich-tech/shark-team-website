@@ -600,7 +600,7 @@ export function TrialLeadFlow({
           </p>
 
           {manualPayment ? (
-            <div className="manual-card-payment">
+            <div className="manual-card-payment ph-no-capture" data-ph-no-capture>
               <strong>{t.manualTitle}</strong>
               <p>
                 {t.cardLabel}: <b>{manualPayment.manualCard.cardNumber}</b>
