@@ -454,6 +454,9 @@ model Lead {
   utmMedium         String?
   utmCampaign       String?
   utmContent        String?
+  analyticsVisitorId String?
+  analyticsSessionId String?
+  analyticsPageViewId String?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
@@ -473,6 +476,7 @@ model Lead {
   @@index([parentId])
   @@index([childId])
   @@index([createdAt])
+  @@index([analyticsVisitorId, createdAt])
 }
 
 model TrialBooking {
@@ -1082,4 +1086,29 @@ model WebClick {
   @@index([visitorId, occurredAt])
   @@index([path, occurredAt])
   @@index([eventName, occurredAt])
+}
+
+
+model WebFunnelEvent {
+  id         String   @id @default(cuid())
+  visitorId  String
+  sessionId  String
+  pageViewId String?
+  eventName  String
+  path       String?
+  sportSlug  String?
+  branchSlug String?
+  leadId     String?
+  bookingId  String?
+  paymentId  String?
+  dedupeKey  String?  @unique
+  occurredAt DateTime @default(now())
+
+  @@index([occurredAt])
+  @@index([eventName, occurredAt])
+  @@index([visitorId, eventName, occurredAt])
+  @@index([sessionId, eventName, occurredAt])
+  @@index([leadId, eventName])
+  @@index([bookingId, eventName])
+  @@index([paymentId, eventName])
 }
