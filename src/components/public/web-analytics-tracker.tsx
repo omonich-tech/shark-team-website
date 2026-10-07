@@ -2,9 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { analyticsStorageKeys } from "@/lib/web-analytics-client";
 
-const VISITOR_KEY = "shark_analytics_visitor";
-const SESSION_KEY = "shark_analytics_session";
+const VISITOR_KEY = analyticsStorageKeys.visitor;
+const SESSION_KEY = analyticsStorageKeys.session;
+const PAGEVIEW_KEY = analyticsStorageKeys.pageView;
 const ACQUISITION_KEY = "shark_analytics_acquisition";
 
 type Acquisition = {
@@ -145,6 +147,9 @@ export function WebAnalyticsTracker() {
     visitorIdRef.current = visitorId;
     sessionIdRef.current = sessionId;
     pageViewIdRef.current = pageViewId;
+    try {
+      sessionStorage.setItem(PAGEVIEW_KEY, pageViewId);
+    } catch {}
     startedAtRef.current = Date.now();
     maxScrollRef.current = 0;
 
@@ -158,6 +163,41 @@ export function WebAnalyticsTracker() {
       deviceType: deviceType(),
       viewportWidth: window.innerWidth
     });
+
+    const segments = pathname.split("/").filter(Boolean);
+    const section = segments[1];
+    const slug = segments[2] ?? null;
+
+    if (section === "sports" && slug) {
+      send({
+        event: "funnel",
+        eventName: "sport_view",
+        pageViewId,
+        visitorId,
+        sessionId,
+        path: pathname,
+        sportSlug: slug
+      });
+    } else if (section === "branches" && slug) {
+      send({
+        event: "funnel",
+        eventName: "branch_view",
+        pageViewId,
+        visitorId,
+        sessionId,
+        path: pathname,
+        branchSlug: slug
+      });
+    } else if (section === "trial") {
+      send({
+        event: "funnel",
+        eventName: "trial_view",
+        pageViewId,
+        visitorId,
+        sessionId,
+        path: pathname
+      });
+    }
 
     function updateScroll() {
       const doc = document.documentElement;
@@ -227,6 +267,8 @@ export function WebAnalyticsTracker() {
 
       if (!pageViewId || !visitorId || !sessionId) return;
 
+      const customEvent = interactive.getAttribute("data-analytics-event");
+
       send({
         event: "click",
         pageViewId,
@@ -236,13 +278,60 @@ export function WebAnalyticsTracker() {
         label: safeLabel(interactive),
         targetPath: safeTarget(interactive),
         elementTag: interactive.tagName.toLowerCase(),
-        eventName:
-          interactive.getAttribute("data-analytics-event") ?? "click"
+        eventName: customEvent ?? "click"
       });
+
+      if (customEvent) {
+        send({
+          event: "funnel",
+          eventName: customEvent,
+          pageViewId,
+          visitorId,
+          sessionId,
+          path: window.location.pathname,
+          label: safeLabel(interactive),
+          targetPath: safeTarget(interactive)
+        });
+      }
     }
 
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
+  useEffect(() => {
+    function onFunnel(event: Event) {
+      const custom = event as CustomEvent<{
+        eventName?: string;
+        label?: string | null;
+        targetPath?: string | null;
+        sportSlug?: string | null;
+        branchSlug?: string | null;
+      }>;
+
+      const pageViewId = pageViewIdRef.current;
+      const visitorId = visitorIdRef.current;
+      const sessionId = sessionIdRef.current;
+      const eventName = custom.detail?.eventName;
+
+      if (!pageViewId || !visitorId || !sessionId || !eventName) return;
+
+      send({
+        event: "funnel",
+        eventName,
+        pageViewId,
+        visitorId,
+        sessionId,
+        path: window.location.pathname,
+        label: custom.detail?.label ?? null,
+        targetPath: custom.detail?.targetPath ?? null,
+        sportSlug: custom.detail?.sportSlug ?? null,
+        branchSlug: custom.detail?.branchSlug ?? null
+      });
+    }
+
+    window.addEventListener("shark:analytics-funnel", onFunnel);
+    return () => window.removeEventListener("shark:analytics-funnel", onFunnel);
   }, []);
 
   return null;
