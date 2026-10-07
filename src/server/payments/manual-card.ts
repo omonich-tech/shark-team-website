@@ -356,6 +356,24 @@ export async function reviewManualCardPayment(input: {
         }
       });
 
+      if (lead.analyticsVisitorId && lead.analyticsSessionId) {
+        await tx.webFunnelEvent.upsert({
+          where: { dedupeKey: "payment:" + payment.id + ":success" },
+          update: {},
+          create: {
+            visitorId: lead.analyticsVisitorId,
+            sessionId: lead.analyticsSessionId,
+            pageViewId: lead.analyticsPageViewId,
+            eventName: "payment_success",
+            path: lead.landingPage,
+            leadId: lead.id,
+            bookingId: booking.id,
+            paymentId: payment.id,
+            dedupeKey: "payment:" + payment.id + ":success"
+          }
+        });
+      }
+
       return {
         ok: true as const,
         alreadyProcessed: false as const,
