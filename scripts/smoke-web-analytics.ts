@@ -132,6 +132,11 @@ async function main() {
   assert(html.includes("Фильтры воронки"), "Funnel filters are missing");
   assert(html.includes("Эффективность каналов"), "Channel performance table is missing");
   assert(html.includes("Источник:"), "Selected source filter is not shown");
+  assert(
+    html.includes("Heatmaps &amp; Session Replay") ||
+      html.includes("Heatmaps & Session Replay"),
+    "Replay integration status is missing"
+  );
 
   console.log("Web analytics HTTP smoke test passed.");
 }
