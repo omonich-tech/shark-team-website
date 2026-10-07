@@ -381,6 +381,26 @@ async function main() {
     "New branch is missing from admin list"
   );
 
+  const publicSports = await fetch(`${baseUrl}/ru/sports`);
+  const publicSportsHtml = await publicSports.text();
+  assert(
+    publicSports.ok &&
+      publicSportsHtml.includes("CI Волейбол Updated") &&
+      publicSportsHtml.includes("CI спорт управляется из CMS"),
+    "CMS-created active sport is missing from public sports catalog"
+  );
+
+  const publicSport = await fetch(
+    `${baseUrl}/ru/sports/ci-volleyball-updated`
+  );
+  const publicSportHtml = await publicSport.text();
+  assert(
+    publicSport.ok &&
+      publicSportHtml.includes("CI Волейбол Updated") &&
+      publicSportHtml.includes("CI спорт управляется из CMS"),
+    "Dynamic CMS-created sport detail page did not render"
+  );
+
   const publicCatalog = await fetch(`${baseUrl}/ru/branches`);
   const catalogHtml = await publicCatalog.text();
   assert(
