@@ -621,6 +621,24 @@ async function performTransaction(id: RpcId, params: RpcParams) {
       }
     });
 
+    if (lead.analyticsVisitorId && lead.analyticsSessionId) {
+      await tx.webFunnelEvent.upsert({
+        where: { dedupeKey: `payment:${transaction.payment.id}:success` },
+        update: {},
+        create: {
+          visitorId: lead.analyticsVisitorId,
+          sessionId: lead.analyticsSessionId,
+          pageViewId: lead.analyticsPageViewId,
+          eventName: "payment_success",
+          path: lead.landingPage,
+          leadId: lead.id,
+          bookingId: booking.id,
+          paymentId: transaction.payment.id,
+          dedupeKey: `payment:${transaction.payment.id}:success`
+        }
+      });
+    }
+
     return rpcResult(id, {
       transaction: updated.id,
       perform_time: now.getTime(),
