@@ -1033,3 +1033,53 @@ model RateLimitBucket {
 
   @@index([resetAt])
 }
+
+
+model WebPageView {
+  id               String   @id
+  visitorId        String
+  sessionId        String
+  path             String
+  locale           String?
+  referrerHost     String?
+  utmSource        String?
+  utmMedium        String?
+  utmCampaign      String?
+  utmContent       String?
+  deviceType       String?
+  viewportWidth    Int?
+  startedAt        DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
+  durationMs       Int      @default(0)
+  maxScrollPercent Int      @default(0)
+
+  clicks WebClick[]
+
+  @@index([startedAt])
+  @@index([visitorId, startedAt])
+  @@index([sessionId, startedAt])
+  @@index([path, startedAt])
+  @@index([utmSource, startedAt])
+  @@index([referrerHost, startedAt])
+}
+
+model WebClick {
+  id         String   @id @default(cuid())
+  pageViewId String
+  visitorId  String
+  sessionId  String
+  path       String
+  label      String?
+  targetPath String?
+  elementTag String?
+  eventName  String   @default("click")
+  occurredAt DateTime @default(now())
+
+  pageView WebPageView @relation(fields: [pageViewId], references: [id], onDelete: Cascade)
+
+  @@index([occurredAt])
+  @@index([pageViewId, occurredAt])
+  @@index([visitorId, occurredAt])
+  @@index([path, occurredAt])
+  @@index([eventName, occurredAt])
+}
