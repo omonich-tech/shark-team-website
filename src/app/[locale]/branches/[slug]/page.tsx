@@ -47,7 +47,7 @@ export default async function PublicBranchPage({
               : ""}
           </p>
           <div className="hero-actions">
-            <Link className="button primary" href={`/${locale}/trial?branch=${encodeURIComponent(slug)}`}>
+            <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?branch=${encodeURIComponent(slug)}`}>
               {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
             </Link>
           </div>
