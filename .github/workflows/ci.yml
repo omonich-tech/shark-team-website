@@ -255,6 +255,9 @@ jobs:
       - name: Smoke test group operations
         run: npm run smoke:group-operations
 
+      - name: Smoke test web analytics
+        run: npm run smoke:web-analytics
+
       - name: Smoke test operations dashboard
         run: npm run smoke:operations-dashboard
 
