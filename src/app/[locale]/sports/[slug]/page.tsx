@@ -103,7 +103,7 @@ export default async function SportPage({
           <p className="lead">{description}</p>
           {sport?.groups.length ? (
             <div className="hero-actions">
-              <Link className="button primary" href={`/${locale}/trial?sport=${encodeURIComponent(slug)}`}>
+              <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?sport=${encodeURIComponent(slug)}`}>
                 {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
               </Link>
               <Link className="button secondary" href={`/${locale}/branches`}>
