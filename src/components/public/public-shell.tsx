@@ -4,6 +4,7 @@ import type { PublicLocale } from "@/lib/public-i18n";
 import { ThemeToggle } from "@/components/public/theme-toggle";
 import { BrandLogo } from "@/components/public/brand-logo";
 import { WebAnalyticsTracker } from "@/components/public/web-analytics-tracker";
+import { PostHogPublicRecorder } from "@/components/public/posthog-public-recorder";
 import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 
 const labels = {
@@ -61,6 +62,7 @@ export async function PublicShell({
   return (
     <div className="public-site">
       <WebAnalyticsTracker />
+      <PostHogPublicRecorder />
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand" href={`/${locale}`} aria-label="SHARK TEAM">
