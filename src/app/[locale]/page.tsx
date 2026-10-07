@@ -319,10 +319,12 @@ export default async function PublicHome({
             <video controls preload="metadata" src={trainingVideo.url} />
           ) : (
             <div className="shark-training-placeholder">
-              <span className="play-dot">▶</span>
+              <span className="training-soon-badge">
+                {locale === "ru" ? "Видео скоро" : "Video tez orada"}
+              </span>
               <div>
-                <strong>{locale === "ru" ? "Посмотреть, как проходят тренировки" : "Mashg‘ulotlar qanday o‘tishini ko‘ring"}</strong>
-                <p>{locale === "ru" ? "Скоро здесь появятся видео с тренировок SHARK TEAM." : "Tez orada bu yerda SHARK TEAM mashg‘ulotlaridan videolar paydo bo‘ladi."}</p>
+                <strong>{locale === "ru" ? "Как проходят тренировки SHARK TEAM" : "SHARK TEAM mashg‘ulotlari qanday o‘tadi"}</strong>
+                <p>{locale === "ru" ? "Добавим реальные видео с тренировок, как только подготовим материалы." : "Materiallar tayyor bo‘lishi bilan haqiqiy mashg‘ulot videolarini qo‘shamiz."}</p>
               </div>
             </div>
           )}
@@ -351,7 +353,16 @@ export default async function PublicHome({
               .join(" · ");
 
             return (
-              <article className="shark-coach-card" key={coach.id}>
+              <Link
+                className="shark-coach-card shark-coach-card-link"
+                href={`/${locale}/coaches`}
+                key={coach.id}
+                aria-label={
+                  locale === "ru"
+                    ? `Подробнее о тренере ${[coach.firstName, coach.lastName].filter(Boolean).join(" ")}`
+                    : `${[coach.firstName, coach.lastName].filter(Boolean).join(" ")} murabbiyi haqida batafsil`
+                }
+              >
                 <div
                   className="shark-coach-photo"
                   style={imageStyle(photo?.url)}
@@ -372,7 +383,7 @@ export default async function PublicHome({
                     <span>{locale === "ru" ? `Опыт ${coach.experienceYears}+ лет` : `Tajriba ${coach.experienceYears}+ yil`}</span>
                   ) : null}
                 </div>
-              </article>
+              </Link>
             );
           })}
 
