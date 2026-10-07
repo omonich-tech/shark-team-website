@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   LifecycleStatus,
@@ -85,7 +86,11 @@ export default async function CoachesPage({
               locale === "ru" ? coach.publicBioRu : coach.publicBioUz;
 
             return (
-              <article className="coach-profile-card" key={coach.id}>
+              <Link
+                className="coach-profile-card coach-profile-card-link"
+                href={`/${locale}/coaches/${coach.id}`}
+                key={coach.id}
+              >
                 <div
                   className="coach-profile-photo"
                   style={
@@ -111,7 +116,7 @@ export default async function CoachesPage({
                   {bio ? <p>{bio}</p> : null}
                   {branches ? <small>{branches}</small> : null}
                 </div>
-              </article>
+              </Link>
             );
           })}
 
