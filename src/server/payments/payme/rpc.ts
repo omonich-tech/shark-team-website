@@ -6,6 +6,7 @@ import {
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
 
 type RpcId = number | null;
 
@@ -421,8 +422,13 @@ async function performTransaction(id: RpcId, params: RpcParams) {
   }
 
   const prisma = getPrisma();
+  let funnelAttribution: {
+    leadId: string;
+    bookingId: string;
+    paymentId: string;
+  } | null = null;
 
-  return prisma.$transaction(async (tx) => {
+  const response = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`
       SELECT "id"
       FROM "PaymeTransaction"
@@ -451,6 +457,11 @@ async function performTransaction(id: RpcId, params: RpcParams) {
     }
 
     if (transaction.state === 2) {
+      funnelAttribution = {
+        leadId: transaction.payment.trialBooking.lead.id,
+        bookingId: transaction.payment.trialBooking.id,
+        paymentId: transaction.payment.id
+      };
       return rpcResult(id, {
         transaction: transaction.id,
         perform_time: dateMs(transaction.merchantPerformTime),
@@ -490,6 +501,11 @@ async function performTransaction(id: RpcId, params: RpcParams) {
     });
 
     const lead = booking.lead;
+    funnelAttribution = {
+      leadId: lead.id,
+      bookingId: booking.id,
+      paymentId: transaction.payment.id
+    };
 
     const parent = await tx.parent.upsert({
       where: { phone: lead.phone },
@@ -621,30 +637,24 @@ async function performTransaction(id: RpcId, params: RpcParams) {
       }
     });
 
-    if (lead.analyticsVisitorId && lead.analyticsSessionId) {
-      await tx.webFunnelEvent.upsert({
-        where: { dedupeKey: `payment:${transaction.payment.id}:success` },
-        update: {},
-        create: {
-          visitorId: lead.analyticsVisitorId,
-          sessionId: lead.analyticsSessionId,
-          pageViewId: lead.analyticsPageViewId,
-          eventName: "payment_success",
-          path: lead.landingPage,
-          leadId: lead.id,
-          bookingId: booking.id,
-          paymentId: transaction.payment.id,
-          dedupeKey: `payment:${transaction.payment.id}:success`
-        }
-      });
-    }
-
     return rpcResult(id, {
       transaction: updated.id,
       perform_time: now.getTime(),
       state: 2
     });
   });
+
+  if (funnelAttribution) {
+    await recordLeadFunnelEvent({
+      leadId: funnelAttribution.leadId,
+      eventName: "payment_success",
+      bookingId: funnelAttribution.bookingId,
+      paymentId: funnelAttribution.paymentId,
+      dedupeKey: "payment:" + funnelAttribution.paymentId + ":success"
+    });
+  }
+
+  return response;
 }
 
 async function cancelTransaction(id: RpcId, params: RpcParams) {
