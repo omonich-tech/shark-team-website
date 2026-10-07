@@ -22,8 +22,9 @@ const securityHeaders = [
       "media-src 'self' blob: https:",
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://*.posthog.com",
       "connect-src 'self' https:",
+      "worker-src 'self' blob: data:",
       "form-action 'self' https://checkout.paycom.uz https://test.paycom.uz"
     ].join("; ")
   },
