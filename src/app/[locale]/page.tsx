@@ -374,7 +374,7 @@ export default async function PublicHome({
             return (
               <Link
                 className="shark-coach-card shark-coach-card-link"
-                href={`/${locale}/coaches`}
+                href={`/${locale}/coaches/${coach.id}`}
                 key={coach.id}
                 aria-label={
                   locale === "ru"
