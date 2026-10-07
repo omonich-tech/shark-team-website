@@ -27,8 +27,6 @@ export default async function SportPage({
   if (!isPublicLocale(locale)) notFound();
 
   const fallback = getSportCatalogEntry(slug);
-  if (!fallback) notFound();
-
   const prisma = getPrisma();
   const sport = await prisma.sport.findFirst({
     where: { slug, status: LifecycleStatus.ACTIVE },
@@ -48,8 +46,9 @@ export default async function SportPage({
     }
   });
 
-  const media = sport
-    ? await prisma.mediaAsset.findMany({
+  if (!sport) notFound();
+
+  const media = await prisma.mediaAsset.findMany({
         where: {
           targetType: MediaTargetType.SPORT,
           targetId: sport.id,
@@ -66,11 +65,9 @@ export default async function SportPage({
           { sortOrder: "asc" },
           { createdAt: "asc" }
         ]
-      })
-    : [];
+      });
 
-  const trialPrice = sport
-    ? await prisma.price.findFirst({
+  const trialPrice = await prisma.price.findFirst({
         where: {
           sportId: sport.id,
           productType: PriceProductType.TRIAL,
@@ -78,18 +75,17 @@ export default async function SportPage({
           OR: [{ validTo: null }, { validTo: { gt: new Date() } }]
         },
         orderBy: { validFrom: "desc" }
-      })
-    : null;
+      });
 
   const hero = media.find((item) => item.contentType?.startsWith("image/"));
-  const name =
-    locale === "ru"
-      ? sport?.nameRu ?? fallback.nameRu
-      : sport?.nameUz ?? fallback.nameUz;
+  const name = locale === "ru" ? sport.nameRu : sport.nameUz;
   const description =
     locale === "ru"
-      ? sport?.shortDescriptionRu ?? fallback.descriptionRu
-      : sport?.shortDescriptionUz ?? fallback.descriptionUz;
+      ? sport.shortDescriptionRu ?? fallback?.descriptionRu ?? ""
+      : sport.shortDescriptionUz ?? fallback?.descriptionUz ?? "";
+  const mark =
+    fallback?.mark ??
+    String(Math.max(1, sport.sortOrder + 1)).padStart(2, "0");
 
   return (
     <main className="page-main">
@@ -98,10 +94,10 @@ export default async function SportPage({
           <Link className="shark-back-link" href={`/${locale}/sports`}>
             ← {locale === "ru" ? "Все виды спорта" : "Barcha sport turlari"}
           </Link>
-          <p className="eyebrow">SHARK TEAM · {fallback.mark}</p>
+          <p className="eyebrow">SHARK TEAM · {mark}</p>
           <h1>{name}</h1>
           <p className="lead">{description}</p>
-          {sport?.groups.length ? (
+          {sport.groups.length ? (
             <div className="hero-actions">
               <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?sport=${encodeURIComponent(slug)}`}>
                 {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
@@ -116,12 +112,12 @@ export default async function SportPage({
           className={hero ? "sport-detail-media has-photo" : "sport-detail-media"}
           style={hero ? { backgroundImage: `url("${hero.url}")` } : undefined}
         >
-          <span>{fallback.mark}</span>
+          <span>{mark}</span>
           <strong>{name}</strong>
         </div>
       </section>
 
-      {sport?.groups.length ? (
+      {sport.groups.length ? (
         <section className="content-section">
           <div className="section-heading">
             <p className="eyebrow">{locale === "ru" ? "ГРУППЫ" : "GURUHLAR"}</p>
