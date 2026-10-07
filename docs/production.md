@@ -519,3 +519,14 @@ Production admin authentication is configured through Vercel environment variabl
 ## Production coach access
 
 Coach authentication uses a production-only `COACH_SESSION_SECRET` in Vercel. Real coach usernames and password hashes are managed from Admin and stored in PostgreSQL; plaintext coach passwords are never committed or persisted.
+
+
+### PostHog browser ingestion
+
+Production browser traffic uses the first-party path `/ingest/*` on `sharkteam.uz`.
+Next.js rewrites that traffic to the EU PostHog ingestion and asset hosts. This improves
+capture reliability when browsers or extensions block known analytics domains.
+
+`NEXT_PUBLIC_POSTHOG_HOST` may remain configured for operational reference, but the
+browser SDK intentionally uses the first-party `/ingest` route. `NEXT_PUBLIC_POSTHOG_APP_URL`
+continues to point to `https://eu.posthog.com` for PostHog UI links.
