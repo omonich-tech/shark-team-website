@@ -9,7 +9,13 @@ const DAY = 24 * 60 * 60 * 1000;
 const RANGE_OPTIONS = [7, 30, 90] as const;
 
 type RangeDays = (typeof RANGE_OPTIONS)[number];
-type SearchParams = Promise<{ range?: string | string[] }>;
+type SearchParams = Promise<{
+  range?: string | string[];
+  source?: string | string[];
+  campaign?: string | string[];
+  sport?: string | string[];
+  branch?: string | string[];
+}>;
 
 function singleParam(value: string | string[] | undefined) {
   return typeof value === "string" ? value : undefined;
@@ -49,6 +55,42 @@ function topEntries(map: Map<string, number>, limit = 8) {
     .slice(0, limit);
 }
 
+type Acquisition = {
+  source: string;
+  campaign: string | null;
+  medium: string | null;
+};
+
+function acquisitionFromView(view: {
+  utmSource: string | null;
+  utmCampaign: string | null;
+  utmMedium: string | null;
+  referrerHost: string | null;
+}): Acquisition {
+  return {
+    source: view.utmSource || view.referrerHost || "Direct",
+    campaign: view.utmCampaign,
+    medium: view.utmMedium
+  };
+}
+
+function analyticsHref(
+  range: number,
+  filters: {
+    source?: string | null;
+    campaign?: string | null;
+    sport?: string | null;
+    branch?: string | null;
+  }
+) {
+  const query = new URLSearchParams({ range: String(range) });
+  if (filters.source) query.set("source", filters.source);
+  if (filters.campaign) query.set("campaign", filters.campaign);
+  if (filters.sport) query.set("sport", filters.sport);
+  if (filters.branch) query.set("branch", filters.branch);
+  return "/admin/analytics?" + query.toString();
+}
+
 export default async function AdminAnalyticsPage({
   searchParams
 }: {
@@ -57,13 +99,26 @@ export default async function AdminAnalyticsPage({
   const prisma = getPrisma();
   const params = await searchParams;
   const rangeDays = resolveRange(singleParam(params.range));
+  const selectedSource = singleParam(params.source) ?? "";
+  const selectedCampaign = singleParam(params.campaign) ?? "";
+  const selectedSport = singleParam(params.sport) ?? "";
+  const selectedBranch = singleParam(params.branch) ?? "";
   const now = new Date();
   const rangeStart = new Date(now.getTime() - rangeDays * DAY);
   const dayStart = new Date(now.getTime() - DAY);
   const weekStart = new Date(now.getTime() - 7 * DAY);
   const monthStart = new Date(now.getTime() - 30 * DAY);
 
-  const [views, clicks, funnelEvents, dauRows, wauRows, mauRows] = await Promise.all([
+  const [
+    views,
+    clicks,
+    funnelEvents,
+    dauRows,
+    wauRows,
+    mauRows,
+    sports,
+    branches
+  ] = await Promise.all([
     prisma.webPageView.findMany({
       where: { startedAt: { gte: rangeStart } },
       select: {
@@ -85,6 +140,7 @@ export default async function AdminAnalyticsPage({
     prisma.webClick.findMany({
       where: { occurredAt: { gte: rangeStart } },
       select: {
+        sessionId: true,
         path: true,
         label: true,
         targetPath: true,
@@ -97,6 +153,7 @@ export default async function AdminAnalyticsPage({
       where: { occurredAt: { gte: rangeStart } },
       select: {
         visitorId: true,
+        sessionId: true,
         eventName: true,
         sportSlug: true,
         branchSlug: true,
@@ -118,8 +175,62 @@ export default async function AdminAnalyticsPage({
       where: { startedAt: { gte: monthStart } },
       distinct: ["visitorId"],
       select: { visitorId: true }
+    }),
+    prisma.sport.findMany({
+      where: { status: "ACTIVE" },
+      select: { slug: true, nameRu: true },
+      orderBy: [{ sortOrder: "asc" }, { nameRu: "asc" }]
+    }),
+    prisma.branch.findMany({
+      where: { status: "ACTIVE" },
+      select: { slug: true, publicNameRu: true },
+      orderBy: { publicNameRu: "asc" }
     })
   ]);
+
+  const funnelSessionIds = Array.from(
+    new Set(funnelEvents.map((event) => event.sessionId))
+  );
+
+  const acquisitionViews = funnelSessionIds.length
+    ? await prisma.webPageView.findMany({
+        where: { sessionId: { in: funnelSessionIds } },
+        select: {
+          sessionId: true,
+          utmSource: true,
+          utmMedium: true,
+          utmCampaign: true,
+          referrerHost: true,
+          startedAt: true
+        },
+        orderBy: { startedAt: "asc" }
+      })
+    : [];
+
+  const acquisitionBySession = new Map<string, Acquisition>();
+  for (const view of acquisitionViews) {
+    if (!acquisitionBySession.has(view.sessionId)) {
+      acquisitionBySession.set(view.sessionId, acquisitionFromView(view));
+    }
+  }
+
+  const sourceOptions = Array.from(
+    new Set(
+      views.map((view) => acquisitionFromView(view).source)
+        .concat(
+          acquisitionViews.map((view) => acquisitionFromView(view).source)
+        )
+    )
+  ).sort((a, b) => a.localeCompare(b, "ru"));
+
+  const campaignOptions = Array.from(
+    new Set(
+      views
+        .map((view) => view.utmCampaign)
+        .concat(acquisitionViews.map((view) => view.utmCampaign))
+        .filter((value): value is string => Boolean(value))
+    )
+  ).sort((a, b) => a.localeCompare(b, "ru"));
 
   const visitors = new Set(views.map((view) => view.visitorId));
   const sessions = new Map<string, number>();
@@ -231,11 +342,27 @@ export default async function AdminAnalyticsPage({
     ["payment_success", "Оплата подтверждена"]
   ] as const;
 
+  const eventMatchesFilters = (event: (typeof funnelEvents)[number]) => {
+    const acquisition = acquisitionBySession.get(event.sessionId) ?? {
+      source: "Direct",
+      campaign: null,
+      medium: null
+    };
+
+    if (selectedSource && acquisition.source !== selectedSource) return false;
+    if (selectedCampaign && acquisition.campaign !== selectedCampaign) return false;
+    if (selectedSport && event.sportSlug !== selectedSport) return false;
+    if (selectedBranch && event.branchSlug !== selectedBranch) return false;
+    return true;
+  };
+
+  const filteredFunnelEvents = funnelEvents.filter(eventMatchesFilters);
+
   const funnelVisitors = new Map<string, Set<string>>();
   const sportInterest = new Map<string, Set<string>>();
   const branchInterest = new Map<string, Set<string>>();
 
-  for (const event of funnelEvents) {
+  for (const event of filteredFunnelEvents) {
     const set = funnelVisitors.get(event.eventName) ?? new Set<string>();
     set.add(event.visitorId);
     funnelVisitors.set(event.eventName, set);
@@ -254,6 +381,60 @@ export default async function AdminAnalyticsPage({
     }
   }
 
+  type ChannelRow = {
+    source: string;
+    visitors: Set<string>;
+    leads: Set<string>;
+    bookings: Set<string>;
+    payments: Set<string>;
+  };
+
+  const channelMap = new Map<string, ChannelRow>();
+
+  for (const event of funnelEvents) {
+    const acquisition = acquisitionBySession.get(event.sessionId) ?? {
+      source: "Direct",
+      campaign: null,
+      medium: null
+    };
+
+    if (selectedCampaign && acquisition.campaign !== selectedCampaign) continue;
+    if (selectedSport && event.sportSlug !== selectedSport) continue;
+    if (selectedBranch && event.branchSlug !== selectedBranch) continue;
+
+    const key = acquisition.source;
+    const row =
+      channelMap.get(key) ?? {
+        source: key,
+        visitors: new Set<string>(),
+        leads: new Set<string>(),
+        bookings: new Set<string>(),
+        payments: new Set<string>()
+      };
+
+    row.visitors.add(event.visitorId);
+    if (event.eventName === "lead_created") row.leads.add(event.visitorId);
+    if (event.eventName === "trial_booking_created") {
+      row.bookings.add(event.visitorId);
+    }
+    if (event.eventName === "payment_success") {
+      row.payments.add(event.visitorId);
+    }
+
+    channelMap.set(key, row);
+  }
+
+  const channelRows = [...channelMap.values()]
+    .map((row) => ({
+      source: row.source,
+      visitors: row.visitors.size,
+      leads: row.leads.size,
+      bookings: row.bookings.size,
+      payments: row.payments.size,
+      conversion: percent(row.payments.size, row.visitors.size)
+    }))
+    .sort((a, b) => b.payments - a.payments || b.visitors - a.visitors);
+
   const funnelData = funnelSteps.map(([eventName, label]) => ({
     eventName,
     label,
@@ -264,14 +445,29 @@ export default async function AdminAnalyticsPage({
   const paidVisitors = funnelVisitors.get("payment_success")?.size ?? 0;
   const trialToPaid = percent(paidVisitors, trialVisitors);
 
+  const sportNameBySlug = new Map(
+    sports.map((sport) => [sport.slug, sport.nameRu])
+  );
+  const branchNameBySlug = new Map(
+    branches.map((branch) => [branch.slug, branch.publicNameRu])
+  );
+
   const topSports = [...sportInterest.entries()]
-    .map(([slug, set]) => [slug, set.size] as const)
-    .sort((a, b) => b[1] - a[1])
+    .map(([slug, set]) => [
+      slug,
+      sportNameBySlug.get(slug) ?? slug,
+      set.size
+    ] as const)
+    .sort((a, b) => b[2] - a[2])
     .slice(0, 5);
 
   const topBranches = [...branchInterest.entries()]
-    .map(([slug, set]) => [slug, set.size] as const)
-    .sort((a, b) => b[1] - a[1])
+    .map(([slug, set]) => [
+      slug,
+      branchNameBySlug.get(slug) ?? slug,
+      set.size
+    ] as const)
+    .sort((a, b) => b[2] - a[2])
     .slice(0, 5);
 
   return (
@@ -289,7 +485,12 @@ export default async function AdminAnalyticsPage({
           {RANGE_OPTIONS.map((option) => (
             <Link
               className={rangeDays === option ? "active" : undefined}
-              href={"/admin/analytics?range=" + option}
+              href={analyticsHref(option, {
+                source: selectedSource || null,
+                campaign: selectedCampaign || null,
+                sport: selectedSport || null,
+                branch: selectedBranch || null
+              })}
               key={option}
             >
               {option} дней
@@ -297,6 +498,87 @@ export default async function AdminAnalyticsPage({
           ))}
         </div>
       </header>
+
+      <section className="dashboard-card analytics-filter-panel">
+        <div className="dashboard-card-head">
+          <div>
+            <p className="admin-panel-kicker">Срез данных</p>
+            <h2>Фильтры воронки</h2>
+          </div>
+          {(selectedSource || selectedCampaign || selectedSport || selectedBranch) ? (
+            <Link href={analyticsHref(rangeDays, {})}>Сбросить →</Link>
+          ) : null}
+        </div>
+
+        <form className="analytics-filter-form" method="get">
+          <input type="hidden" name="range" value={rangeDays} />
+
+          <label>
+            <span>Источник</span>
+            <select name="source" defaultValue={selectedSource}>
+              <option value="">Все источники</option>
+              {sourceOptions.map((source) => (
+                <option key={source} value={source}>{source}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>UTM campaign</span>
+            <select name="campaign" defaultValue={selectedCampaign}>
+              <option value="">Все кампании</option>
+              {campaignOptions.map((campaign) => (
+                <option key={campaign} value={campaign}>{campaign}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Вид спорта</span>
+            <select name="sport" defaultValue={selectedSport}>
+              <option value="">Все виды спорта</option>
+              {sports.map((sport) => (
+                <option key={sport.slug} value={sport.slug}>
+                  {sport.nameRu}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Филиал</span>
+            <select name="branch" defaultValue={selectedBranch}>
+              <option value="">Все филиалы</option>
+              {branches.map((branch) => (
+                <option key={branch.slug} value={branch.slug}>
+                  {branch.publicNameRu}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button className="button primary" type="submit">
+            Применить
+          </button>
+        </form>
+
+        {(selectedSource || selectedCampaign || selectedSport || selectedBranch) ? (
+          <div className="analytics-active-filters">
+            {selectedSource ? <span>Источник: <strong>{selectedSource}</strong></span> : null}
+            {selectedCampaign ? <span>Campaign: <strong>{selectedCampaign}</strong></span> : null}
+            {selectedSport ? (
+              <span>
+                Спорт: <strong>{sportNameBySlug.get(selectedSport) ?? selectedSport}</strong>
+              </span>
+            ) : null}
+            {selectedBranch ? (
+              <span>
+                Филиал: <strong>{branchNameBySlug.get(selectedBranch) ?? selectedBranch}</strong>
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       <section className="dashboard-kpi-grid analytics-kpi-grid">
         <article className="dashboard-kpi-card featured">
@@ -417,9 +699,9 @@ export default async function AdminAnalyticsPage({
           <div className="analytics-interest-grid">
             <div>
               <span>Виды спорта</span>
-              {topSports.map(([slug, count]) => (
+              {topSports.map(([slug, name, count]) => (
                 <p key={slug}>
-                  <strong>{slug}</strong>
+                  <strong>{name}</strong>
                   <em>{count}</em>
                 </p>
               ))}
@@ -427,9 +709,9 @@ export default async function AdminAnalyticsPage({
             </div>
             <div>
               <span>Филиалы</span>
-              {topBranches.map(([slug, count]) => (
+              {topBranches.map(([slug, name, count]) => (
                 <p key={slug}>
-                  <strong>{slug}</strong>
+                  <strong>{name}</strong>
                   <em>{count}</em>
                 </p>
               ))}
@@ -437,6 +719,56 @@ export default async function AdminAnalyticsPage({
             </div>
           </div>
         </article>
+      </section>
+
+      <section className="dashboard-card analytics-channel-card">
+        <div className="dashboard-card-head">
+          <div>
+            <p className="admin-panel-kicker">Эффективность каналов</p>
+            <h2>От посетителя до оплаты</h2>
+          </div>
+          <small>
+            {selectedCampaign || selectedSport || selectedBranch
+              ? "С учётом выбранных фильтров"
+              : "Все кампании и направления"}
+          </small>
+        </div>
+
+        <div className="admin-table-wrap">
+          <table className="admin-table analytics-channel-table">
+            <thead>
+              <tr>
+                <th>Источник</th>
+                <th>Посетители</th>
+                <th>Лиды</th>
+                <th>Брони</th>
+                <th>Оплаты</th>
+                <th>Конверсия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {channelRows.map((row) => (
+                <tr key={row.source}>
+                  <td><strong className="admin-table-primary">{row.source}</strong></td>
+                  <td>{row.visitors}</td>
+                  <td>{row.leads}</td>
+                  <td>{row.bookings}</td>
+                  <td>{row.payments}</td>
+                  <td>
+                    <span className="analytics-conversion-pill">
+                      {row.conversion}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {channelRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>Для выбранного среза данных пока нет.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="dashboard-main-grid">
