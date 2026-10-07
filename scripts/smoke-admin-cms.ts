@@ -99,7 +99,12 @@ async function main() {
     {
       firstName: "CI",
       lastName: "Coach",
-      status: "ACTIVE"
+      phonePrivate: "internal-contact-ci",
+      status: "ACTIVE",
+      experienceYears: 3,
+      startedAt: "2026-01-15",
+      publicBioRu: "CI публичное био тренера",
+      publicBioUz: "CI murabbiy bio"
     },
     cookie
   );
