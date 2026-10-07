@@ -172,6 +172,35 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (event === "funnel") {
+    const eventName = cleanString(body.eventName, 80);
+
+    if (!eventName) {
+      return NextResponse.json(
+        { ok: false, error: "FUNNEL_EVENT_REQUIRED" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.webFunnelEvent.create({
+      data: {
+        visitorId,
+        sessionId,
+        pageViewId,
+        eventName,
+        path,
+        sportSlug: cleanString(body.sportSlug, 120),
+        branchSlug: cleanString(body.branchSlug, 120),
+        occurredAt: now
+      }
+    });
+
+    return NextResponse.json(
+      { ok: true },
+      { status: 201, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   return NextResponse.json(
     { ok: false, error: "UNKNOWN_ANALYTICS_EVENT" },
     { status: 400 }
