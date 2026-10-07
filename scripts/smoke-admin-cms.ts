@@ -395,6 +395,29 @@ async function main() {
     branchSport?.status === "ACTIVE",
     "Branch sport relation was not activated from Admin"
   );
+
+  const [coachSport, coachBranch, createdCoach] = await Promise.all([
+    prisma.coachSport.findUnique({
+      where: { coachId_sportId: { coachId, sportId } }
+    }),
+    prisma.coachBranch.findUnique({
+      where: { coachId_branchId: { coachId, branchId } }
+    }),
+    prisma.coach.findUnique({ where: { id: coachId } })
+  ]);
+
+  assert(
+    coachSport?.status === "ACTIVE",
+    "Coach sport relation was not activated from Admin"
+  );
+  assert(
+    coachBranch?.status === "ACTIVE",
+    "Coach branch relation was not activated from Admin"
+  );
+  assert(
+    createdCoach?.startedAt?.toISOString().startsWith("2026-02-01"),
+    "Coach start date was not saved from Admin"
+  );
   assert(createdGroup?.status === "ACTIVE", "Created group was not activated");
   assert(sessions > 0, "Created active group did not generate Sessions");
   assert(auditCount >= 8, "Admin mutations were not audited");
