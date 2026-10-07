@@ -36,6 +36,9 @@ export async function GET() {
       }),
       prisma.trainingSession.findFirst({
         select: { completedAt: true }
+      }),
+      prisma.webPageView.findFirst({
+        select: { id: true }
       })
     ]);
 
