@@ -486,6 +486,18 @@ export default async function AdminAnalyticsPage({
     .sort((a, b) => b[2] - a[2])
     .slice(0, 5);
 
+  const posthogConfigured = Boolean(
+    process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN?.trim()
+  );
+  const posthogHost =
+    process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() ||
+    "https://us.i.posthog.com";
+  const posthogAppUrl =
+    process.env.NEXT_PUBLIC_POSTHOG_APP_URL?.trim() ||
+    (posthogHost.includes("eu.i.posthog.com")
+      ? "https://eu.posthog.com"
+      : "https://us.posthog.com");
+
   return (
     <div className="analytics-page">
       <header className="shark-dashboard-head">
@@ -952,6 +964,65 @@ export default async function AdminAnalyticsPage({
             </div>
           ) : null}
         </article>
+      </section>
+
+      <section className="dashboard-card analytics-replay-panel">
+        <div className="dashboard-card-head">
+          <div>
+            <p className="admin-panel-kicker">QUALITATIVE ANALYTICS</p>
+            <h2>Heatmaps & Session Replay</h2>
+          </div>
+          <span
+            className={
+              posthogConfigured
+                ? "analytics-integration-status active"
+                : "analytics-integration-status"
+            }
+          >
+            {posthogConfigured ? "Подключено" : "Ожидает подключения"}
+          </span>
+        </div>
+
+        <div className="analytics-replay-grid">
+          <article>
+            <span>Session Replay</span>
+            <strong>{posthogConfigured ? "Запись публичных сессий" : "Не активен"}</strong>
+            <small>
+              Формы маскируются, реквизиты оплаты полностью исключены.
+            </small>
+          </article>
+          <article>
+            <span>Click Heatmap</span>
+            <strong>{posthogConfigured ? "Собирается" : "Не активен"}</strong>
+            <small>Клики, rage-click и интерактивные элементы сайта.</small>
+          </article>
+          <article>
+            <span>Scroll Map</span>
+            <strong>{posthogConfigured ? "Собирается" : "Не активен"}</strong>
+            <small>Глубина прокрутки и зоны ниже первого экрана.</small>
+          </article>
+        </div>
+
+        <div className="analytics-replay-footer">
+          <div>
+            <strong>Граница записи:</strong>
+            <span>только /ru и /uz · /admin и /coach исключены</span>
+          </div>
+          {posthogConfigured ? (
+            <a
+              className="button secondary dark"
+              href={posthogAppUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Открыть PostHog ↗
+            </a>
+          ) : (
+            <span className="analytics-replay-hint">
+              Нужны NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN и NEXT_PUBLIC_POSTHOG_HOST
+            </span>
+          )}
+        </div>
       </section>
 
       <section className="analytics-privacy-note">
