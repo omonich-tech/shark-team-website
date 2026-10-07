@@ -7,6 +7,7 @@ import {
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
 
 function envMinutes(name: string, fallback: number) {
   const value = Number(process.env[name] ?? fallback);
@@ -165,7 +166,7 @@ export async function reviewManualCardPayment(input: {
   const prisma = getPrisma();
   const now = new Date();
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`
       SELECT "id"
       FROM "Payment"
@@ -356,24 +357,6 @@ export async function reviewManualCardPayment(input: {
         }
       });
 
-      if (lead.analyticsVisitorId && lead.analyticsSessionId) {
-        await tx.webFunnelEvent.upsert({
-          where: { dedupeKey: "payment:" + payment.id + ":success" },
-          update: {},
-          create: {
-            visitorId: lead.analyticsVisitorId,
-            sessionId: lead.analyticsSessionId,
-            pageViewId: lead.analyticsPageViewId,
-            eventName: "payment_success",
-            path: lead.landingPage,
-            leadId: lead.id,
-            bookingId: booking.id,
-            paymentId: payment.id,
-            dedupeKey: "payment:" + payment.id + ":success"
-          }
-        });
-      }
-
       return {
         ok: true as const,
         alreadyProcessed: false as const,
@@ -430,4 +413,16 @@ export async function reviewManualCardPayment(input: {
       }
     };
   });
+
+  if (result.ok && result.approved) {
+    await recordLeadFunnelEvent({
+      leadId: result.booking.leadId,
+      eventName: "payment_success",
+      bookingId: result.booking.id,
+      paymentId: result.payment.id,
+      dedupeKey: "payment:" + result.payment.id + ":success"
+    });
+  }
+
+  return result;
 }
