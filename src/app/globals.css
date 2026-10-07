@@ -7079,3 +7079,146 @@ h3 {
     grid-row: 1;
   }
 }
+
+
+/* Analytics segmentation */
+.analytics-filter-panel {
+  overflow: visible;
+}
+
+.analytics-filter-form {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1fr)
+    minmax(170px, 1fr)
+    minmax(150px, 1fr)
+    minmax(180px, 1.2fr)
+    auto;
+  gap: 12px;
+  align-items: end;
+  padding: 18px 22px 12px;
+}
+
+.analytics-filter-form label {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.analytics-filter-form label > span {
+  color: #637389;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.analytics-filter-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid #dce4ed;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #344054;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.analytics-filter-form select:focus {
+  outline: none;
+  border-color: #1479f3;
+  box-shadow: 0 0 0 3px rgba(20, 121, 243, 0.09);
+}
+
+.analytics-filter-form .button {
+  min-height: 42px;
+  cursor: pointer;
+}
+
+.analytics-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0 22px 18px;
+}
+
+.analytics-active-filters > span {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 9px;
+  border: 1px solid #dce8f5;
+  border-radius: 999px;
+  background: #f5f9ff;
+  color: #718095;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.analytics-active-filters strong {
+  color: #1479f3;
+}
+
+.analytics-channel-card {
+  min-width: 0;
+}
+
+.analytics-channel-card .dashboard-card-head > small {
+  color: #8b99aa;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.analytics-channel-table th,
+.analytics-channel-table td {
+  white-space: nowrap;
+}
+
+.analytics-channel-table th:first-child,
+.analytics-channel-table td:first-child {
+  padding-left: 22px;
+}
+
+.analytics-channel-table th:last-child,
+.analytics-channel-table td:last-child {
+  padding-right: 22px;
+}
+
+.analytics-conversion-pill {
+  display: inline-flex;
+  min-width: 44px;
+  justify-content: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #edf6ff;
+  color: #1479f3;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+@media (max-width: 1180px) {
+  .analytics-filter-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-filter-form .button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .analytics-filter-form {
+    grid-template-columns: 1fr;
+    padding-inline: 18px;
+  }
+
+  .analytics-filter-form .button {
+    grid-column: auto;
+    width: 100%;
+  }
+
+  .analytics-active-filters {
+    padding-inline: 18px;
+  }
+}
