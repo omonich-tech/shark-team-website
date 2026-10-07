@@ -7464,3 +7464,96 @@ h3 {
     flex-direction: column;
   }
 }
+
+
+/* Sport CMS */
+.admin-sport-relations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 22px 22px;
+}
+
+.admin-sport-relations > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 110px;
+  padding: 15px;
+  border: 1px solid #e3eaf1;
+  border-radius: 13px;
+  background: #fbfdff;
+}
+
+.admin-sport-relations > div > span {
+  margin-bottom: 2px;
+  color: #7d8da2;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.admin-sport-relations a {
+  color: #33465c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-sport-relations a:hover {
+  color: #1479f3;
+}
+
+.admin-sport-relations small {
+  color: #98a2b3;
+  font-size: 10px;
+}
+
+.admin-media-jump {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 22px;
+}
+
+.admin-media-jump h2 {
+  margin: 0;
+}
+
+.admin-media-jump small {
+  display: block;
+  margin-top: 5px;
+  color: #8492a6;
+  font-size: 10px;
+}
+
+.sport-age-hint {
+  display: block;
+  margin: 3px 0 10px;
+  color: #7f8fa3;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.admin-table-primary {
+  display: block;
+}
+
+.admin-table-secondary {
+  display: block;
+  margin-top: 3px;
+  color: #98a2b3;
+  font-size: 9px;
+}
+
+@media (max-width: 720px) {
+  .admin-sport-relations {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-media-jump {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
