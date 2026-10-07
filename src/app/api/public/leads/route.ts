@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createWebsiteLead } from "@/server/leads/create-website-lead";
+import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
 import {
   consumeRateLimit,
   rateLimitedResponse
@@ -34,8 +35,22 @@ export async function POST(request: NextRequest) {
       utmMedium: typeof body.utmMedium === "string" ? body.utmMedium : null,
       utmCampaign:
         typeof body.utmCampaign === "string" ? body.utmCampaign : null,
-      utmContent: typeof body.utmContent === "string" ? body.utmContent : null
+      utmContent: typeof body.utmContent === "string" ? body.utmContent : null,
+      analyticsVisitorId:
+        typeof body.analyticsVisitorId === "string" ? body.analyticsVisitorId : null,
+      analyticsSessionId:
+        typeof body.analyticsSessionId === "string" ? body.analyticsSessionId : null,
+      analyticsPageViewId:
+        typeof body.analyticsPageViewId === "string" ? body.analyticsPageViewId : null
     });
+
+    if (result.ok) {
+      await recordLeadFunnelEvent({
+        leadId: result.lead.id,
+        eventName: "lead_created",
+        dedupeKey: "lead:" + result.lead.id + ":created"
+      });
+    }
 
     return NextResponse.json(result, {
       status: result.ok ? 201 : 400
