@@ -109,6 +109,23 @@ async function main() {
   const coachId = String(coachPayload.coach.id);
 
   await json(
+    `/api/admin/sports/${sportId}`,
+    "PATCH",
+    {
+      status: "ACTIVE",
+      slug: "ci-volleyball-updated",
+      nameRu: "CI Волейбол Updated",
+      nameUz: "CI Voleybol Updated",
+      ageMin: 8,
+      ageMax: 16,
+      sortOrder: 76,
+      shortDescriptionRu: "CI спорт управляется из CMS",
+      shortDescriptionUz: "CI sport CMS orqali boshqariladi"
+    },
+    cookie
+  );
+
+  await json(
     `/api/admin/coaches/${coachId}/account`,
     "PATCH",
     {
