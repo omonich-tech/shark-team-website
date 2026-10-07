@@ -74,7 +74,8 @@
     "pg": "^8.16.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "@vercel/blob": "2.4.0"
+    "@vercel/blob": "2.4.0",
+    "posthog-js": "1.408.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
