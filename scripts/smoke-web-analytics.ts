@@ -114,16 +114,24 @@ async function main() {
   assert(login.ok, "Analytics smoke admin login failed");
   const cookie = cookieFrom(login);
 
-  const analytics = await fetch(baseUrl + "/admin/analytics?range=7", {
-    headers: { Cookie: cookie }
-  });
+  const analytics = await fetch(
+    baseUrl +
+      "/admin/analytics?range=7&source=ci-smoke&campaign=analytics-ci&sport=basketball&branch=school-117",
+    {
+      headers: { Cookie: cookie }
+    }
+  );
   const html = await analytics.text();
 
   assert(analytics.ok, "Admin analytics page did not render");
   assert(html.includes("Аналитика сайта"), "Analytics heading is missing");
   assert(html.includes("CI Trial CTA"), "Click data is missing from analytics");
   assert(html.includes("ci-smoke"), "Traffic source is missing from analytics");
+  assert(html.includes("analytics-ci"), "Campaign filter is missing from analytics");
   assert(html.includes("Путь до оплаты"), "Conversion funnel is missing from analytics");
+  assert(html.includes("Фильтры воронки"), "Funnel filters are missing");
+  assert(html.includes("Эффективность каналов"), "Channel performance table is missing");
+  assert(html.includes("Источник:"), "Selected source filter is not shown");
 
   console.log("Web analytics HTTP smoke test passed.");
 }
