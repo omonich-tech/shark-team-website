@@ -107,7 +107,23 @@ Optional:
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.6-luna
 PUBLIC_CONTACT_PHONE=
+
+# Qualitative web analytics: public site only
+NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+NEXT_PUBLIC_POSTHOG_APP_URL=https://us.posthog.com
 ```
+
+PostHog is optional and is used only for public-site heatmaps and session replay. The core SHARK TEAM analytics, funnel and attribution remain stored in PostgreSQL and do not depend on PostHog.
+
+Replay privacy policy in the client:
+
+- /admin and /coach are never initialized with PostHog;
+- all input values are masked;
+- manual-card payment details are fully blocked from replay;
+- Do Not Track is respected;
+- no parent/child identity is sent with PostHog identify;
+- custom `shark_funnel` events contain only non-PII funnel step / sport / branch context.
 
 Production must not set:
 
@@ -395,7 +411,8 @@ Then manually test:
 7. Telegram notification worker;
 8. attendance;
 9. trial assessment;
-10. media upload.
+10. media upload;
+11. if PostHog is configured, verify a public /ru or /uz visit creates a replay and heatmap data while /admin and /coach do not.
 
 ## 14. Logs and incidents
 
