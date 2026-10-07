@@ -63,7 +63,8 @@
     "smoke:coach-session-completion": "tsx scripts/smoke-coach-session-completion.ts",
     "smoke:admin-sessions": "tsx scripts/smoke-admin-sessions.ts",
     "vercel:build": "node scripts/vercel-build.mjs",
-    "verify:schema-version": "tsx scripts/verify-schema-version.ts"
+    "verify:schema-version": "tsx scripts/verify-schema-version.ts",
+    "smoke:web-analytics": "tsx scripts/smoke-web-analytics.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
