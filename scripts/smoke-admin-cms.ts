@@ -469,6 +469,38 @@ async function main() {
     "Dynamic public branch page did not render created branch/group"
   );
 
+  const publicCoaches = await fetch(`${baseUrl}/ru/coaches`);
+  const publicCoachesHtml = await publicCoaches.text();
+  assert(
+    publicCoaches.ok &&
+      publicCoachesHtml.includes("Coach Updated") &&
+      publicCoachesHtml.includes("CI обновлённое публичное био") &&
+      publicCoachesHtml.includes("CI Волейбол Updated") &&
+      publicCoachesHtml.includes("CI Branch Updated"),
+    "Public coach catalog did not reflect Admin profile/relations"
+  );
+  assert(
+    !publicCoachesHtml.includes("internal-contact-ci"),
+    "Private coach contact leaked to public coach catalog"
+  );
+
+  const publicCoach = await fetch(
+    `${baseUrl}/ru/coaches/${coachId}`
+  );
+  const publicCoachHtml = await publicCoach.text();
+  assert(
+    publicCoach.ok &&
+      publicCoachHtml.includes("Coach Updated") &&
+      publicCoachHtml.includes("CI спортивное образование") &&
+      publicCoachHtml.includes("CI квалификация") &&
+      publicCoachHtml.includes("CI Branch Updated"),
+    "Public coach profile did not render CMS data"
+  );
+  assert(
+    !publicCoachHtml.includes("internal-contact-ci"),
+    "Private coach contact leaked to public coach profile"
+  );
+
   const home = await fetch(`${baseUrl}/ru`);
   const homeHtml = await home.text();
 
