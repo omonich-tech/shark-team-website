@@ -150,6 +150,32 @@ if (!value("PUBLIC_CONTACT_PHONE")) {
   );
 }
 
+const posthogToken = value("NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN");
+const posthogHost = value("NEXT_PUBLIC_POSTHOG_HOST");
+
+if (!posthogToken) {
+  warnings.push(
+    "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is not set; session replay and heatmaps are disabled"
+  );
+}
+
+if (posthogToken) {
+  if (!posthogHost) {
+    warnings.push(
+      "NEXT_PUBLIC_POSTHOG_HOST is not set; the client will default to https://us.i.posthog.com"
+    );
+  } else {
+    try {
+      const parsed = new URL(posthogHost);
+      if (strict && parsed.protocol !== "https:") {
+        errors.push("NEXT_PUBLIC_POSTHOG_HOST must use HTTPS in production");
+      }
+    } catch {
+      errors.push("NEXT_PUBLIC_POSTHOG_HOST must be a valid absolute URL");
+    }
+  }
+}
+
 if (errors.length > 0) {
   console.error("Production environment check failed:");
   for (const error of errors) {
