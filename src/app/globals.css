@@ -7222,3 +7222,114 @@ h3 {
     padding-inline: 18px;
   }
 }
+
+
+/* Qualitative analytics: PostHog heatmaps / replay */
+.analytics-replay-panel {
+  min-width: 0;
+}
+
+.analytics-integration-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #eadfbf;
+  border-radius: 999px;
+  background: #fffaf0;
+  color: #9c6a19;
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.analytics-integration-status.active {
+  border-color: #ccebdc;
+  background: #f0fbf5;
+  color: #138a57;
+}
+
+.analytics-replay-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px 22px;
+}
+
+.analytics-replay-grid article {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e4ebf2;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20, 121, 243, 0.06), transparent 10rem),
+    #fbfdff;
+}
+
+.analytics-replay-grid span {
+  color: #7b8aa0;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.analytics-replay-grid strong {
+  color: var(--navy);
+  font-size: 13px;
+}
+
+.analytics-replay-grid small {
+  color: #8492a6;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.analytics-replay-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 22px 20px;
+}
+
+.analytics-replay-footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: #718095;
+  font-size: 9px;
+}
+
+.analytics-replay-footer > div strong {
+  color: #42536a;
+}
+
+.analytics-replay-hint {
+  max-width: 460px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f6f8fb;
+  color: #79899e;
+  font-size: 9px;
+  font-weight: 750;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .analytics-replay-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-replay-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .analytics-replay-hint {
+    max-width: none;
+    text-align: left;
+  }
+}
