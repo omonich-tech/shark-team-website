@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
-import { SPORT_CATALOG } from "@/lib/sport-catalog";
+import { getSportCatalogEntry } from "@/lib/sport-catalog";
 import { tryGetPublicHomeData } from "@/server/public-data/home";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,7 @@ export default async function SportsPage({
   if (!isPublicLocale(locale)) notFound();
 
   const data = await tryGetPublicHomeData();
+  const sports = data?.sports ?? [];
 
   return (
     <main className="page-main">
@@ -23,33 +24,38 @@ export default async function SportsPage({
         <h1>{locale === "ru" ? "Наши виды спорта" : "Sport yo‘nalishlarimiz"}</h1>
         <p className="lead">
           {locale === "ru"
-            ? "Пять направлений — одна философия: помочь ребёнку стать сильнее физически, увереннее и дисциплинированнее."
-            : "Besh yo‘nalish — bitta falsafa: bolaga jismonan kuchliroq, ishonchliroq va intizomliroq bo‘lishga yordam berish."}
+            ? "Выберите направление, возраст и удобный филиал SHARK TEAM."
+            : "SHARK TEAM yo‘nalishi, yosh va qulay filialni tanlang."}
         </p>
       </section>
 
       <section className="content-section">
         <div className="sport-catalog-grid">
-          {SPORT_CATALOG.map((entry) => {
-            const sport = data?.sports.find((item) => item.slug === entry.slug);
-            const media = sport
-              ? data?.media.find(
-                  (item) =>
-                    item.targetType === "SPORT" &&
-                    item.targetId === sport.id &&
-                    item.contentType?.startsWith("image/")
-                )
-              : null;
+          {sports.map((sport, index) => {
+            const fallback = getSportCatalogEntry(sport.slug);
+            const media = data?.media.find(
+              (item) =>
+                item.targetType === "SPORT" &&
+                item.targetId === sport.id &&
+                item.contentType?.startsWith("image/")
+            );
+            const mark =
+              fallback?.mark ?? String(index + 1).padStart(2, "0");
+            const name = locale === "ru" ? sport.nameRu : sport.nameUz;
+            const description =
+              locale === "ru"
+                ? sport.shortDescriptionRu ?? fallback?.descriptionRu ?? ""
+                : sport.shortDescriptionUz ?? fallback?.descriptionUz ?? "";
 
             return (
               <Link
                 className={
-                  entry.slug === "rhythmic-gymnastics"
+                  sport.slug === "rhythmic-gymnastics"
                     ? "sport-catalog-card sport-catalog-card-long-title"
                     : "sport-catalog-card"
                 }
-                href={`/${locale}/sports/${entry.slug}`}
-                key={entry.slug}
+                href={`/${locale}/sports/${sport.slug}`}
+                key={sport.id}
               >
                 <div
                   className="sport-catalog-photo"
@@ -59,17 +65,19 @@ export default async function SportsPage({
                       : undefined
                   }
                 >
-                  <span>{entry.mark}</span>
+                  <span>{mark}</span>
                 </div>
                 <div className="sport-catalog-body">
-                  <h2>{locale === "ru" ? entry.nameRu : entry.nameUz}</h2>
-                  <p>
-                    {locale === "ru"
-                      ? sport?.shortDescriptionRu ?? entry.descriptionRu
-                      : sport?.shortDescriptionUz ?? entry.descriptionUz}
-                  </p>
+                  <h2>{name}</h2>
+                  {description ? <p>{description}</p> : null}
+                  {sport.ageMin !== null || sport.ageMax !== null ? (
+                    <small className="sport-age-hint">
+                      {locale === "ru" ? "Возраст" : "Yosh"} ·{" "}
+                      {sport.ageMin ?? "—"}–{sport.ageMax ?? "—"}
+                    </small>
+                  ) : null}
                   <strong>
-                    {sport?.groups.length
+                    {sport.groups.length
                       ? locale === "ru"
                         ? "Есть активные группы →"
                         : "Faol guruhlar bor →"
@@ -81,6 +89,16 @@ export default async function SportsPage({
               </Link>
             );
           })}
+
+          {sports.length === 0 ? (
+            <div className="shark-coming-soon">
+              <h2>
+                {locale === "ru"
+                  ? "Направления скоро появятся"
+                  : "Yo‘nalishlar tez orada paydo bo‘ladi"}
+              </h2>
+            </div>
+          ) : null}
         </div>
       </section>
     </main>
