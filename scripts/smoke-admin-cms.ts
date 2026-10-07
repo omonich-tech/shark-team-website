@@ -186,6 +186,20 @@ async function main() {
   );
 
   await json(
+    `/api/admin/coaches/${coachId}/sports`,
+    "PUT",
+    { sportIds: [sportId] },
+    cookie
+  );
+
+  await json(
+    `/api/admin/coaches/${coachId}/branches`,
+    "PUT",
+    { branchIds: [branchId] },
+    cookie
+  );
+
+  await json(
     `/api/admin/coaches/${coachId}`,
     "PATCH",
     {
