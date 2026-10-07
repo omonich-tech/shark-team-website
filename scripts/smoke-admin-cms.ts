@@ -206,7 +206,15 @@ async function main() {
       status: "ACTIVE",
       firstName: "CI",
       lastName: "Coach Updated",
-      experienceYears: 3
+      phonePrivate: "internal-contact-ci",
+      experienceYears: 4,
+      startedAt: "2026-02-01",
+      educationRu: "CI спортивное образование",
+      educationUz: "CI sport ta’limi",
+      qualificationRu: "CI квалификация",
+      qualificationUz: "CI malaka",
+      publicBioRu: "CI обновлённое публичное био",
+      publicBioUz: "CI yangilangan ommaviy bio"
     },
     cookie
   );
