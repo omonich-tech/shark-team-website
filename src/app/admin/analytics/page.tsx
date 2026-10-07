@@ -63,7 +63,7 @@ export default async function AdminAnalyticsPage({
   const weekStart = new Date(now.getTime() - 7 * DAY);
   const monthStart = new Date(now.getTime() - 30 * DAY);
 
-  const [views, clicks, dauRows, wauRows, mauRows] = await Promise.all([
+  const [views, clicks, funnelEvents, dauRows, wauRows, mauRows] = await Promise.all([
     prisma.webPageView.findMany({
       where: { startedAt: { gte: rangeStart } },
       select: {
@@ -92,6 +92,17 @@ export default async function AdminAnalyticsPage({
         occurredAt: true
       },
       orderBy: { occurredAt: "desc" }
+    }),
+    prisma.webFunnelEvent.findMany({
+      where: { occurredAt: { gte: rangeStart } },
+      select: {
+        visitorId: true,
+        eventName: true,
+        sportSlug: true,
+        branchSlug: true,
+        occurredAt: true
+      },
+      orderBy: { occurredAt: "asc" }
     }),
     prisma.webPageView.findMany({
       where: { startedAt: { gte: dayStart } },
@@ -208,6 +219,61 @@ export default async function AdminAnalyticsPage({
   const topClicks = topEntries(clickMap, 8);
   const maxClicks = Math.max(1, ...topClicks.map(([, count]) => count));
 
+  const funnelSteps = [
+    ["sport_view", "Просмотр секции"],
+    ["branch_view", "Просмотр филиала"],
+    ["trial_cta_click", "Нажал «Записаться»"],
+    ["trial_view", "Открыл пробное"],
+    ["trial_form_started", "Начал форму"],
+    ["lead_created", "Лид создан"],
+    ["trial_booking_created", "Бронь создана"],
+    ["payment_started", "Перешёл к оплате"],
+    ["payment_success", "Оплата подтверждена"]
+  ] as const;
+
+  const funnelVisitors = new Map<string, Set<string>>();
+  const sportInterest = new Map<string, Set<string>>();
+  const branchInterest = new Map<string, Set<string>>();
+
+  for (const event of funnelEvents) {
+    const set = funnelVisitors.get(event.eventName) ?? new Set<string>();
+    set.add(event.visitorId);
+    funnelVisitors.set(event.eventName, set);
+
+    if (event.sportSlug) {
+      const sportSet = sportInterest.get(event.sportSlug) ?? new Set<string>();
+      sportSet.add(event.visitorId);
+      sportInterest.set(event.sportSlug, sportSet);
+    }
+
+    if (event.branchSlug) {
+      const branchSet =
+        branchInterest.get(event.branchSlug) ?? new Set<string>();
+      branchSet.add(event.visitorId);
+      branchInterest.set(event.branchSlug, branchSet);
+    }
+  }
+
+  const funnelData = funnelSteps.map(([eventName, label]) => ({
+    eventName,
+    label,
+    visitors: funnelVisitors.get(eventName)?.size ?? 0
+  }));
+  const funnelMax = Math.max(1, ...funnelData.map((step) => step.visitors));
+  const trialVisitors = funnelVisitors.get("trial_view")?.size ?? 0;
+  const paidVisitors = funnelVisitors.get("payment_success")?.size ?? 0;
+  const trialToPaid = percent(paidVisitors, trialVisitors);
+
+  const topSports = [...sportInterest.entries()]
+    .map(([slug, set]) => [slug, set.size] as const)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const topBranches = [...branchInterest.entries()]
+    .map(([slug, set]) => [slug, set.size] as const)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
   return (
     <div className="analytics-page">
       <header className="shark-dashboard-head">
@@ -285,6 +351,91 @@ export default async function AdminAnalyticsPage({
           </div>
           <strong>{bounceRate}%</strong>
           <small>{sessions.size} сессий · {clicks.length} кликов</small>
+        </article>
+      </section>
+
+      <section className="analytics-funnel-section">
+        <article className="dashboard-card analytics-funnel-card">
+          <div className="dashboard-card-head">
+            <div>
+              <p className="admin-panel-kicker">Конверсия сайта</p>
+              <h2>Путь до оплаты</h2>
+            </div>
+            <div className="analytics-funnel-conversion">
+              <span>Пробное → оплата</span>
+              <strong>{trialToPaid}%</strong>
+            </div>
+          </div>
+
+          <div className="analytics-funnel-list">
+            {funnelData.map((step, index) => {
+              const previous =
+                index > 0 ? funnelData[index - 1].visitors : null;
+              const fromPrevious =
+                previous && previous > 0
+                  ? Math.round((step.visitors / previous) * 100)
+                  : null;
+
+              return (
+                <div className="analytics-funnel-row" key={step.eventName}>
+                  <div className="analytics-funnel-label">
+                    <span>{index + 1}</span>
+                    <strong>{step.label}</strong>
+                  </div>
+                  <div className="analytics-funnel-meter">
+                    <i
+                      style={{
+                        width:
+                          (step.visitors > 0
+                            ? Math.max(6, (step.visitors / funnelMax) * 100)
+                            : 0) + "%"
+                      }}
+                    />
+                  </div>
+                  <div className="analytics-funnel-value">
+                    <strong>{step.visitors}</strong>
+                    <small>
+                      {fromPrevious === null
+                        ? "уникальных"
+                        : fromPrevious + "% от прошлого шага"}
+                    </small>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </article>
+
+        <article className="dashboard-card analytics-interest-card">
+          <div className="dashboard-card-head">
+            <div>
+              <p className="admin-panel-kicker">Интерес</p>
+              <h2>Что смотрят</h2>
+            </div>
+          </div>
+
+          <div className="analytics-interest-grid">
+            <div>
+              <span>Виды спорта</span>
+              {topSports.map(([slug, count]) => (
+                <p key={slug}>
+                  <strong>{slug}</strong>
+                  <em>{count}</em>
+                </p>
+              ))}
+              {topSports.length === 0 ? <small>Пока нет данных</small> : null}
+            </div>
+            <div>
+              <span>Филиалы</span>
+              {topBranches.map(([slug, count]) => (
+                <p key={slug}>
+                  <strong>{slug}</strong>
+                  <em>{count}</em>
+                </p>
+              ))}
+              {topBranches.length === 0 ? <small>Пока нет данных</small> : null}
+            </div>
+          </div>
         </article>
       </section>
 
