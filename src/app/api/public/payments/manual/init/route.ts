@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createManualCardPayment } from "@/server/payments/create-manual-card-payment";
+import { getPrisma } from "@/lib/prisma";
+import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
 import {
   consumeRateLimit,
   rateLimitedResponse
@@ -32,6 +34,20 @@ export async function POST(request: NextRequest) {
     const result = await createManualCardPayment(bookingId);
 
     if (result.ok) {
+      const prisma = getPrisma();
+      const booking = await prisma.trialBooking.findUnique({
+        where: { id: bookingId },
+        select: { leadId: true }
+      });
+      if (booking) {
+        await recordLeadFunnelEvent({
+          leadId: booking.leadId,
+          eventName: "payment_started",
+          bookingId,
+          paymentId: result.payment.id,
+          dedupeKey: "payment:" + result.payment.id + ":started"
+        });
+      }
       return NextResponse.json(result, { status: 201 });
     }
 
