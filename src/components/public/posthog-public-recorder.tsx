@@ -5,8 +5,9 @@ import { useEffect, useRef } from "react";
 import posthog from "posthog-js";
 
 const TOKEN = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN?.trim() ?? "";
-const HOST =
-  process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || "https://us.i.posthog.com";
+const HOST = "/ingest";
+const UI_HOST =
+  process.env.NEXT_PUBLIC_POSTHOG_APP_URL?.trim() || "https://eu.posthog.com";
 
 function isPublicPath(pathname: string) {
   return (
@@ -41,6 +42,7 @@ export function PostHogPublicRecorder() {
 
     posthog.init(TOKEN, {
       api_host: HOST,
+      ui_host: UI_HOST,
       defaults: "2026-05-30",
       person_profiles: "identified_only",
       persistence: "localStorage",
