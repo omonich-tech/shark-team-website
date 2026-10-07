@@ -5,29 +5,74 @@ import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
 
+function optionalString(value: unknown, max = 1000) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  return value.trim().slice(0, max) || null;
+}
+
+function optionalDate(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  const parsed = new Date(value + "T00:00:00.000Z");
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 export async function POST(request: NextRequest) {
   const admin = await getAdminSession();
+
   if (!admin) {
-    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "UNAUTHORIZED" },
+      { status: 401 }
+    );
   }
 
   const body = await request.json();
   const firstName =
-    typeof body.firstName === "string" ? body.firstName.trim().slice(0, 80) : "";
+    typeof body.firstName === "string"
+      ? body.firstName.trim().slice(0, 80)
+      : "";
 
   if (!firstName) {
-    return NextResponse.json({ ok: false, error: "FIRST_NAME_REQUIRED" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "FIRST_NAME_REQUIRED" },
+      { status: 400 }
+    );
   }
 
   const status = String(body.status ?? "DRAFT") as LifecycleStatus;
   if (!Object.values(LifecycleStatus).includes(status)) {
-    return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "INVALID_STATUS" },
+      { status: 400 }
+    );
   }
 
-  const lastName =
-    typeof body.lastName === "string" ? body.lastName.trim().slice(0, 80) || null : null;
-  const phonePrivate =
-    typeof body.phonePrivate === "string" ? body.phonePrivate.trim().slice(0, 40) || null : null;
+  const yearsRaw =
+    body.experienceYears === null ||
+    body.experienceYears === undefined ||
+    body.experienceYears === ""
+      ? null
+      : Number(body.experienceYears);
+
+  if (
+    yearsRaw !== null &&
+    (!Number.isInteger(yearsRaw) || yearsRaw < 0 || yearsRaw > 80)
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_EXPERIENCE" },
+      { status: 400 }
+    );
+  }
+
+  const startedAt = optionalDate(body.startedAt);
+  if (startedAt === undefined) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_START_DATE" },
+      { status: 400 }
+    );
+  }
 
   const prisma = getPrisma();
   const coach = await prisma.coach.create({
@@ -35,8 +80,16 @@ export async function POST(request: NextRequest) {
       id: `CO-${randomUUID()}`,
       status,
       firstName,
-      lastName,
-      phonePrivate
+      lastName: optionalString(body.lastName, 80),
+      phonePrivate: optionalString(body.phonePrivate, 40),
+      experienceYears: yearsRaw,
+      educationRu: optionalString(body.educationRu),
+      educationUz: optionalString(body.educationUz),
+      qualificationRu: optionalString(body.qualificationRu),
+      qualificationUz: optionalString(body.qualificationUz),
+      publicBioRu: optionalString(body.publicBioRu, 2000),
+      publicBioUz: optionalString(body.publicBioUz, 2000),
+      startedAt
     }
   });
 
