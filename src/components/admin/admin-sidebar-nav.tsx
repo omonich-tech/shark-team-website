@@ -8,6 +8,7 @@ const sections = [
     label: "Обзор",
     items: [
       ["/admin", "Dashboard"],
+      ["/admin/analytics", "Аналитика"],
       ["/admin/assistant", "AI-ассистент"]
     ]
   },
