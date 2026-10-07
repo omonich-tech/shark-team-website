@@ -1,7 +1,11 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useRef, useState } from "react";
 import type { PublicLocale } from "@/lib/public-i18n";
+import {
+  getAnalyticsContext,
+  trackFunnelEvent
+} from "@/lib/web-analytics-client";
 
 type TrialChoice = {
   slug: string;
@@ -196,6 +200,7 @@ export function TrialLeadFlow({
   const [result, setResult] = useState<
     "success" | "error" | "full" | null
   >(null);
+  const formStartedRef = useRef(false);
 
   const selectedSport =
     choices.find((choice) => choice.slug === sportSlug) ?? choices[0] ?? null;
@@ -326,6 +331,11 @@ export function TrialLeadFlow({
     setResult(null);
 
     const query = new URLSearchParams(window.location.search);
+    const analytics = getAnalyticsContext();
+    trackFunnelEvent("trial_form_submit", {
+      sportSlug,
+      branchSlug
+    });
 
     try {
       const leadResponse = await fetch("/api/public/leads", {
@@ -344,7 +354,10 @@ export function TrialLeadFlow({
           utmSource: query.get("utm_source"),
           utmMedium: query.get("utm_medium"),
           utmCampaign: query.get("utm_campaign"),
-          utmContent: query.get("utm_content")
+          utmContent: query.get("utm_content"),
+          analyticsVisitorId: analytics.visitorId,
+          analyticsSessionId: analytics.sessionId,
+          analyticsPageViewId: analytics.pageViewId
         })
       });
 
@@ -523,7 +536,19 @@ export function TrialLeadFlow({
       ) : null}
 
       {selectedSession ? (
-        <form className="booking-form" onSubmit={submit}>
+        <form
+          className="booking-form"
+          onSubmit={submit}
+          onFocusCapture={() => {
+            if (!formStartedRef.current) {
+              formStartedRef.current = true;
+              trackFunnelEvent("trial_form_started", {
+                sportSlug,
+                branchSlug
+              });
+            }
+          }}
+        >
           <div className="booking-step">
             <span className="step-number">3</span>
             <div className="booking-fields">
@@ -593,6 +618,7 @@ export function TrialLeadFlow({
               {telegramLink ? (
                 <a
                   className="button telegram-button"
+                  data-analytics-event="receipt_telegram_click"
                   href={telegramLink}
                   target="_blank"
                   rel="noreferrer"
@@ -606,6 +632,7 @@ export function TrialLeadFlow({
           {!manualPayment && telegramLink ? (
             <a
               className="button telegram-button"
+              data-analytics-event="telegram_notifications_click"
               href={telegramLink}
               target="_blank"
               rel="noreferrer"
