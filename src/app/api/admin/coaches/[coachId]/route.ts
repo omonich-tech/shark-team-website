@@ -10,6 +10,13 @@ function optionalString(value: unknown, max = 1000) {
   return value.trim().slice(0, max) || null;
 }
 
+function optionalDate(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  const parsed = new Date(value + "T00:00:00.000Z");
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ coachId: string }> }
@@ -76,6 +83,14 @@ export async function PATCH(
     );
   }
 
+  const startedAt = optionalDate(body.startedAt);
+  if (startedAt === undefined) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_START_DATE" },
+      { status: 400 }
+    );
+  }
+
   const after = await prisma.coach.update({
     where: { id: coachId },
     data: {
@@ -89,7 +104,8 @@ export async function PATCH(
       qualificationRu: optionalString(body.qualificationRu),
       qualificationUz: optionalString(body.qualificationUz),
       publicBioRu: optionalString(body.publicBioRu, 2000),
-      publicBioUz: optionalString(body.publicBioUz, 2000)
+      publicBioUz: optionalString(body.publicBioUz, 2000),
+      startedAt
     }
   });
 
