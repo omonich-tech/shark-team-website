@@ -398,6 +398,40 @@ export default async function AdminDashboardPage({
   ];
   const funnelBase = Math.max(1, funnel[0].value);
 
+  const analyticsDayStart = new Date(now.getTime() - DAY);
+  const analyticsWeekStart = new Date(now.getTime() - 7 * DAY);
+  const analyticsMonthStart = new Date(now.getTime() - 30 * DAY);
+
+  const [
+    analyticsDau,
+    analyticsWau,
+    analyticsMau,
+    analyticsViews30,
+    analyticsClicks30
+  ] = await Promise.all([
+    prisma.webPageView.findMany({
+      where: { startedAt: { gte: analyticsDayStart } },
+      distinct: ["visitorId"],
+      select: { visitorId: true }
+    }),
+    prisma.webPageView.findMany({
+      where: { startedAt: { gte: analyticsWeekStart } },
+      distinct: ["visitorId"],
+      select: { visitorId: true }
+    }),
+    prisma.webPageView.findMany({
+      where: { startedAt: { gte: analyticsMonthStart } },
+      distinct: ["visitorId"],
+      select: { visitorId: true }
+    }),
+    prisma.webPageView.count({
+      where: { startedAt: { gte: analyticsMonthStart } }
+    }),
+    prisma.webClick.count({
+      where: { occurredAt: { gte: analyticsMonthStart } }
+    })
+  ]);
+
   return (
     <div className="shark-dashboard">
       <header className="shark-dashboard-head">
@@ -721,16 +755,23 @@ export default async function AdminDashboardPage({
         </article>
       </section>
 
-      <section className="dashboard-analytics-placeholder">
-        <div>
-          <p className="admin-panel-kicker">WEB ANALYTICS</p>
-          <h2>Посетители сайта, MAU/WAU/DAU, клики и источники</h2>
-          <p>
-            Этот блок подключим следующим этапом. Здесь будут только реальные
-            данные после установки аналитики — без выдуманных показателей.
-          </p>
+      <section className="dashboard-analytics-live">
+        <div className="dashboard-analytics-live-head">
+          <div>
+            <p className="admin-panel-kicker">WEB ANALYTICS</p>
+            <h2>Аудитория сайта</h2>
+            <p>Реальные анонимные данные за последние 30 дней.</p>
+          </div>
+          <Link href="/admin/analytics">Открыть аналитику →</Link>
         </div>
-        <span>Следующий модуль</span>
+
+        <div className="dashboard-analytics-metrics">
+          <div><span>DAU</span><strong>{analyticsDau.length}</strong></div>
+          <div><span>WAU</span><strong>{analyticsWau.length}</strong></div>
+          <div><span>MAU</span><strong>{analyticsMau.length}</strong></div>
+          <div><span>Просмотры</span><strong>{analyticsViews30}</strong></div>
+          <div><span>Клики</span><strong>{analyticsClicks30}</strong></div>
+        </div>
       </section>
     </div>
   );
