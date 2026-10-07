@@ -64,7 +64,12 @@ async function main() {
       nameRu: "CI Волейбол",
       nameUz: "CI Voleybol",
       slug: "ci-volleyball",
-      status: "ACTIVE"
+      status: "ACTIVE",
+      ageMin: 9,
+      ageMax: 15,
+      sortOrder: 77,
+      shortDescriptionRu: "CI описание спорта",
+      shortDescriptionUz: "CI sport tavsifi"
     },
     cookie
   );
