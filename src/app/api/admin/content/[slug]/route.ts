@@ -68,25 +68,59 @@ export async function PATCH(
     );
   }
 
+  function currentOrString(
+    key: keyof typeof before,
+    value: unknown,
+    max: number
+  ) {
+    return value === undefined
+      ? (before[key] as string | null)
+      : optionalString(value, max);
+  }
+
   const fields = {
-    heroEyebrowRu: optionalString(body.heroEyebrowRu, 120),
-    heroEyebrowUz: optionalString(body.heroEyebrowUz, 120),
-    heroTitleRu: optionalString(body.heroTitleRu, 180),
-    heroTitleUz: optionalString(body.heroTitleUz, 180),
-    heroLeadRu: optionalString(body.heroLeadRu, 700),
-    heroLeadUz: optionalString(body.heroLeadUz, 700),
-    bodyRu: optionalString(body.bodyRu, 6000),
-    bodyUz: optionalString(body.bodyUz, 6000),
-    contactPhone: optionalString(body.contactPhone, 80),
-    contactTelegram: optionalString(body.contactTelegram, 300),
-    contactInstagram: optionalString(body.contactInstagram, 300),
-    contactEmail: optionalString(body.contactEmail, 180),
-    contactHoursRu: optionalString(body.contactHoursRu, 300),
-    contactHoursUz: optionalString(body.contactHoursUz, 300),
-    seoTitleRu: optionalString(body.seoTitleRu, 180),
-    seoTitleUz: optionalString(body.seoTitleUz, 180),
-    seoDescriptionRu: optionalString(body.seoDescriptionRu, 320),
-    seoDescriptionUz: optionalString(body.seoDescriptionUz, 320)
+    heroEyebrowRu: currentOrString("heroEyebrowRu", body.heroEyebrowRu, 120),
+    heroEyebrowUz: currentOrString("heroEyebrowUz", body.heroEyebrowUz, 120),
+    heroTitleRu: currentOrString("heroTitleRu", body.heroTitleRu, 180),
+    heroTitleUz: currentOrString("heroTitleUz", body.heroTitleUz, 180),
+    heroLeadRu: currentOrString("heroLeadRu", body.heroLeadRu, 700),
+    heroLeadUz: currentOrString("heroLeadUz", body.heroLeadUz, 700),
+    bodyRu: currentOrString("bodyRu", body.bodyRu, 6000),
+    bodyUz: currentOrString("bodyUz", body.bodyUz, 6000),
+    contactPhone: currentOrString("contactPhone", body.contactPhone, 80),
+    contactTelegram: currentOrString(
+      "contactTelegram",
+      body.contactTelegram,
+      300
+    ),
+    contactInstagram: currentOrString(
+      "contactInstagram",
+      body.contactInstagram,
+      300
+    ),
+    contactEmail: currentOrString("contactEmail", body.contactEmail, 180),
+    contactHoursRu: currentOrString(
+      "contactHoursRu",
+      body.contactHoursRu,
+      300
+    ),
+    contactHoursUz: currentOrString(
+      "contactHoursUz",
+      body.contactHoursUz,
+      300
+    ),
+    seoTitleRu: currentOrString("seoTitleRu", body.seoTitleRu, 180),
+    seoTitleUz: currentOrString("seoTitleUz", body.seoTitleUz, 180),
+    seoDescriptionRu: currentOrString(
+      "seoDescriptionRu",
+      body.seoDescriptionRu,
+      320
+    ),
+    seoDescriptionUz: currentOrString(
+      "seoDescriptionUz",
+      body.seoDescriptionUz,
+      320
+    )
   };
 
   if (Object.values(fields).some((value) => value === undefined)) {
