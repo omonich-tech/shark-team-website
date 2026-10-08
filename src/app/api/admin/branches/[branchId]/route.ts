@@ -161,17 +161,19 @@ export async function PATCH(
     revalidatePath(`/uz/branches/${value}`);
   }
 
-  try {
-    await submitIndexNowUrls([
-      absoluteUrl("/ru"),
-      absoluteUrl("/uz"),
-      absoluteUrl("/ru/branches"),
-      absoluteUrl("/uz/branches"),
-      absoluteUrl(`/ru/branches/${after.slug}`),
-      absoluteUrl(`/uz/branches/${after.slug}`)
-    ]);
-  } catch (error) {
-    console.error("IndexNow branch update notification failed", error);
+  if (process.env.VERCEL_ENV === "production") {
+    try {
+      await submitIndexNowUrls([
+        absoluteUrl("/ru"),
+        absoluteUrl("/uz"),
+        absoluteUrl("/ru/branches"),
+        absoluteUrl("/uz/branches"),
+        absoluteUrl(`/ru/branches/${after.slug}`),
+        absoluteUrl(`/uz/branches/${after.slug}`)
+      ]);
+    } catch (error) {
+      console.error("IndexNow branch update notification failed", error);
+    }
   }
 
   return NextResponse.json({ ok: true, branch: after });
