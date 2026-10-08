@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
+import {
+  parseContentSections,
+  sectionText
+} from "@/lib/content-sections";
 import { SPORT_CATALOG } from "@/lib/sport-catalog";
 import { tryGetPublishedHomeCms } from "@/server/public-data/cms";
 import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
@@ -71,6 +75,7 @@ export default async function PublicHome({
         };
 
   const content = cms.content;
+  const sections = parseContentSections(content?.sectionsJson);
   const copy = {
     ...defaults,
     eyebrow:
@@ -84,7 +89,61 @@ export default async function PublicHome({
     lead:
       (locale === "ru"
         ? content?.heroLeadRu
-        : content?.heroLeadUz) ?? defaults.lead
+        : content?.heroLeadUz) ?? defaults.lead,
+    sportsTitle: sectionText(
+      sections,
+      "sportsTitle",
+      locale,
+      defaults.sportsTitle
+    ),
+    sportsLead: sectionText(
+      sections,
+      "sportsLead",
+      locale,
+      defaults.sportsLead
+    ),
+    whyTitle: sectionText(
+      sections,
+      "whyTitle",
+      locale,
+      defaults.whyTitle
+    ),
+    coachesTitle: sectionText(
+      sections,
+      "coachesTitle",
+      locale,
+      defaults.coachesTitle
+    ),
+    branchesTitle: sectionText(
+      sections,
+      "branchesTitle",
+      locale,
+      defaults.branchesTitle
+    ),
+    trialTitle: sectionText(
+      sections,
+      "trialTitle",
+      locale,
+      defaults.trialTitle
+    ),
+    faqTitle: sectionText(
+      sections,
+      "faqTitle",
+      locale,
+      defaults.faqTitle
+    ),
+    ctaTitle: sectionText(
+      sections,
+      "ctaTitle",
+      locale,
+      defaults.ctaTitle
+    ),
+    ctaLead: sectionText(
+      sections,
+      "ctaLead",
+      locale,
+      defaults.ctaLead
+    )
   };
 
   const pageHero =
@@ -151,35 +210,47 @@ export default async function PublicHome({
           [String(activeGroupCount), "faol guruh"]
         ];
 
-  const benefits =
+  const benefitFallback =
     locale === "ru"
       ? [
-          ["01", "Профессиональные тренеры", "Специалисты, которые умеют работать с детьми и давать понятную обратную связь."],
-          ["02", "Комплексное развитие", "Физическая форма, координация, дисциплина, уверенность и командные навыки."],
-          ["03", "Безопасная среда", "Понятные группы по возрасту, контролируемая нагрузка и прозрачная коммуникация."],
-          ["04", "Дружелюбная атмосфера", "Ребёнок становится частью команды и хочет возвращаться на тренировку."]
+          ["Профессиональные тренеры", "Специалисты, которые умеют работать с детьми и давать понятную обратную связь."],
+          ["Комплексное развитие", "Физическая форма, координация, дисциплина, уверенность и командные навыки."],
+          ["Безопасная среда", "Понятные группы по возрасту, контролируемая нагрузка и прозрачная коммуникация."],
+          ["Дружелюбная атмосфера", "Ребёнок становится частью команды и хочет возвращаться на тренировку."]
         ]
       : [
-          ["01", "Professional murabbiylar", "Bolalar bilan ishlay oladigan va tushunarli fikr-mulohaza beradigan mutaxassislar."],
-          ["02", "Kompleks rivojlanish", "Jismoniy tayyorgarlik, koordinatsiya, intizom, ishonch va jamoaviy ko‘nikmalar."],
-          ["03", "Xavfsiz muhit", "Yosh bo‘yicha tushunarli guruhlar, nazorat qilinadigan yuklama va ochiq muloqot."],
-          ["04", "Do‘stona atmosfera", "Bola jamoaning bir qismiga aylanadi va mashg‘ulotga qaytishni xohlaydi."]
+          ["Professional murabbiylar", "Bolalar bilan ishlay oladigan va tushunarli fikr-mulohaza beradigan mutaxassislar."],
+          ["Kompleks rivojlanish", "Jismoniy tayyorgarlik, koordinatsiya, intizom, ishonch va jamoaviy ko‘nikmalar."],
+          ["Xavfsiz muhit", "Yosh bo‘yicha tushunarli guruhlar, nazorat qilinadigan yuklama va ochiq muloqot."],
+          ["Do‘stona atmosfera", "Bola jamoaning bir qismiga aylanadi va mashg‘ulotga qaytishni xohlaydi."]
         ];
 
-  const trialSteps =
+  const benefits = benefitFallback.map(([title, body], index) => [
+    String(index + 1).padStart(2, "0"),
+    sectionText(sections, `benefit${index + 1}Title`, locale, title),
+    sectionText(sections, `benefit${index + 1}Body`, locale, body)
+  ]);
+
+  const trialFallback =
     locale === "ru"
       ? [
-          ["1", "Вы выбираете спорт", "Смотрите направления и доступные филиалы."],
-          ["2", "Мы подбираем группу", "Система учитывает возраст и свободные занятия."],
-          ["3", "Ребёнок приходит на пробное", "Знакомится с тренером, командой и форматом."],
-          ["4", "Вы принимаете решение", "После занятия можно продолжить без обязательств."]
+          ["Вы выбираете спорт", "Смотрите направления и доступные филиалы."],
+          ["Мы подбираем группу", "Система учитывает возраст и свободные занятия."],
+          ["Ребёнок приходит на пробное", "Знакомится с тренером, командой и форматом."],
+          ["Вы принимаете решение", "После занятия можно продолжить без обязательств."]
         ]
       : [
-          ["1", "Sport turini tanlaysiz", "Yo‘nalishlar va mavjud filiallarni ko‘rasiz."],
-          ["2", "Mos guruhni topamiz", "Tizim yosh va bo‘sh mashg‘ulotlarni hisobga oladi."],
-          ["3", "Bola sinovga keladi", "Murabbiy, jamoa va format bilan tanishadi."],
-          ["4", "Qaror qabul qilasiz", "Mashg‘ulotdan so‘ng davom ettirish majburiy emas."]
+          ["Sport turini tanlaysiz", "Yo‘nalishlar va mavjud filiallarni ko‘rasiz."],
+          ["Mos guruhni topamiz", "Tizim yosh va bo‘sh mashg‘ulotlarni hisobga oladi."],
+          ["Bola sinovga keladi", "Murabbiy, jamoa va format bilan tanishadi."],
+          ["Qaror qabul qilasiz", "Mashg‘ulotdan so‘ng davom ettirish majburiy emas."]
         ];
+
+  const trialSteps = trialFallback.map(([title, body], index) => [
+    String(index + 1),
+    sectionText(sections, `trial${index + 1}Title`, locale, title),
+    sectionText(sections, `trial${index + 1}Body`, locale, body)
+  ]);
 
   return (
     <main className="page-main shark-home">
