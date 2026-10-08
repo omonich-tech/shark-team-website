@@ -29,6 +29,22 @@ function parseTime(value: unknown) {
   return hour * 60 + minute;
 }
 
+function parseDate(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return undefined;
+  }
+
+  const parsed = new Date(value + "T00:00:00.000Z");
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function optionalString(value: unknown, max: number) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  return value.trim().slice(0, max) || null;
+}
+
 function addDays(dateKey: string, amount: number) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day + amount))
@@ -71,11 +87,20 @@ export async function POST(request: NextRequest) {
     body.enrollmentStatus ?? "PAUSED"
   ) as EnrollmentStatus;
 
+  const level = optionalString(body.level, 120);
+  const notesInternal = optionalString(body.notesInternal, 2000);
+  const startDate = parseDate(body.startDate);
+  const endDate = parseDate(body.endDate);
+
   if (
     !branchId ||
     !sportId ||
     !primaryCoachId ||
     !internalName ||
+    level === undefined ||
+    notesInternal === undefined ||
+    startDate === undefined ||
+    endDate === undefined ||
     !Number.isInteger(ageMin) ||
     !Number.isInteger(ageMax) ||
     ageMin < 3 ||
@@ -105,7 +130,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!Array.isArray(body.schedule) || body.schedule.length === 0) {
+  if (startDate && endDate && startDate > endDate) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_GROUP_DATE_RANGE" },
+      { status: 400 }
+    );
+  }
+
+  if (
+    !Array.isArray(body.schedule) ||
+    body.schedule.length === 0 ||
+    body.schedule.length > 14
+  ) {
     return NextResponse.json(
       { ok: false, error: "SCHEDULE_REQUIRED" },
       { status: 400 }
@@ -133,11 +169,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const scheduleKeys = schedule.map(
+    (item) => `${item.weekday}:${item.startMinutes}`
+  );
+  if (new Set(scheduleKeys).size !== scheduleKeys.length) {
+    return NextResponse.json(
+      { ok: false, error: "DUPLICATE_SCHEDULE_RULE" },
+      { status: 400 }
+    );
+  }
+
   const prisma = getPrisma();
   const [branch, sport, coach] = await Promise.all([
-    prisma.branch.findUnique({ where: { id: branchId } }),
-    prisma.sport.findUnique({ where: { id: sportId } }),
-    prisma.coach.findUnique({ where: { id: primaryCoachId } })
+    prisma.branch.findFirst({
+      where: {
+        id: branchId,
+        status: { not: LifecycleStatus.ARCHIVED }
+      }
+    }),
+    prisma.sport.findFirst({
+      where: {
+        id: sportId,
+        status: { not: LifecycleStatus.ARCHIVED }
+      }
+    }),
+    prisma.coach.findFirst({
+      where: {
+        id: primaryCoachId,
+        status: { not: LifecycleStatus.ARCHIVED }
+      }
+    })
   ]);
 
   if (!branch || !sport || !coach) {
@@ -206,7 +267,10 @@ export async function POST(request: NextRequest) {
         ageMax,
         capacityRegular,
         capacityTrial,
-        startDate: now
+        level,
+        notesInternal,
+        startDate,
+        endDate
       }
     });
 
@@ -217,7 +281,8 @@ export async function POST(request: NextRequest) {
         weekday: rule.weekday,
         startMinutes: rule.startMinutes as number,
         endMinutes: rule.endMinutes as number,
-        validFrom: now,
+        validFrom: startDate ?? now,
+        validTo: endDate,
         status: LifecycleStatus.ACTIVE
       }))
     });
@@ -225,12 +290,14 @@ export async function POST(request: NextRequest) {
     return created;
   });
 
-  const from = dateKeyInTimeZone(now, branch.timezone);
-  await generateTrainingSessions(prisma, {
-    from,
-    to: addDays(from, 84),
-    branchId
-  });
+  if (status === LifecycleStatus.ACTIVE) {
+    const from = dateKeyInTimeZone(now, branch.timezone);
+    await generateTrainingSessions(prisma, {
+      from,
+      to: addDays(from, 84),
+      branchId
+    });
+  }
 
   await writeAdminAudit({
     actorId: admin.sub,
