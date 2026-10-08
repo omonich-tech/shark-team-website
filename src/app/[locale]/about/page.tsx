@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
 import {
@@ -8,6 +9,10 @@ import {
 } from "@/lib/content-sections";
 import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 import { tryGetPublicHomeData } from "@/server/public-data/home";
+import {
+  breadcrumbJsonLd,
+  buildPublicMetadata
+} from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +27,12 @@ export async function generateMetadata({
   const page = await tryGetPublishedContentPage("about");
   if (!page) return {};
 
-  return {
+  const image = page.media.find((item) =>
+    item.contentType?.startsWith("image/")
+  )?.url;
+  return buildPublicMetadata({
+    locale,
+    path: "/about",
     title:
       (locale === "ru"
         ? page.content.seoTitleRu
@@ -34,9 +44,9 @@ export async function generateMetadata({
         : page.content.seoDescriptionUz) ??
       (locale === "ru"
         ? page.content.heroLeadRu
-        : page.content.heroLeadUz) ??
-      undefined
-  };
+        : page.content.heroLeadUz),
+    images: image ? [image] : []
+  });
 }
 
 export default async function AboutPage({
@@ -165,7 +175,17 @@ export default async function AboutPage({
   );
 
   return (
-    <main className="page-main">
+    <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "SHARK TEAM", path: `/${locale}` },
+          {
+            name: locale === "ru" ? "О нас" : "Biz haqimizda",
+            path: `/${locale}/about`
+          }
+        ])}
+      />
+      <main className="page-main">
       <section className="about-hero">
         <div className="about-hero-copy">
           <p className="eyebrow">{eyebrow}</p>
@@ -253,6 +273,7 @@ export default async function AboutPage({
           </Link>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
