@@ -1,15 +1,29 @@
 import Link from "next/link";
-import { LifecycleStatus } from "@/generated/prisma/client";
+import {
+  LifecycleStatus,
+  StudentEnrollmentStatus
+} from "@/generated/prisma/client";
 import { GroupCreateForm } from "@/components/admin/group-create-form";
-import { GroupEditor } from "@/components/admin/group-editor";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-function formatMinutes(value: number) {
-  const hours = Math.floor(value / 60);
-  const minutes = value % 60;
-  return String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0");
+const weekday: Record<string, string> = {
+  MONDAY: "Пн",
+  TUESDAY: "Вт",
+  WEDNESDAY: "Ср",
+  THURSDAY: "Чт",
+  FRIDAY: "Пт",
+  SATURDAY: "Сб",
+  SUNDAY: "Вс"
+};
+
+function time(value: number) {
+  return (
+    String(Math.floor(value / 60)).padStart(2, "0") +
+    ":" +
+    String(value % 60).padStart(2, "0")
+  );
 }
 
 export default async function AdminGroupsPage() {
@@ -22,24 +36,49 @@ export default async function AdminGroupsPage() {
         sport: true,
         primaryCoach: true,
         scheduleRules: {
-          where: { status: LifecycleStatus.ACTIVE }
+          where: { status: LifecycleStatus.ACTIVE },
+          orderBy: [{ weekday: "asc" }, { startMinutes: "asc" }]
+        },
+        enrollments: {
+          where: { status: StudentEnrollmentStatus.ACTIVE },
+          select: { id: true }
         }
       },
-      orderBy: [{ branchId: "asc" }, { ageMin: "asc" }]
+      orderBy: [
+        { status: "asc" },
+        { branchId: "asc" },
+        { sportId: "asc" },
+        { ageMin: "asc" }
+      ]
     }),
     prisma.branch.findMany({
       where: { status: { not: LifecycleStatus.ARCHIVED } },
-      orderBy: { createdAt: "asc" }
+      orderBy: { publicNameRu: "asc" }
     }),
     prisma.sport.findMany({
       where: { status: { not: LifecycleStatus.ARCHIVED } },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
+      orderBy: [{ sortOrder: "asc" }, { nameRu: "asc" }]
     }),
     prisma.coach.findMany({
       where: { status: { not: LifecycleStatus.ARCHIVED } },
-      orderBy: { createdAt: "asc" }
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }]
     })
   ]);
+
+  const active = groups.filter(
+    (group) => group.status === LifecycleStatus.ACTIVE
+  ).length;
+  const open = groups.filter(
+    (group) => group.enrollmentStatus === "OPEN"
+  ).length;
+  const occupied = groups.reduce(
+    (sum, group) => sum + group.enrollments.length,
+    0
+  );
+  const capacity = groups.reduce(
+    (sum, group) => sum + group.capacityRegular,
+    0
+  );
 
   return (
     <>
@@ -47,14 +86,43 @@ export default async function AdminGroupsPage() {
         <div>
           <p className="eyebrow">SPORT</p>
           <h1>Группы</h1>
+          <p className="admin-page-note">
+            Расписание, тренеры, набор, вместимость и жизненный цикл тренировочных групп.
+          </p>
         </div>
         <span className="admin-count">{groups.length} групп</span>
       </div>
 
+      <div className="admin-branch-summary">
+        <div>
+          <span>Активных</span>
+          <strong>{active}</strong>
+        </div>
+        <div>
+          <span>Открыт набор</span>
+          <strong>{open}</strong>
+        </div>
+        <div>
+          <span>Ученики</span>
+          <strong>{occupied}</strong>
+        </div>
+        <div>
+          <span>Места</span>
+          <strong>{occupied} / {capacity}</strong>
+        </div>
+      </div>
+
       <section className="admin-panel admin-editor-panel">
         <div className="admin-panel-head">
-          <h2>Добавить группу</h2>
+          <div>
+            <p className="admin-panel-kicker">Новая группа</p>
+            <h2>Создать тренировочную группу</h2>
+            <small>
+              Draft не создаёт занятия. Active сразу генерирует будущие Sessions по расписанию.
+            </small>
+          </div>
         </div>
+
         <GroupCreateForm
           branches={branches.map((branch) => ({
             id: branch.id,
@@ -66,44 +134,100 @@ export default async function AdminGroupsPage() {
           }))}
           coaches={coaches.map((coach) => ({
             id: coach.id,
-            name: [coach.firstName, coach.lastName].filter(Boolean).join(" ")
+            name: [coach.firstName, coach.lastName]
+              .filter(Boolean)
+              .join(" ")
           }))}
         />
       </section>
 
-      <div className="admin-group-list">
-        {groups.map((group) => (
-          <section className="admin-panel admin-editor-panel" key={group.id}>
-            <div className="admin-panel-head">
-              <div>
-                <h2><Link href={"/admin/groups/" + group.id}>{group.internalName}</Link></h2>
-                <small>
-                  {group.branch.publicNameRu} · {group.sport.nameRu} ·{" "}
-                  {[group.primaryCoach.firstName, group.primaryCoach.lastName]
-                    .filter(Boolean)
-                    .join(" ")}
-                </small>
-              </div>
-            </div>
-            <GroupEditor
-              group={{
-                id: group.id,
-                ageMin: group.ageMin,
-                ageMax: group.ageMax,
-                capacityRegular: group.capacityRegular,
-                capacityTrial: group.capacityTrial,
-                status: group.status,
-                enrollmentStatus: group.enrollmentStatus,
-                schedule: group.scheduleRules.map((rule) => ({
-                  weekday: rule.weekday,
-                  start: formatMinutes(rule.startMinutes),
-                  end: formatMinutes(rule.endMinutes)
-                }))
-              }}
-            />
-          </section>
-        ))}
-      </div>
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <div>
+            <p className="admin-panel-kicker">Каталог</p>
+            <h2>Все группы</h2>
+          </div>
+        </div>
+
+        <div className="admin-table-wrap">
+          <table className="admin-table admin-group-catalog">
+            <thead>
+              <tr>
+                <th>Группа</th>
+                <th>Филиал / спорт</th>
+                <th>Тренер</th>
+                <th>Возраст</th>
+                <th>Ученики</th>
+                <th>Расписание</th>
+                <th>Набор</th>
+                <th>Статус</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map((group) => {
+                const schedule = group.scheduleRules
+                  .map(
+                    (rule) =>
+                      weekday[rule.weekday] +
+                      " " +
+                      time(rule.startMinutes)
+                  )
+                  .join(" · ");
+
+                return (
+                  <tr key={group.id}>
+                    <td>
+                      <strong className="admin-table-primary">
+                        {group.internalName}
+                      </strong>
+                      {group.level ? (
+                        <small className="admin-table-secondary">
+                          {group.level}
+                        </small>
+                      ) : null}
+                    </td>
+                    <td>
+                      {group.branch.publicNameRu}
+                      <br />
+                      <small>{group.sport.nameRu}</small>
+                    </td>
+                    <td>
+                      {[group.primaryCoach.firstName, group.primaryCoach.lastName]
+                        .filter(Boolean)
+                        .join(" ")}
+                    </td>
+                    <td>{group.ageMin}–{group.ageMax}</td>
+                    <td>
+                      {group.enrollments.length} / {group.capacityRegular}
+                    </td>
+                    <td>{schedule || "—"}</td>
+                    <td>
+                      <span className="admin-status">
+                        {group.enrollmentStatus}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="admin-status">{group.status}</span>
+                    </td>
+                    <td>
+                      <Link href={"/admin/groups/" + group.id}>
+                        Открыть →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {groups.length === 0 ? (
+                <tr>
+                  <td colSpan={9}>Групп пока нет.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 }
