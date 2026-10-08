@@ -37,6 +37,9 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shark_team
       DATABASE_POOL_MAX: "1"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      GOOGLE_SITE_VERIFICATION: ci-google-verification
+      YANDEX_SITE_VERIFICATION: ci-yandex-verification
+      INDEXNOW_KEY: ci-indexnow-key-12345678
       PAYMENT_MODE: PAYME
       PAYME_MERCHANT_ID: ci-merchant
       PAYME_LOGIN: ci-login
