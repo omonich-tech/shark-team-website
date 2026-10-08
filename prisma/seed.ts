@@ -96,6 +96,7 @@ async function main() {
       postalCode: "100099",
       landmarkRu: "Метро «Шахристан»",
       landmarkUz: "«Shahriston» metro bekati",
+      publicPhone: "+998 90 187 45 01",
       latitude: 41.352103,
       longitude: 69.298296,
       seoTitleRu: "Баскетбол для детей на Юнусабаде — SHARK TEAM, Школа №117",
@@ -425,7 +426,10 @@ async function main() {
 
   await prisma.contentPage.upsert({
     where: { slug: "contacts" },
-    update: {},
+    update: {
+      contactPhone: "+998 90 187 45 01",
+      contactTelegram: "https://t.me/sharkteam_uz_bot"
+    },
     create: {
       id: "PAGE-CONTACTS-01",
       slug: "contacts",
@@ -442,6 +446,7 @@ async function main() {
         "По вопросам записи, пробного занятия, расписания и оплаты можно связаться с SHARK TEAM через указанные каналы. Данные филиалов ниже обновляются автоматически из админки.",
       bodyUz:
         "Yozilish, sinov mashg‘uloti, jadval va to‘lov bo‘yicha SHARK TEAM bilan quyidagi kanallar orqali bog‘lanishingiz mumkin. Filiallar ma’lumotlari admin paneldan avtomatik yangilanadi.",
+      contactPhone: "+998 90 187 45 01",
       contactTelegram: "https://t.me/sharkteam_uz_bot",
       seoTitleRu: "Контакты SHARK TEAM — спортивные секции в Ташкенте",
       seoTitleUz: "SHARK TEAM kontaktlari — Toshkentdagi sport seksiyalari",

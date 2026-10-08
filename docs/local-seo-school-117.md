@@ -14,7 +14,7 @@ This file is the canonical local-listing reference for the School 117 location. 
 - Landmark UZ: **«Shahriston» metro bekati**
 - Hours: **Tuesday / Thursday / Saturday, 17:00–20:00**
 - Website: **https://sharkteam.uz/ru/branches/school-117**
-- Public phone: **TBD — use a dedicated SHARK TEAM number. Do not publish the school’s phone as SHARK TEAM contact data.**
+- Public phone: **+998 90 187 45 01**
 - Telegram: **https://t.me/sharkteam_uz_bot**
 
 ## Listing naming rule
