@@ -1,4 +1,5 @@
 import {
+  ContentStatus,
   LifecycleStatus,
   MediaConsentStatus,
   MediaTargetType,
@@ -55,7 +56,7 @@ export async function getBranchPublicData(slug: string) {
     new Set(branch.groups.map((group) => group.sportId))
   );
 
-  const [prices, media] = await Promise.all([
+  const [prices, media, faq] = await Promise.all([
     prisma.price.findMany({
       where: {
         branchId: branch.id,
@@ -97,6 +98,14 @@ export async function getBranchPublicData(slug: string) {
         { sortOrder: "asc" },
         { createdAt: "asc" }
       ]
+    }),
+    prisma.faqItem.findMany({
+      where: {
+        status: ContentStatus.PUBLISHED,
+        branchId: branch.id,
+        sportId: null
+      },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
     })
   ]);
 
@@ -167,7 +176,12 @@ export async function getBranchPublicData(slug: string) {
         prices.find((price) => price.productType === PriceProductType.TRIAL) ?? null,
       subscription:
         prices.find((price) => price.productType === PriceProductType.SUBSCRIPTION) ?? null
-    }
+    },
+    faq: faq.map((item) => ({
+      id: item.id,
+      question: { ru: item.questionRu, uz: item.questionUz },
+      answer: { ru: item.answerRu, uz: item.answerUz }
+    }))
   };
 }
 
