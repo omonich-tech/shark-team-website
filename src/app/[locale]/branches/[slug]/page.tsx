@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
+import { ContentStatus } from "@/generated/prisma/client";
+import { getPrisma } from "@/lib/prisma";
 import { formatUzs, isPublicLocale, pickLocalized, weekdayLabel } from "@/lib/public-i18n";
 import { tryGetBranchPublicData } from "@/server/public-data/branch";
 
@@ -18,6 +20,16 @@ export default async function PublicBranchPage({
 
   const data = await tryGetBranchPublicData(slug);
   if (!data) notFound();
+
+  const prisma = getPrisma();
+  const branchFaq = await prisma.faqItem.findMany({
+    where: {
+      status: ContentStatus.PUBLISHED,
+      branchId: data.id,
+      sportId: null
+    },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
+  });
 
   const hero = data.media.find(
     (item) =>
@@ -160,7 +172,7 @@ export default async function PublicBranchPage({
         </section>
       ) : null}
 
-      {data.faq.length > 0 ? (
+      {branchFaq.length > 0 ? (
         <section className="content-section">
           <div className="section-heading">
             <p className="eyebrow">FAQ</p>
@@ -171,10 +183,10 @@ export default async function PublicBranchPage({
             </h2>
           </div>
           <div className="faq-list shark-faq-list">
-            {data.faq.map((item) => (
+            {branchFaq.map((item) => (
               <details className="faq-item" key={item.id}>
-                <summary>{pickLocalized(locale, item.question)}</summary>
-                <p>{pickLocalized(locale, item.answer)}</p>
+                <summary>{locale === "ru" ? item.questionRu : item.questionUz}</summary>
+                <p>{locale === "ru" ? item.answerRu : item.answerUz}</p>
               </details>
             ))}
           </div>
