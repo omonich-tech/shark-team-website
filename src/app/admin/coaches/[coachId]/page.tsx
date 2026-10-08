@@ -132,7 +132,11 @@ export default async function AdminCoachEditPage({
             { name: "qualificationRu", label: "Квалификация RU", type: "textarea" },
             { name: "qualificationUz", label: "Квалификация UZ", type: "textarea" },
             { name: "publicBioRu", label: "Публичное описание RU", type: "textarea" },
-            { name: "publicBioUz", label: "Публичное описание UZ", type: "textarea" }
+            { name: "publicBioUz", label: "Публичное описание UZ", type: "textarea" },
+            { name: "seoTitleRu", label: "SEO title RU" },
+            { name: "seoTitleUz", label: "SEO title UZ" },
+            { name: "seoDescriptionRu", label: "SEO description RU", type: "textarea" },
+            { name: "seoDescriptionUz", label: "SEO description UZ", type: "textarea" }
           ]}
           initialValues={{
             status: coach.status,
@@ -146,7 +150,11 @@ export default async function AdminCoachEditPage({
             qualificationRu: coach.qualificationRu,
             qualificationUz: coach.qualificationUz,
             publicBioRu: coach.publicBioRu,
-            publicBioUz: coach.publicBioUz
+            publicBioUz: coach.publicBioUz,
+            seoTitleRu: coach.seoTitleRu,
+            seoTitleUz: coach.seoTitleUz,
+            seoDescriptionRu: coach.seoDescriptionRu,
+            seoDescriptionUz: coach.seoDescriptionUz
           }}
         />
       </section>
