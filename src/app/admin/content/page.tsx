@@ -1,4 +1,9 @@
 import { AdminEntityForm, type AdminField } from "@/components/admin/entity-form";
+import {
+  ContentSectionsEditor,
+  type ContentSectionField
+} from "@/components/admin/content-sections-editor";
+import { parseContentSections } from "@/lib/content-sections";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +52,101 @@ const seoFields: AdminField[] = [
     label: "SEO description UZ",
     type: "textarea"
   }
+];
+
+const homeSectionFields: ContentSectionField[] = [
+  { key: "sportsTitleRu", label: "Спорт · заголовок RU" },
+  { key: "sportsTitleUz", label: "Спорт · заголовок UZ" },
+  { key: "sportsLeadRu", label: "Спорт · описание RU", type: "textarea" },
+  { key: "sportsLeadUz", label: "Спорт · описание UZ", type: "textarea" },
+  { key: "whyTitleRu", label: "Преимущества · заголовок RU" },
+  { key: "whyTitleUz", label: "Преимущества · заголовок UZ" },
+  { key: "benefit1TitleRu", label: "Преимущество 1 · название RU" },
+  { key: "benefit1TitleUz", label: "Преимущество 1 · название UZ" },
+  { key: "benefit1BodyRu", label: "Преимущество 1 · текст RU", type: "textarea" },
+  { key: "benefit1BodyUz", label: "Преимущество 1 · текст UZ", type: "textarea" },
+  { key: "benefit2TitleRu", label: "Преимущество 2 · название RU" },
+  { key: "benefit2TitleUz", label: "Преимущество 2 · название UZ" },
+  { key: "benefit2BodyRu", label: "Преимущество 2 · текст RU", type: "textarea" },
+  { key: "benefit2BodyUz", label: "Преимущество 2 · текст UZ", type: "textarea" },
+  { key: "benefit3TitleRu", label: "Преимущество 3 · название RU" },
+  { key: "benefit3TitleUz", label: "Преимущество 3 · название UZ" },
+  { key: "benefit3BodyRu", label: "Преимущество 3 · текст RU", type: "textarea" },
+  { key: "benefit3BodyUz", label: "Преимущество 3 · текст UZ", type: "textarea" },
+  { key: "benefit4TitleRu", label: "Преимущество 4 · название RU" },
+  { key: "benefit4TitleUz", label: "Преимущество 4 · название UZ" },
+  { key: "benefit4BodyRu", label: "Преимущество 4 · текст RU", type: "textarea" },
+  { key: "benefit4BodyUz", label: "Преимущество 4 · текст UZ", type: "textarea" },
+  { key: "coachesTitleRu", label: "Тренеры · заголовок RU" },
+  { key: "coachesTitleUz", label: "Тренеры · заголовок UZ" },
+  { key: "branchesTitleRu", label: "Филиалы · заголовок RU" },
+  { key: "branchesTitleUz", label: "Филиалы · заголовок UZ" },
+  { key: "trialTitleRu", label: "Пробное · заголовок RU" },
+  { key: "trialTitleUz", label: "Пробное · заголовок UZ" },
+  { key: "trial1TitleRu", label: "Шаг 1 · название RU" },
+  { key: "trial1TitleUz", label: "Шаг 1 · название UZ" },
+  { key: "trial1BodyRu", label: "Шаг 1 · текст RU", type: "textarea" },
+  { key: "trial1BodyUz", label: "Шаг 1 · текст UZ", type: "textarea" },
+  { key: "trial2TitleRu", label: "Шаг 2 · название RU" },
+  { key: "trial2TitleUz", label: "Шаг 2 · название UZ" },
+  { key: "trial2BodyRu", label: "Шаг 2 · текст RU", type: "textarea" },
+  { key: "trial2BodyUz", label: "Шаг 2 · текст UZ", type: "textarea" },
+  { key: "trial3TitleRu", label: "Шаг 3 · название RU" },
+  { key: "trial3TitleUz", label: "Шаг 3 · название UZ" },
+  { key: "trial3BodyRu", label: "Шаг 3 · текст RU", type: "textarea" },
+  { key: "trial3BodyUz", label: "Шаг 3 · текст UZ", type: "textarea" },
+  { key: "faqTitleRu", label: "FAQ · заголовок RU" },
+  { key: "faqTitleUz", label: "FAQ · заголовок UZ" },
+  { key: "ctaTitleRu", label: "Финальный CTA · заголовок RU" },
+  { key: "ctaTitleUz", label: "Финальный CTA · заголовок UZ" },
+  { key: "ctaLeadRu", label: "Финальный CTA · текст RU", type: "textarea" },
+  { key: "ctaLeadUz", label: "Финальный CTA · текст UZ", type: "textarea" }
+];
+
+const aboutSectionFields: ContentSectionField[] = [
+  { key: "storyEyebrowRu", label: "История · eyebrow RU" },
+  { key: "storyEyebrowUz", label: "История · eyebrow UZ" },
+  { key: "storyTitleRu", label: "История · заголовок RU" },
+  { key: "storyTitleUz", label: "История · заголовок UZ" },
+  { key: "principlesEyebrowRu", label: "Принципы · eyebrow RU" },
+  { key: "principlesEyebrowUz", label: "Принципы · eyebrow UZ" },
+  { key: "principlesTitleRu", label: "Принципы · заголовок RU" },
+  { key: "principlesTitleUz", label: "Принципы · заголовок UZ" },
+  { key: "principle1TitleRu", label: "Принцип 1 · название RU" },
+  { key: "principle1TitleUz", label: "Принцип 1 · название UZ" },
+  { key: "principle1BodyRu", label: "Принцип 1 · текст RU", type: "textarea" },
+  { key: "principle1BodyUz", label: "Принцип 1 · текст UZ", type: "textarea" },
+  { key: "principle2TitleRu", label: "Принцип 2 · название RU" },
+  { key: "principle2TitleUz", label: "Принцип 2 · название UZ" },
+  { key: "principle2BodyRu", label: "Принцип 2 · текст RU", type: "textarea" },
+  { key: "principle2BodyUz", label: "Принцип 2 · текст UZ", type: "textarea" },
+  { key: "principle3TitleRu", label: "Принцип 3 · название RU" },
+  { key: "principle3TitleUz", label: "Принцип 3 · название UZ" },
+  { key: "principle3BodyRu", label: "Принцип 3 · текст RU", type: "textarea" },
+  { key: "principle3BodyUz", label: "Принцип 3 · текст UZ", type: "textarea" },
+  { key: "principle4TitleRu", label: "Принцип 4 · название RU" },
+  { key: "principle4TitleUz", label: "Принцип 4 · название UZ" },
+  { key: "principle4BodyRu", label: "Принцип 4 · текст RU", type: "textarea" },
+  { key: "principle4BodyUz", label: "Принцип 4 · текст UZ", type: "textarea" },
+  { key: "ctaTitleRu", label: "Финальный CTA · заголовок RU" },
+  { key: "ctaTitleUz", label: "Финальный CTA · заголовок UZ" },
+  { key: "ctaLeadRu", label: "Финальный CTA · текст RU", type: "textarea" },
+  { key: "ctaLeadUz", label: "Финальный CTA · текст UZ", type: "textarea" }
+];
+
+const contactsSectionFields: ContentSectionField[] = [
+  { key: "channelsEyebrowRu", label: "Каналы · eyebrow RU" },
+  { key: "channelsEyebrowUz", label: "Каналы · eyebrow UZ" },
+  { key: "channelsTitleRu", label: "Каналы · заголовок RU" },
+  { key: "channelsTitleUz", label: "Каналы · заголовок UZ" },
+  { key: "branchesEyebrowRu", label: "Филиалы · eyebrow RU" },
+  { key: "branchesEyebrowUz", label: "Филиалы · eyebrow UZ" },
+  { key: "branchesTitleRu", label: "Филиалы · заголовок RU" },
+  { key: "branchesTitleUz", label: "Филиалы · заголовок UZ" },
+  { key: "ctaTitleRu", label: "Финальный CTA · заголовок RU" },
+  { key: "ctaTitleUz", label: "Финальный CTA · заголовок UZ" },
+  { key: "ctaLeadRu", label: "Финальный CTA · текст RU", type: "textarea" },
+  { key: "ctaLeadUz", label: "Финальный CTA · текст UZ", type: "textarea" }
 ];
 
 function values(content: {
@@ -132,6 +232,13 @@ export default async function AdminContentPage() {
           fields={[...baseFields, ...seoFields]}
           initialValues={values(home)}
         />
+        <ContentSectionsEditor
+          endpoint="/api/admin/content/home"
+          title="Секции главной"
+          description="Преимущества, шаги пробного, заголовки секций и финальный CTA."
+          fields={homeSectionFields}
+          initialSections={parseContentSections(home.sectionsJson)}
+        />
       </section>
 
       <section className="admin-panel admin-editor-panel">
@@ -161,6 +268,13 @@ export default async function AdminContentPage() {
             ...seoFields
           ]}
           initialValues={values(about)}
+        />
+        <ContentSectionsEditor
+          endpoint="/api/admin/content/about"
+          title="Секции «О нас»"
+          description="Заголовки истории, принципы и финальный CTA."
+          fields={aboutSectionFields}
+          initialSections={parseContentSections(about.sectionsJson)}
         />
       </section>
 
@@ -203,6 +317,13 @@ export default async function AdminContentPage() {
             ...seoFields
           ]}
           initialValues={values(contacts)}
+        />
+        <ContentSectionsEditor
+          endpoint="/api/admin/content/contacts"
+          title="Секции контактов"
+          description="Заголовки каналов, филиалов и финального CTA."
+          fields={contactsSectionFields}
+          initialSections={parseContentSections(contacts.sectionsJson)}
         />
       </section>
     </>
