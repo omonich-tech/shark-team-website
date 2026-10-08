@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const metadataBase = new URL(
+  process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+);
+
 export const metadata: Metadata = {
+  metadataBase,
   title: "SHARK TEAM",
-  description: "Children's sports sections in Tashkent"
+  description: "Children's sports sections in Tashkent",
+  applicationName: "SHARK TEAM",
+  category: "sports"
 };
 
 const themeInitScript = `
