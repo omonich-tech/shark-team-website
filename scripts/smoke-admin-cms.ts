@@ -396,13 +396,32 @@ async function main() {
     "Minor media must remain pending without approved consent"
   );
 
-  const [createdBranch, createdGroup, sessions, auditCount] =
-    await Promise.all([
-      prisma.branch.findUnique({ where: { id: branchId } }),
-      prisma.trainingGroup.findUnique({ where: { id: groupId } }),
-      prisma.trainingSession.count({ where: { groupId } }),
-      prisma.auditLog.count()
-    ]);
+  const [
+    createdBranch,
+    createdGroup,
+    generatedSessions,
+    activeRules,
+    auditCount
+  ] = await Promise.all([
+    prisma.branch.findUnique({ where: { id: branchId } }),
+    prisma.trainingGroup.findUnique({ where: { id: groupId } }),
+    prisma.trainingSession.findMany({
+      where: { groupId },
+      select: {
+        startsAt: true,
+        coachId: true,
+        regularCapacity: true,
+        trialCapacity: true,
+        trialBookingEnabled: true
+      },
+      orderBy: { startsAt: "asc" }
+    }),
+    prisma.groupScheduleRule.findMany({
+      where: { groupId, status: "ACTIVE" },
+      orderBy: [{ weekday: "asc" }, { startMinutes: "asc" }]
+    }),
+    prisma.auditLog.count()
+  ]);
 
   assert(createdBranch?.status === "ACTIVE", "Created branch was not activated");
   const branchSport = await prisma.branchSport.findUnique({
@@ -436,7 +455,45 @@ async function main() {
     "Coach start date was not saved from Admin"
   );
   assert(createdGroup?.status === "ACTIVE", "Created group was not activated");
-  assert(sessions > 0, "Created active group did not generate Sessions");
+  assert(
+    createdGroup?.internalName === "CI Volleyball 10-12 Updated",
+    "Group name was not updated from Admin"
+  );
+  assert(createdGroup?.capacityRegular === 19, "Group capacity was not updated");
+  assert(createdGroup?.capacityTrial === 2, "Trial capacity was not updated");
+  assert(createdGroup?.level === "CI Intermediate", "Group level was not saved");
+  assert(
+    createdGroup?.notesInternal === "CI updated group note",
+    "Internal group notes were not saved"
+  );
+  assert(
+    createdGroup?.startDate?.toISOString().slice(0, 10) === groupStartDate &&
+      createdGroup?.endDate?.toISOString().slice(0, 10) === groupEndDate,
+    "Group date range was not saved"
+  );
+  assert(
+    activeRules.length === 2 &&
+      activeRules.every(
+        (rule) =>
+          rule.startMinutes === 10 * 60 + 30 &&
+          rule.endMinutes === 11 * 60 + 30
+      ),
+    "Updated group schedule rules were not applied"
+  );
+  assert(
+    generatedSessions.length > 0,
+    "Created active group did not generate Sessions"
+  );
+  assert(
+    generatedSessions.every(
+      (session) =>
+        session.coachId === coachId &&
+        session.regularCapacity === 19 &&
+        session.trialCapacity === 2 &&
+        session.trialBookingEnabled
+    ),
+    "Future Sessions did not inherit updated group configuration"
+  );
   assert(auditCount >= 8, "Admin mutations were not audited");
 
   const branchList = await fetch(`${baseUrl}/admin/branches`, {
