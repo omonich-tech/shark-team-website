@@ -5,6 +5,7 @@ import {
   LifecycleStatus,
   StudentEnrollmentStatus
 } from "@/generated/prisma/client";
+import { GroupEditor } from "@/components/admin/group-editor";
 import { GroupMemberManager } from "@/components/admin/group-member-manager";
 import { RemoveFromGroupButton } from "@/components/admin/remove-from-group-button";
 import { SessionAdminControls } from "@/components/admin/session-admin-controls";
@@ -77,6 +78,10 @@ function percent(present: number, total: number) {
   return total ? Math.round((present / total) * 100) : null;
 }
 
+function dateValue(value: Date | null) {
+  return value ? value.toISOString().slice(0, 10) : null;
+}
+
 export default async function AdminGroupPage({
   params
 }: {
@@ -90,7 +95,15 @@ export default async function AdminGroupPage({
   const assessmentCutoff = new Date(now - 35 * 24 * 60 * 60 * 1000);
   const renewalCutoff = new Date(now + 7 * 24 * 60 * 60 * 1000);
 
-  const [group, recentSessions, upcomingSessions, children] = await Promise.all([
+  const [
+    group,
+    recentSessions,
+    upcomingSessions,
+    children,
+    branches,
+    sports,
+    coaches
+  ] = await Promise.all([
     prisma.trainingGroup.findUnique({
       where: { id: groupId },
       include: {
@@ -176,6 +189,18 @@ export default async function AdminGroupPage({
       },
       orderBy: { name: "asc" },
       take: 400
+    }),
+    prisma.branch.findMany({
+      where: { status: { not: LifecycleStatus.ARCHIVED } },
+      orderBy: { publicNameRu: "asc" }
+    }),
+    prisma.sport.findMany({
+      where: { status: { not: LifecycleStatus.ARCHIVED } },
+      orderBy: [{ sortOrder: "asc" }, { nameRu: "asc" }]
+    }),
+    prisma.coach.findMany({
+      where: { status: { not: LifecycleStatus.ARCHIVED } },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }]
     })
   ]);
 
@@ -306,6 +331,56 @@ export default async function AdminGroupPage({
           <strong>{staleAssessments}</strong>
         </div>
       </div>
+
+      <section className="admin-panel admin-editor-panel">
+        <div className="admin-panel-head">
+          <div>
+            <p className="admin-panel-kicker">Настройки</p>
+            <h2>Конфигурация группы</h2>
+            <small>
+              Филиал, спорт, тренер, набор, даты и расписание управляются здесь.
+              Защищённые будущие занятия с бронями не удаляются автоматически.
+            </small>
+          </div>
+        </div>
+
+        <GroupEditor
+          group={{
+            id: group.id,
+            branchId: group.branchId,
+            sportId: group.sportId,
+            primaryCoachId: group.primaryCoachId,
+            internalName: group.internalName,
+            ageMin: group.ageMin,
+            ageMax: group.ageMax,
+            capacityRegular: group.capacityRegular,
+            capacityTrial: group.capacityTrial,
+            status: group.status,
+            enrollmentStatus: group.enrollmentStatus,
+            level: group.level,
+            notesInternal: group.notesInternal,
+            startDate: dateValue(group.startDate),
+            endDate: dateValue(group.endDate),
+            schedule: group.scheduleRules.map((rule) => ({
+              weekday: rule.weekday,
+              start: time(rule.startMinutes),
+              end: time(rule.endMinutes)
+            }))
+          }}
+          branches={branches.map((branch) => ({
+            id: branch.id,
+            name: branch.publicNameRu
+          }))}
+          sports={sports.map((sport) => ({
+            id: sport.id,
+            name: sport.nameRu
+          }))}
+          coaches={coaches.map((coach) => ({
+            id: coach.id,
+            name: [coach.firstName, coach.lastName].filter(Boolean).join(" ")
+          }))}
+        />
+      </section>
 
       <section className="admin-panel">
         <div className="admin-panel-head">
