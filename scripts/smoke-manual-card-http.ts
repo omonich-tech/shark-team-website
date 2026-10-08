@@ -47,6 +47,31 @@ async function main() {
     "Telegram admin user id is missing"
   );
 
+  const smokeGroupId = "GR-BASK-S117-0911-01";
+  const smokeSession = await prisma.trainingSession.findFirst({
+    where: {
+      groupId: smokeGroupId,
+      status: "SCHEDULED",
+      startsAt: { gt: new Date() }
+    },
+    orderBy: { startsAt: "asc" },
+    select: { id: true }
+  });
+
+  assert(smokeSession, "No future session available for manual-card smoke");
+
+  await prisma.trainingGroup.update({
+    where: { id: smokeGroupId },
+    data: { capacityTrial: 10 }
+  });
+  await prisma.trainingSession.update({
+    where: { id: smokeSession.id },
+    data: {
+      trialCapacity: 10,
+      trialBookingEnabled: true
+    }
+  });
+
   const optionsResponse = await fetch(
     `${baseUrl}/api/public/trial-options?age=10`
   );
