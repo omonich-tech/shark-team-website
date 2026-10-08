@@ -44,6 +44,10 @@ export default async function AdminBranchesPage() {
             { name: "landmarkRu", label: "Ориентир RU" },
             { name: "landmarkUz", label: "Ориентир UZ" },
             { name: "publicPhone", label: "Публичный телефон" },
+            { name: "seoTitleRu", label: "SEO title RU" },
+            { name: "seoTitleUz", label: "SEO title UZ" },
+            { name: "seoDescriptionRu", label: "SEO description RU", type: "textarea" },
+            { name: "seoDescriptionUz", label: "SEO description UZ", type: "textarea" },
             {
               name: "status", label: "Статус", type: "select",
               options: [
@@ -56,7 +60,9 @@ export default async function AdminBranchesPage() {
           initialValues={{
             internalName: "", slug: "", publicNameRu: "", publicNameUz: "",
             districtRu: "", districtUz: "", addressRu: "", addressUz: "",
-            landmarkRu: "", landmarkUz: "", publicPhone: "", status: "DRAFT"
+            landmarkRu: "", landmarkUz: "", publicPhone: "",
+            seoTitleRu: "", seoTitleUz: "", seoDescriptionRu: "", seoDescriptionUz: "",
+            status: "DRAFT"
           }}
         />
       </section>
