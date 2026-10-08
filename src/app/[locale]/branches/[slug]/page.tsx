@@ -1,13 +1,74 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ContentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { formatUzs, isPublicLocale, pickLocalized, weekdayLabel } from "@/lib/public-i18n";
+import {
+  absoluteUrl,
+  breadcrumbJsonLd,
+  buildPublicMetadata,
+  faqJsonLd
+} from "@/lib/seo";
 import { tryGetBranchPublicData } from "@/server/public-data/branch";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string; slug: string }>;
+}): Promise<Metadata> {
+  const { locale, slug } = await params;
+  if (!isPublicLocale(locale)) return {};
+
+  const prisma = getPrisma();
+  const branch = await prisma.branch.findFirst({
+    where: { slug, status: "ACTIVE" }
+  });
+
+  if (!branch) return {};
+
+  const image = await prisma.mediaAsset.findFirst({
+    where: {
+      targetType: "BRANCH",
+      targetId: branch.id,
+      contentType: { startsWith: "image/" },
+      OR: [
+        { containsMinors: false },
+        { containsMinors: true, consentStatus: "APPROVED" }
+      ]
+    },
+    orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }]
+  });
+
+  const name = locale === "ru" ? branch.publicNameRu : branch.publicNameUz;
+  const district = locale === "ru" ? branch.districtRu : branch.districtUz;
+  const address = locale === "ru" ? branch.addressRu : branch.addressUz;
+  const title =
+    (locale === "ru" ? branch.seoTitleRu : branch.seoTitleUz) ??
+    (locale === "ru"
+      ? `${name} — спортивные секции для детей в Ташкенте`
+      : `${name} — Toshkentdagi bolalar sport seksiyalari`);
+  const description =
+    (locale === "ru"
+      ? branch.seoDescriptionRu
+      : branch.seoDescriptionUz) ??
+    (locale === "ru"
+      ? `${name}: ${district ? district + ", " : ""}${address}. Спортивные группы SHARK TEAM, тренеры, расписание и пробное занятие.`
+      : `${name}: ${district ? district + ", " : ""}${address}. SHARK TEAM guruhlari, murabbiylar, jadval va sinov mashg‘uloti.`);
+
+  return buildPublicMetadata({
+    locale,
+    path: `/branches/${slug}`,
+    title,
+    description,
+    images: image ? [image.url] : []
+  });
+}
 
 export default async function PublicBranchPage({
   params
@@ -46,8 +107,65 @@ export default async function PublicBranchPage({
     ).values()
   );
 
+  const branchName = pickLocalized(locale, data.name);
+  const branchDescription =
+    locale === "ru"
+      ? `${branchName}: ${pickLocalized(locale, data.address)}. Спортивные группы SHARK TEAM, расписание и пробное занятие.`
+      : `${branchName}: ${pickLocalized(locale, data.address)}. SHARK TEAM guruhlari, jadval va sinov mashg‘uloti.`;
+
+  const structuredData = [
+    breadcrumbJsonLd([
+      { name: "SHARK TEAM", path: `/${locale}` },
+      {
+        name: locale === "ru" ? "Филиалы" : "Filiallar",
+        path: `/${locale}/branches`
+      },
+      {
+        name: branchName,
+        path: `/${locale}/branches/${slug}`
+      }
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "SportsActivityLocation",
+      name: branchName,
+      url: absoluteUrl(`/${locale}/branches/${slug}`),
+      description: branchDescription,
+      telephone: data.publicPhone ?? undefined,
+      image: hero?.url,
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: pickLocalized(locale, data.address),
+        addressLocality: locale === "ru" ? "Ташкент" : "Toshkent",
+        addressRegion: pickLocalized(locale, data.district) || undefined,
+        postalCode: data.address.postalCode ?? undefined,
+        addressCountry: "UZ"
+      },
+      geo: data.coordinates
+        ? {
+            "@type": "GeoCoordinates",
+            latitude: data.coordinates.latitude,
+            longitude: data.coordinates.longitude
+          }
+        : undefined
+    },
+    ...(branchFaq.length
+      ? [
+          faqJsonLd(
+            branchFaq.map((item) => ({
+              question:
+                locale === "ru" ? item.questionRu : item.questionUz,
+              answer: locale === "ru" ? item.answerRu : item.answerUz
+            }))
+          )
+        ]
+      : [])
+  ];
+
   return (
-    <main className="page-main">
+    <>
+      <JsonLd data={structuredData} />
+      <main className="page-main">
       <section className="branch-detail-hero">
         <div>
           <Link className="shark-back-link" href={`/${locale}/branches`}>
@@ -192,6 +310,7 @@ export default async function PublicBranchPage({
           </div>
         </section>
       ) : null}
-    </main>
+      </main>
+    </>
   );
 }
