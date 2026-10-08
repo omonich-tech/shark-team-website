@@ -10,6 +10,18 @@ function optionalString(value: unknown, max: number) {
   return value.trim().slice(0, max) || null;
 }
 
+function sectionsJson(value: unknown) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const serialized = JSON.stringify(value);
+  if (serialized.length > 30000) return false;
+  return value;
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ slug: string }> }
@@ -43,6 +55,15 @@ export async function PATCH(
   if (!Object.values(ContentStatus).includes(status)) {
     return NextResponse.json(
       { ok: false, error: "INVALID_STATUS" },
+      { status: 400 }
+    );
+  }
+
+  const sectionConfig = sectionsJson(body.sectionsJson);
+
+  if (sectionConfig === false) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_SECTIONS_JSON" },
       { status: 400 }
     );
   }
@@ -94,6 +115,7 @@ export async function PATCH(
     data: {
       status,
       ...fields,
+      ...(sectionConfig !== undefined ? { sectionsJson: sectionConfig } : {}),
       publishedAt:
         status === ContentStatus.PUBLISHED
           ? before.publishedAt ?? new Date()
