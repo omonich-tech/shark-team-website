@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
+import {
+  absoluteUrl,
+  buildPublicMetadata,
+  faqJsonLd
+} from "@/lib/seo";
 import {
   parseContentSections,
   sectionText
@@ -11,6 +18,47 @@ import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 import { tryGetPublicHomeData } from "@/server/public-data/home";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isPublicLocale(locale)) return {};
+
+  const cms = await tryGetPublishedHomeCms();
+  const content = cms.content;
+  const title =
+    (locale === "ru" ? content?.seoTitleRu : content?.seoTitleUz) ??
+    (locale === "ru"
+      ? "SHARK TEAM — детские спортивные секции в Ташкенте"
+      : "SHARK TEAM — Toshkentdagi bolalar sport seksiyalari");
+  const description =
+    (locale === "ru"
+      ? content?.seoDescriptionRu
+      : content?.seoDescriptionUz) ??
+    (locale === "ru"
+      ? content?.heroLeadRu
+      : content?.heroLeadUz) ??
+    (locale === "ru"
+      ? "Спортивные секции для детей в Ташкенте: баскетбол, футбол, волейбол, лёгкая атлетика и художественная гимнастика."
+      : "Toshkentda bolalar uchun basketbol, futbol, voleybol, yengil atletika va badiiy gimnastika.");
+
+  const image = cms.media.find((item) =>
+    item.contentType?.startsWith("image/")
+  )?.url;
+
+  return buildPublicMetadata({
+    locale,
+    path: "",
+    title,
+    description,
+    images: image ? [image] : [],
+    absoluteTitle: true
+  });
+}
+
 
 function imageStyle(url?: string | null) {
   return url ? { backgroundImage: `url("${url}")` } : undefined;
@@ -252,8 +300,32 @@ export default async function PublicHome({
     sectionText(sections, `trial${index + 1}Body`, locale, body)
   ]);
 
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SportsOrganization",
+    name: "SHARK TEAM",
+    url: absoluteUrl(`/${locale}`),
+    areaServed: {
+      "@type": "City",
+      name: locale === "ru" ? "Ташкент" : "Toshkent"
+    },
+    description: copy.lead
+  };
+
+  const homeFaqJsonLd = cms.faq.length
+    ? faqJsonLd(
+        cms.faq.map((item) => ({
+          question: locale === "ru" ? item.questionRu : item.questionUz,
+          answer: locale === "ru" ? item.answerRu : item.answerUz
+        }))
+      )
+    : null;
+
   return (
-    <main className="page-main shark-home">
+    <>
+      <JsonLd data={organizationJsonLd} />
+      {homeFaqJsonLd ? <JsonLd data={homeFaqJsonLd} /> : null}
+      <main className="page-main shark-home">
       <section className="shark-hero">
         <div className="shark-hero-copy">
           <p className="eyebrow">{copy.eyebrow}</p>
@@ -590,6 +662,7 @@ export default async function PublicHome({
           <Link className="button secondary" href={`/${locale}/sports`}>{copy.chooseSport}</Link>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
