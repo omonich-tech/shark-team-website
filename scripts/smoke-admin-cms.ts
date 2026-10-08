@@ -219,6 +219,11 @@ async function main() {
     cookie
   );
 
+  const groupStart = new Date();
+  const groupEnd = new Date(groupStart.getTime() + 45 * 24 * 60 * 60 * 1000);
+  const groupStartDate = groupStart.toISOString().slice(0, 10);
+  const groupEndDate = groupEnd.toISOString().slice(0, 10);
+
   const groupPayload = await json(
     "/api/admin/groups",
     "POST",
@@ -233,6 +238,10 @@ async function main() {
       capacityTrial: null,
       status: "DRAFT",
       enrollmentStatus: "PAUSED",
+      level: "CI Beginner",
+      notesInternal: "CI internal group note",
+      startDate: groupStartDate,
+      endDate: groupEndDate,
       schedule: [
         { weekday: "MONDAY", start: "10:00", end: "11:00" },
         { weekday: "WEDNESDAY", start: "10:00", end: "11:00" }
@@ -247,15 +256,23 @@ async function main() {
     `/api/admin/groups/${groupId}`,
     "PATCH",
     {
+      branchId,
+      sportId,
+      primaryCoachId: coachId,
+      internalName: "CI Volleyball 10-12 Updated",
       status: "ACTIVE",
       enrollmentStatus: "OPEN",
       ageMin: 10,
       ageMax: 12,
-      capacityRegular: 18,
-      capacityTrial: 1,
+      capacityRegular: 19,
+      capacityTrial: 2,
+      level: "CI Intermediate",
+      notesInternal: "CI updated group note",
+      startDate: groupStartDate,
+      endDate: groupEndDate,
       schedule: [
-        { weekday: "MONDAY", start: "10:00", end: "11:00" },
-        { weekday: "WEDNESDAY", start: "10:00", end: "11:00" }
+        { weekday: "TUESDAY", start: "10:30", end: "11:30" },
+        { weekday: "THURSDAY", start: "10:30", end: "11:30" }
       ]
     },
     cookie
