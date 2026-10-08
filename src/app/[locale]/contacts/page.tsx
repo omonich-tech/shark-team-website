@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -9,6 +10,11 @@ import {
   sectionText
 } from "@/lib/content-sections";
 import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
+import {
+  absoluteUrl,
+  breadcrumbJsonLd,
+  buildPublicMetadata
+} from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +29,12 @@ export async function generateMetadata({
   const page = await tryGetPublishedContentPage("contacts");
   if (!page) return {};
 
-  return {
+  const image = page.media.find((item) =>
+    item.contentType?.startsWith("image/")
+  )?.url;
+  return buildPublicMetadata({
+    locale,
+    path: "/contacts",
     title:
       (locale === "ru"
         ? page.content.seoTitleRu
@@ -35,9 +46,9 @@ export async function generateMetadata({
         : page.content.seoDescriptionUz) ??
       (locale === "ru"
         ? page.content.heroLeadRu
-        : page.content.heroLeadUz) ??
-      undefined
-  };
+        : page.content.heroLeadUz),
+    images: image ? [image] : []
+  });
 }
 
 export default async function ContactsPage({
@@ -162,8 +173,34 @@ export default async function ContactsPage({
       : null
   ].filter(Boolean) as Array<{ label: string; value: string; href: string }>;
 
+  const structuredData = [
+    breadcrumbJsonLd([
+      { name: "SHARK TEAM", path: `/${locale}` },
+      {
+        name: locale === "ru" ? "Контакты" : "Kontaktlar",
+        path: `/${locale}/contacts`
+      }
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "ContactPage",
+      name: title,
+      url: absoluteUrl(`/${locale}/contacts`),
+      description: lead || undefined,
+      mainEntity: {
+        "@type": "SportsOrganization",
+        name: "SHARK TEAM",
+        telephone: content.contactPhone ?? undefined,
+        email: content.contactEmail ?? undefined,
+        url: absoluteUrl(`/${locale}`)
+      }
+    }
+  ];
+
   return (
-    <main className="page-main">
+    <>
+      <JsonLd data={structuredData} />
+      <main className="page-main">
       <section className="contacts-hero">
         <div className="contacts-hero-copy">
           <p className="eyebrow">{eyebrow}</p>
@@ -311,6 +348,7 @@ export default async function ContactsPage({
           {locale === "ru" ? "Записаться →" : "Yozilish →"}
         </Link>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
