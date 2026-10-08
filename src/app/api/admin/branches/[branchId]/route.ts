@@ -2,6 +2,8 @@ import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { absoluteUrl } from "@/lib/seo";
+import { submitIndexNowUrls } from "@/lib/indexnow";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
 
@@ -157,6 +159,21 @@ export async function PATCH(
   for (const value of [before.slug, after.slug]) {
     revalidatePath(`/ru/branches/${value}`);
     revalidatePath(`/uz/branches/${value}`);
+  }
+
+  if (process.env.VERCEL_ENV === "production") {
+    try {
+      await submitIndexNowUrls([
+        absoluteUrl("/ru"),
+        absoluteUrl("/uz"),
+        absoluteUrl("/ru/branches"),
+        absoluteUrl("/uz/branches"),
+        absoluteUrl(`/ru/branches/${after.slug}`),
+        absoluteUrl(`/uz/branches/${after.slug}`)
+      ]);
+    } catch (error) {
+      console.error("IndexNow branch update notification failed", error);
+    }
   }
 
   return NextResponse.json({ ok: true, branch: after });

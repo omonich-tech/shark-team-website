@@ -146,8 +146,25 @@ async function main() {
   );
   assert(
     branchPage.body.includes('"@type":"SportsActivityLocation"') &&
-      branchPage.body.includes('"@type":"PostalAddress"'),
+      branchPage.body.includes('"@type":"PostalAddress"') &&
+      branchPage.body.includes('"@type":"GeoCoordinates"') &&
+      branchPage.body.includes('"@type":"OpeningHoursSpecification"'),
     "Branch local structured data is incomplete"
+  );
+  assert(
+    branchPage.body.includes("41.352103") &&
+      branchPage.body.includes("69.298296"),
+    "Branch coordinates are missing from structured data"
+  );
+  assert(
+    branchPage.body.includes("Юнусабад") &&
+      branchPage.body.includes("Шахристан"),
+    "Branch local-search copy is incomplete"
+  );
+  assert(
+    branchPage.body.includes('"@type":"FAQPage"') &&
+      branchPage.body.includes("Где находится секция баскетбола SHARK TEAM"),
+    "Branch local FAQ structured data is missing"
   );
 
   const coachPath = "/ru/coaches/" + coach.id;

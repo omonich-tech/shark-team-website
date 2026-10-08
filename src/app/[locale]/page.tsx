@@ -303,6 +303,7 @@ export default async function PublicHome({
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "SportsOrganization",
+    "@id": absoluteUrl("/#organization"),
     name: "SHARK TEAM",
     url: absoluteUrl(`/${locale}`),
     areaServed: {

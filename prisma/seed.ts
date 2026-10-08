@@ -96,10 +96,20 @@ async function main() {
       postalCode: "100099",
       landmarkRu: "Метро «Шахристан»",
       landmarkUz: "«Shahriston» metro bekati",
+      latitude: 41.352103,
+      longitude: 69.298296,
+      seoTitleRu: "Баскетбол для детей на Юнусабаде — SHARK TEAM, Школа №117",
+      seoTitleUz: "Yunusobodda bolalar basketboli — SHARK TEAM, 117-maktab",
+      seoDescriptionRu:
+        "Детская секция баскетбола SHARK TEAM в Юнусабадском районе Ташкента, рядом с метро «Шахристан». Школа №117, ул. Хитой, 9. Группы 6–15 лет, Вт/Чт/Сб.",
+      seoDescriptionUz:
+        "Toshkent Yunusobod tumanidagi SHARK TEAM bolalar basketbol seksiyasi, «Shahriston» metrosi yaqinida. 117-maktab, Xitoy ko‘chasi, 9. 6–15 yosh, Sesh/Pay/Shan.",
       workingHoursRu: "Вт / Чт / Сб, 17:00–20:00",
       workingHoursUz: "Sesh / Pay / Shan, 17:00–20:00",
-      facilityNotesRu: "Спортивный зал школы. Баскетбол.",
-      facilityNotesUz: "Maktab sport zali. Basketbol."
+      facilityNotesRu:
+        "Детская секция баскетбола SHARK TEAM на Юнусабаде. Тренировки проходят в спортивном зале школы №117 рядом с метро «Шахристан».",
+      facilityNotesUz:
+        "Yunusoboddagi SHARK TEAM bolalar basketbol seksiyasi. Mashg‘ulotlar «Shahriston» metrosi yaqinidagi 117-maktab sport zalida o‘tadi."
     },
     create: {
       id: BRANCH_ID,
@@ -115,10 +125,20 @@ async function main() {
       postalCode: "100099",
       landmarkRu: "Метро «Шахристан»",
       landmarkUz: "«Shahriston» metro bekati",
+      latitude: 41.352103,
+      longitude: 69.298296,
+      seoTitleRu: "Баскетбол для детей на Юнусабаде — SHARK TEAM, Школа №117",
+      seoTitleUz: "Yunusobodda bolalar basketboli — SHARK TEAM, 117-maktab",
+      seoDescriptionRu:
+        "Детская секция баскетбола SHARK TEAM в Юнусабадском районе Ташкента, рядом с метро «Шахристан». Школа №117, ул. Хитой, 9. Группы 6–15 лет, Вт/Чт/Сб.",
+      seoDescriptionUz:
+        "Toshkent Yunusobod tumanidagi SHARK TEAM bolalar basketbol seksiyasi, «Shahriston» metrosi yaqinida. 117-maktab, Xitoy ko‘chasi, 9. 6–15 yosh, Sesh/Pay/Shan.",
       workingHoursRu: "Вт / Чт / Сб, 17:00–20:00",
       workingHoursUz: "Sesh / Pay / Shan, 17:00–20:00",
-      facilityNotesRu: "Спортивный зал школы. Баскетбол.",
-      facilityNotesUz: "Maktab sport zali. Basketbol."
+      facilityNotesRu:
+        "Детская секция баскетбола SHARK TEAM на Юнусабаде. Тренировки проходят в спортивном зале школы №117 рядом с метро «Шахристан».",
+      facilityNotesUz:
+        "Yunusoboddagi SHARK TEAM bolalar basketbol seksiyasi. Mashg‘ulotlar «Shahriston» metrosi yaqinidagi 117-maktab sport zalida o‘tadi."
     }
   });
 
@@ -267,6 +287,76 @@ async function main() {
       status: LifecycleStatus.ACTIVE
     }
   });
+
+  const branchFaqItems = [
+    {
+      id: "FAQ-S117-LOCATION-01",
+      questionRu: "Где находится секция баскетбола SHARK TEAM на Юнусабаде?",
+      questionUz: "Yunusoboddagi SHARK TEAM basketbol seksiyasi qayerda joylashgan?",
+      answerRu:
+        "Тренировки проходят в спортивном зале школы №117: ул. Хитой, 9, Юнусабадский район, Ташкент, рядом с метро «Шахристан».",
+      answerUz:
+        "Mashg‘ulotlar 117-maktab sport zalida o‘tadi: Xitoy ko‘chasi, 9, Yunusobod tumani, Toshkent, «Shahriston» metro bekati yaqinida.",
+      sortOrder: 10
+    },
+    {
+      id: "FAQ-S117-AGE-01",
+      questionRu: "Для какого возраста подходит баскетбол в школе №117?",
+      questionUz: "117-maktabdagi basketbol qaysi yoshdagilar uchun?",
+      answerRu:
+        "В филиале работают баскетбольные группы для детей от 6 до 15 лет. Ребёнка подбирают в группу по возрасту.",
+      answerUz:
+        "Filialda 6 yoshdan 15 yoshgacha bo‘lgan bolalar uchun basketbol guruhlari mavjud. Bola yoshiga mos guruhga joylashtiriladi.",
+      sortOrder: 20
+    },
+    {
+      id: "FAQ-S117-SCHEDULE-01",
+      questionRu: "Когда проходят тренировки по баскетболу на Юнусабаде?",
+      questionUz: "Yunusobodda basketbol mashg‘ulotlari qachon o‘tadi?",
+      answerRu:
+        "Тренировки проходят по вторникам, четвергам и субботам с 17:00 до 20:00. Конкретное время зависит от возрастной группы.",
+      answerUz:
+        "Mashg‘ulotlar seshanba, payshanba va shanba kunlari 17:00 dan 20:00 gacha o‘tadi. Aniq vaqt yosh guruhiga bog‘liq.",
+      sortOrder: 30
+    },
+    {
+      id: "FAQ-S117-TRIAL-01",
+      questionRu: "Можно ли записаться на пробное занятие?",
+      questionUz: "Sinov mashg‘ulotiga yozilish mumkinmi?",
+      answerRu:
+        "Да. На странице филиала можно выбрать пробное занятие, подходящую возрастную группу и доступное время.",
+      answerUz:
+        "Ha. Filial sahifasida sinov mashg‘ulotini, yoshga mos guruhni va mavjud vaqtni tanlash mumkin.",
+      sortOrder: 40
+    }
+  ] as const;
+
+  for (const item of branchFaqItems) {
+    await prisma.faqItem.upsert({
+      where: { id: item.id },
+      update: {
+        status: ContentStatus.PUBLISHED,
+        branchId: BRANCH_ID,
+        sportId: null,
+        questionRu: item.questionRu,
+        questionUz: item.questionUz,
+        answerRu: item.answerRu,
+        answerUz: item.answerUz,
+        sortOrder: item.sortOrder
+      },
+      create: {
+        id: item.id,
+        status: ContentStatus.PUBLISHED,
+        branchId: BRANCH_ID,
+        sportId: null,
+        questionRu: item.questionRu,
+        questionUz: item.questionUz,
+        answerRu: item.answerRu,
+        answerUz: item.answerUz,
+        sortOrder: item.sortOrder
+      }
+    });
+  }
 
   await prisma.contentPage.upsert({
     where: { slug: "brand" },

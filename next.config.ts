@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const isProduction = process.env.NODE_ENV === "production";
-const indexNowKey = process.env.INDEXNOW_KEY?.trim() ?? "";
+// IndexNow keys are public proof-of-control values, not credentials.
+const indexNowKey =
+  process.env.INDEXNOW_KEY?.trim() || "6da185bf00fc85720816942a603c56b5";
 const hasValidIndexNowKey = /^[A-Za-z0-9-]{8,128}$/.test(indexNowKey);
 
 const securityHeaders = [

@@ -80,7 +80,7 @@ async function main() {
     "Maintenance job must reject missing authorization"
   );
 
-  const sessionToRestore = await prisma.trainingSession.findFirst({
+  const safeSessions = await prisma.trainingSession.findMany({
     where: {
       startsAt: { gt: new Date() },
       trialBookings: { none: {} }
@@ -88,7 +88,23 @@ async function main() {
     orderBy: { startsAt: "asc" }
   });
 
-  assert(sessionToRestore, "No safe Session found for maintenance test");
+  const sessionsByGroup = new Map<string, typeof safeSessions>();
+  for (const session of safeSessions) {
+    const groupSessions = sessionsByGroup.get(session.groupId) ?? [];
+    groupSessions.push(session);
+    sessionsByGroup.set(session.groupId, groupSessions);
+  }
+
+  const testSessions = Array.from(sessionsByGroup.values()).find(
+    (sessions) => sessions.length >= 2
+  );
+
+  assert(
+    testSessions && testSessions.length >= 2,
+    "No group with two safe future Sessions found for maintenance test"
+  );
+
+  const [sessionToRestore, replacementSession] = testSessions;
 
   const sessionSnapshot = {
     groupId: sessionToRestore.groupId,
@@ -98,19 +114,6 @@ async function main() {
   await prisma.trainingSession.delete({
     where: { id: sessionToRestore.id }
   });
-
-  const replacementSession = await prisma.trainingSession.findFirst({
-    where: {
-      groupId: sessionToRestore.groupId,
-      startsAt: { gt: new Date() }
-    },
-    orderBy: { startsAt: "asc" }
-  });
-
-  assert(
-    replacementSession,
-    "No Session available for expired HOLD test"
-  );
 
   const lead = await prisma.lead.create({
     data: {

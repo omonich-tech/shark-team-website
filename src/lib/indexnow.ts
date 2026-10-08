@@ -1,10 +1,12 @@
 import { appUrl } from "@/lib/seo";
 
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
+export const DEFAULT_INDEXNOW_KEY = "6da185bf00fc85720816942a603c56b5";
 const INDEXNOW_KEY_RE = /^[A-Za-z0-9-]{8,128}$/;
 
 export function getIndexNowKey() {
-  const key = process.env.INDEXNOW_KEY?.trim() ?? "";
+  const key =
+    process.env.INDEXNOW_KEY?.trim() || DEFAULT_INDEXNOW_KEY;
 
   if (!key) {
     return null;
