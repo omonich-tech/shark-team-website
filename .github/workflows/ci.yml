@@ -307,6 +307,9 @@ jobs:
       - name: Smoke test admin CMS
         run: npm run smoke:admin-cms
 
+      - name: Smoke test structured content CMS
+        run: npm run smoke:content-cms
+
       - name: Smoke test production hardening
         run: npm run smoke:production
 
