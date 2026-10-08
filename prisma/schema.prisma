@@ -961,6 +961,7 @@ model ContentPage {
   seoTitleUz       String?
   seoDescriptionRu String?
   seoDescriptionUz String?
+  sectionsJson     Json?
   publishedAt      DateTime?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
