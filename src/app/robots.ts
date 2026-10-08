@@ -19,9 +19,7 @@ export default function robots(): MetadataRoute.Robots {
         "/admin-login",
         "/coach",
         "/coach-login",
-        "/api",
-        "/ru/trial",
-        "/uz/trial"
+        "/api"
       ]
     },
     sitemap: `${base}/sitemap.xml`
