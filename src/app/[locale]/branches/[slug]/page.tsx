@@ -156,6 +156,27 @@ export default async function PublicBranchPage({
           </div>
         </section>
       ) : null}
+
+      {data.faq.length > 0 ? (
+        <section className="content-section">
+          <div className="section-heading">
+            <p className="eyebrow">FAQ</p>
+            <h2>
+              {locale === "ru"
+                ? "Вопросы о филиале"
+                : "Filial haqida savollar"}
+            </h2>
+          </div>
+          <div className="faq-list shark-faq-list">
+            {data.faq.map((item) => (
+              <details className="faq-item" key={item.id}>
+                <summary>{pickLocalized(locale, item.question)}</summary>
+                <p>{pickLocalized(locale, item.answer)}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }
