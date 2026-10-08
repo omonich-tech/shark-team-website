@@ -1,9 +1,16 @@
 import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+
+function optionalString(value: unknown, max: number) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  return value.trim().slice(0, max) || null;
+}
 
 function optionalInt(value: unknown, min: number, max: number) {
   if (value === null || value === undefined || value === "") return null;
@@ -87,6 +94,10 @@ export async function POST(request: NextRequest) {
         typeof body.shortDescriptionUz === "string"
           ? body.shortDescriptionUz.trim().slice(0, 1000) || null
           : null,
+      seoTitleRu: optionalString(body.seoTitleRu, 180),
+      seoTitleUz: optionalString(body.seoTitleUz, 180),
+      seoDescriptionRu: optionalString(body.seoDescriptionRu, 320),
+      seoDescriptionUz: optionalString(body.seoDescriptionUz, 320),
       ageMin,
       ageMax,
       sortOrder: sortOrder ?? 0
@@ -100,6 +111,13 @@ export async function POST(request: NextRequest) {
     entityId: sport.id,
     after: sport
   });
+
+  revalidatePath("/ru");
+  revalidatePath("/uz");
+  revalidatePath("/ru/sports");
+  revalidatePath("/uz/sports");
+  revalidatePath(`/ru/sports/${sport.slug}`);
+  revalidatePath(`/uz/sports/${sport.slug}`);
 
   return NextResponse.json({ ok: true, sport }, { status: 201 });
 }
