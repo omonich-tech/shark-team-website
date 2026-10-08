@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getSchool117PublicData } from "@/server/public-data/school-117";
+import { getBranchPublicData } from "@/server/public-data/branch";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const branch = await getSchool117PublicData();
+    const branch = await getBranchPublicData("school-117");
 
     if (!branch) {
       return NextResponse.json(
