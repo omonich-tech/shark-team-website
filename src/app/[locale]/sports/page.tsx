@@ -1,10 +1,35 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
 import { getSportCatalogEntry } from "@/lib/sport-catalog";
+import { absoluteUrl, breadcrumbJsonLd, buildPublicMetadata } from "@/lib/seo";
 import { tryGetPublicHomeData } from "@/server/public-data/home";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isPublicLocale(locale)) return {};
+
+  return buildPublicMetadata({
+    locale,
+    path: "/sports",
+    title:
+      locale === "ru"
+        ? "Спортивные секции для детей в Ташкенте"
+        : "Toshkentdagi bolalar sport seksiyalari",
+    description:
+      locale === "ru"
+        ? "Виды спорта SHARK TEAM для детей: группы по возрасту, филиалы, тренеры и запись на пробное занятие."
+        : "SHARK TEAM bolalar sport yo‘nalishlari: yosh guruhlari, filiallar, murabbiylar va sinov mashg‘ulotiga yozilish."
+  });
+}
 
 export default async function SportsPage({
   params
@@ -17,8 +42,30 @@ export default async function SportsPage({
   const data = await tryGetPublicHomeData();
   const sports = data?.sports ?? [];
 
+  const structuredData = [
+    breadcrumbJsonLd([
+      { name: "SHARK TEAM", path: `/${locale}` },
+      {
+        name: locale === "ru" ? "Виды спорта" : "Sport turlari",
+        path: `/${locale}/sports`
+      }
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      itemListElement: sports.map((sport, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: locale === "ru" ? sport.nameRu : sport.nameUz,
+        url: absoluteUrl(`/${locale}/sports/${sport.slug}`)
+      }))
+    }
+  ];
+
   return (
-    <main className="page-main">
+    <>
+      <JsonLd data={structuredData} />
+      <main className="page-main">
       <section className="page-hero compact shark-page-hero">
         <p className="eyebrow">SHARK TEAM</p>
         <h1>{locale === "ru" ? "Наши виды спорта" : "Sport yo‘nalishlarimiz"}</h1>
@@ -101,6 +148,7 @@ export default async function SportsPage({
           ) : null}
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
