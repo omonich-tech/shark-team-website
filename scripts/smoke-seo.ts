@@ -161,6 +161,11 @@ async function main() {
       branchPage.body.includes("Шахристан"),
     "Branch local-search copy is incomplete"
   );
+  assert(
+    branchPage.body.includes('"@type":"FAQPage"') &&
+      branchPage.body.includes("Где находится секция баскетбола SHARK TEAM"),
+    "Branch local FAQ structured data is missing"
+  );
 
   const coachPath = "/ru/coaches/" + coach.id;
   const coachPage = await html(coachPath);
