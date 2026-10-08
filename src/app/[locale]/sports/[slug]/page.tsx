@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import {
   ContentStatus,
@@ -10,8 +12,71 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { isPublicLocale, weekdayLabel } from "@/lib/public-i18n";
 import { getSportCatalogEntry } from "@/lib/sport-catalog";
+import {
+  absoluteUrl,
+  breadcrumbJsonLd,
+  buildPublicMetadata,
+  faqJsonLd
+} from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string; slug: string }>;
+}): Promise<Metadata> {
+  const { locale, slug } = await params;
+  if (!isPublicLocale(locale)) return {};
+
+  const prisma = getPrisma();
+  const sport = await prisma.sport.findFirst({
+    where: { slug, status: LifecycleStatus.ACTIVE }
+  });
+
+  if (!sport) return {};
+
+  const image = await prisma.mediaAsset.findFirst({
+    where: {
+      targetType: MediaTargetType.SPORT,
+      targetId: sport.id,
+      contentType: { startsWith: "image/" },
+      OR: [
+        { containsMinors: false },
+        {
+          containsMinors: true,
+          consentStatus: MediaConsentStatus.APPROVED
+        }
+      ]
+    },
+    orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }]
+  });
+
+  const name = locale === "ru" ? sport.nameRu : sport.nameUz;
+  const title =
+    (locale === "ru" ? sport.seoTitleRu : sport.seoTitleUz) ??
+    (locale === "ru"
+      ? `${name} для детей в Ташкенте`
+      : `Toshkentda bolalar uchun ${name}`);
+  const description =
+    (locale === "ru"
+      ? sport.seoDescriptionRu
+      : sport.seoDescriptionUz) ??
+    (locale === "ru"
+      ? sport.shortDescriptionRu
+      : sport.shortDescriptionUz) ??
+    (locale === "ru"
+      ? `${name} в SHARK TEAM: группы по возрасту, тренеры, филиалы и запись на пробное занятие в Ташкенте.`
+      : `SHARK TEAM’da ${name}: yosh guruhlari, murabbiylar, filiallar va sinov mashg‘ulotiga yozilish.`);
+
+  return buildPublicMetadata({
+    locale,
+    path: `/sports/${slug}`,
+    title,
+    description,
+    images: image ? [image.url] : []
+  });
+}
 
 function minutes(value: number) {
   const hours = Math.floor(value / 60);
@@ -97,8 +162,55 @@ export default async function SportPage({
     fallback?.mark ??
     String(Math.max(1, sport.sortOrder + 1)).padStart(2, "0");
 
+  const structuredData = [
+    breadcrumbJsonLd([
+      {
+        name: "SHARK TEAM",
+        path: `/${locale}`
+      },
+      {
+        name: locale === "ru" ? "Виды спорта" : "Sport turlari",
+        path: `/${locale}/sports`
+      },
+      {
+        name,
+        path: `/${locale}/sports/${slug}`
+      }
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name,
+      description,
+      url: absoluteUrl(`/${locale}/sports/${slug}`),
+      provider: {
+        "@type": "SportsOrganization",
+        name: "SHARK TEAM",
+        url: absoluteUrl(`/${locale}`)
+      },
+      areaServed: {
+        "@type": "City",
+        name: locale === "ru" ? "Ташкент" : "Toshkent"
+      },
+      image: hero?.url
+    },
+    ...(faq.length
+      ? [
+          faqJsonLd(
+            faq.map((item) => ({
+              question:
+                locale === "ru" ? item.questionRu : item.questionUz,
+              answer: locale === "ru" ? item.answerRu : item.answerUz
+            }))
+          )
+        ]
+      : [])
+  ];
+
   return (
-    <main className="page-main">
+    <>
+      <JsonLd data={structuredData} />
+      <main className="page-main">
       <section className="sport-detail-hero">
         <div className="sport-detail-copy">
           <Link className="shark-back-link" href={`/${locale}/sports`}>
@@ -213,6 +325,7 @@ export default async function SportPage({
           </div>
         </section>
       ) : null}
-    </main>
+      </main>
+    </>
   );
 }
