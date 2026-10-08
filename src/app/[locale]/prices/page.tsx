@@ -1,12 +1,37 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/public/json-ld";
 import {
   LifecycleStatus,
   PriceProductType
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { formatUzs, isPublicLocale } from "@/lib/public-i18n";
+import { breadcrumbJsonLd, buildPublicMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isPublicLocale(locale)) return {};
+
+  return buildPublicMetadata({
+    locale,
+    path: "/prices",
+    title:
+      locale === "ru"
+        ? "Цены на спортивные секции SHARK TEAM"
+        : "SHARK TEAM sport seksiyalari narxlari",
+    description:
+      locale === "ru"
+        ? "Актуальные цены SHARK TEAM: пробные занятия и абонементы детских спортивных секций в Ташкенте."
+        : "SHARK TEAM amaldagi narxlari: Toshkentdagi bolalar sport seksiyalari uchun sinov mashg‘ulotlari va abonementlar."
+  });
+}
 
 export default async function PricesPage({
   params
@@ -38,7 +63,17 @@ export default async function PricesPage({
   });
 
   return (
-    <main className="page-main">
+    <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "SHARK TEAM", path: `/${locale}` },
+          {
+            name: locale === "ru" ? "Цены" : "Narxlar",
+            path: `/${locale}/prices`
+          }
+        ])}
+      />
+      <main className="page-main">
       <section className="page-hero compact shark-page-hero">
         <p className="eyebrow">{locale === "ru" ? "ЦЕНЫ" : "NARXLAR"}</p>
         <h1>{locale === "ru" ? "Стоимость занятий SHARK TEAM" : "SHARK TEAM mashg‘ulotlari narxi"}</h1>
@@ -77,6 +112,7 @@ export default async function PricesPage({
           ) : null}
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
