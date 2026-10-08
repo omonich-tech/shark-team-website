@@ -116,9 +116,13 @@ export default async function PublicBranchPage({
     .map((sport) => pickLocalized(locale, sport.name))
     .join(" · ");
   const localHeading =
-    locale === "ru"
-      ? `${sportsLabel} для детей — ${pickLocalized(locale, data.district) || "Ташкент"}`
-      : `Bolalar uchun ${sportsLabel} — ${pickLocalized(locale, data.district) || "Toshkent"}`;
+    slug === "school-117"
+      ? locale === "ru"
+        ? "Баскетбол для детей на Юнусабаде"
+        : "Yunusobodda bolalar uchun basketbol"
+      : locale === "ru"
+        ? `${sportsLabel} для детей — ${pickLocalized(locale, data.district) || "Ташкент"}`
+        : `Bolalar uchun ${sportsLabel} — ${pickLocalized(locale, data.district) || "Toshkent"}`;
   const facilityNotes = pickLocalized(locale, data.facilityNotes);
   const mapUrl = data.coordinates
     ? `https://yandex.uz/maps/?ll=${data.coordinates.longitude}%2C${data.coordinates.latitude}&z=17&pt=${data.coordinates.longitude},${data.coordinates.latitude}`
@@ -287,7 +291,9 @@ export default async function PublicBranchPage({
 
       <section className="content-section">
         <div className="section-heading">
-          <p className="eyebrow">LOCAL · SHARK TEAM</p>
+          <p className="eyebrow">
+            {locale === "ru" ? "ЮНУСАБАД · SHARK TEAM" : "YUNUSOBOD · SHARK TEAM"}
+          </p>
           <h2>{localHeading}</h2>
         </div>
         <p className="lead">
