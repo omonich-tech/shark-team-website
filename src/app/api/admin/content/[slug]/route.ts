@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { ContentStatus, Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -173,6 +174,11 @@ export async function PATCH(
     before,
     after
   });
+
+  const publicPath =
+    slug === "home" ? "" : `/${slug}`;
+  revalidatePath(`/ru${publicPath}`);
+  revalidatePath(`/uz${publicPath}`);
 
   return NextResponse.json({ ok: true, content: after });
 }
