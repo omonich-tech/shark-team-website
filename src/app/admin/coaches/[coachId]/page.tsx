@@ -68,7 +68,7 @@ export default async function AdminCoachEditPage({
           {coach.status === LifecycleStatus.ACTIVE ? (
             <Link
               className="button secondary dark"
-              href="/ru/coaches"
+              href={`/ru/coaches/${coach.id}`}
               target="_blank"
             >
               Открыть на сайте
