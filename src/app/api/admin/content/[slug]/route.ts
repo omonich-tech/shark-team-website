@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ContentStatus } from "@/generated/prisma/client";
+import { ContentStatus, Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
@@ -19,7 +19,20 @@ function sectionsJson(value: unknown) {
 
   const serialized = JSON.stringify(value);
   if (serialized.length > 30000) return false;
-  return value;
+
+  try {
+    return JSON.parse(serialized) as Prisma.InputJsonObject;
+  } catch {
+    return false;
+  }
+}
+
+function patchedString(
+  current: string | null,
+  value: unknown,
+  max: number
+) {
+  return value === undefined ? current : optionalString(value, max);
 }
 
 export async function PATCH(
@@ -68,56 +81,46 @@ export async function PATCH(
     );
   }
 
-  function currentOrString(
-    key: keyof typeof before,
-    value: unknown,
-    max: number
-  ) {
-    return value === undefined
-      ? (before[key] as string | null)
-      : optionalString(value, max);
-  }
-
   const fields = {
-    heroEyebrowRu: currentOrString("heroEyebrowRu", body.heroEyebrowRu, 120),
-    heroEyebrowUz: currentOrString("heroEyebrowUz", body.heroEyebrowUz, 120),
-    heroTitleRu: currentOrString("heroTitleRu", body.heroTitleRu, 180),
-    heroTitleUz: currentOrString("heroTitleUz", body.heroTitleUz, 180),
-    heroLeadRu: currentOrString("heroLeadRu", body.heroLeadRu, 700),
-    heroLeadUz: currentOrString("heroLeadUz", body.heroLeadUz, 700),
-    bodyRu: currentOrString("bodyRu", body.bodyRu, 6000),
-    bodyUz: currentOrString("bodyUz", body.bodyUz, 6000),
-    contactPhone: currentOrString("contactPhone", body.contactPhone, 80),
-    contactTelegram: currentOrString(
-      "contactTelegram",
+    heroEyebrowRu: patchedString(before.heroEyebrowRu, body.heroEyebrowRu, 120),
+    heroEyebrowUz: patchedString(before.heroEyebrowUz, body.heroEyebrowUz, 120),
+    heroTitleRu: patchedString(before.heroTitleRu, body.heroTitleRu, 180),
+    heroTitleUz: patchedString(before.heroTitleUz, body.heroTitleUz, 180),
+    heroLeadRu: patchedString(before.heroLeadRu, body.heroLeadRu, 700),
+    heroLeadUz: patchedString(before.heroLeadUz, body.heroLeadUz, 700),
+    bodyRu: patchedString(before.bodyRu, body.bodyRu, 6000),
+    bodyUz: patchedString(before.bodyUz, body.bodyUz, 6000),
+    contactPhone: patchedString(before.contactPhone, body.contactPhone, 80),
+    contactTelegram: patchedString(
+      before.contactTelegram,
       body.contactTelegram,
       300
     ),
-    contactInstagram: currentOrString(
-      "contactInstagram",
+    contactInstagram: patchedString(
+      before.contactInstagram,
       body.contactInstagram,
       300
     ),
-    contactEmail: currentOrString("contactEmail", body.contactEmail, 180),
-    contactHoursRu: currentOrString(
-      "contactHoursRu",
+    contactEmail: patchedString(before.contactEmail, body.contactEmail, 180),
+    contactHoursRu: patchedString(
+      before.contactHoursRu,
       body.contactHoursRu,
       300
     ),
-    contactHoursUz: currentOrString(
-      "contactHoursUz",
+    contactHoursUz: patchedString(
+      before.contactHoursUz,
       body.contactHoursUz,
       300
     ),
-    seoTitleRu: currentOrString("seoTitleRu", body.seoTitleRu, 180),
-    seoTitleUz: currentOrString("seoTitleUz", body.seoTitleUz, 180),
-    seoDescriptionRu: currentOrString(
-      "seoDescriptionRu",
+    seoTitleRu: patchedString(before.seoTitleRu, body.seoTitleRu, 180),
+    seoTitleUz: patchedString(before.seoTitleUz, body.seoTitleUz, 180),
+    seoDescriptionRu: patchedString(
+      before.seoDescriptionRu,
       body.seoDescriptionRu,
       320
     ),
-    seoDescriptionUz: currentOrString(
-      "seoDescriptionUz",
+    seoDescriptionUz: patchedString(
+      before.seoDescriptionUz,
       body.seoDescriptionUz,
       320
     )
@@ -149,7 +152,12 @@ export async function PATCH(
     data: {
       status,
       ...fields,
-      ...(sectionConfig !== undefined ? { sectionsJson: sectionConfig } : {}),
+      ...(sectionConfig !== undefined
+        ? {
+            sectionsJson:
+              sectionConfig === null ? Prisma.DbNull : sectionConfig
+          }
+        : {}),
       publishedAt:
         status === ContentStatus.PUBLISHED
           ? before.publishedAt ?? new Date()
