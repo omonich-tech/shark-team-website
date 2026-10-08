@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { ContentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -52,10 +53,16 @@ export async function POST(request: NextRequest) {
 
   const [branch, sport] = await Promise.all([
     branchId
-      ? prisma.branch.findUnique({ where: { id: branchId }, select: { id: true } })
+      ? prisma.branch.findUnique({
+          where: { id: branchId },
+          select: { id: true, slug: true }
+        })
       : Promise.resolve(null),
     sportId
-      ? prisma.sport.findUnique({ where: { id: sportId }, select: { id: true } })
+      ? prisma.sport.findUnique({
+          where: { id: sportId },
+          select: { id: true, slug: true }
+        })
       : Promise.resolve(null)
   ]);
 
@@ -86,6 +93,19 @@ export async function POST(request: NextRequest) {
     entityId: faq.id,
     after: faq
   });
+
+  if (!branchId && !sportId) {
+    revalidatePath("/ru");
+    revalidatePath("/uz");
+  }
+  if (branch?.slug) {
+    revalidatePath(`/ru/branches/${branch.slug}`);
+    revalidatePath(`/uz/branches/${branch.slug}`);
+  }
+  if (sport?.slug) {
+    revalidatePath(`/ru/sports/${sport.slug}`);
+    revalidatePath(`/uz/sports/${sport.slug}`);
+  }
 
   return NextResponse.json({ ok: true, faq }, { status: 201 });
 }
