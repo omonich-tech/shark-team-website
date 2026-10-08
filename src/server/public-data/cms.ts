@@ -29,7 +29,9 @@ export async function getPublishedHomeCms() {
   const [faq, pageMedia] = await Promise.all([
     prisma.faqItem.findMany({
       where: {
-        status: ContentStatus.PUBLISHED
+        status: ContentStatus.PUBLISHED,
+        branchId: null,
+        sportId: null
       },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
     }),
