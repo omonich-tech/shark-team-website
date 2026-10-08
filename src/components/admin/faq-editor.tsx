@@ -189,6 +189,19 @@ export function FaqEditor({
               }
             />
           </label>
+          <label className="admin-field">
+            <span>Порядок</span>
+            <input
+              type="number"
+              value={draft.sortOrder}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  sortOrder: Number(event.target.value)
+                }))
+              }
+            />
+          </label>
         </div>
 
         <button className="button primary">Добавить FAQ</button>
