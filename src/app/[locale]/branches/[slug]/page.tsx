@@ -112,6 +112,45 @@ export default async function PublicBranchPage({
     locale === "ru"
       ? `${branchName}: ${pickLocalized(locale, data.address)}. Спортивные группы SHARK TEAM, расписание и пробное занятие.`
       : `${branchName}: ${pickLocalized(locale, data.address)}. SHARK TEAM guruhlari, jadval va sinov mashg‘uloti.`;
+  const sportsLabel = data.sports
+    .map((sport) => pickLocalized(locale, sport.name))
+    .join(" · ");
+  const localHeading =
+    locale === "ru"
+      ? `${sportsLabel} для детей — ${pickLocalized(locale, data.district) || "Ташкент"}`
+      : `Bolalar uchun ${sportsLabel} — ${pickLocalized(locale, data.district) || "Toshkent"}`;
+  const facilityNotes = pickLocalized(locale, data.facilityNotes);
+  const mapUrl = data.coordinates
+    ? `https://yandex.uz/maps/?ll=${data.coordinates.longitude}%2C${data.coordinates.latitude}&z=17&pt=${data.coordinates.longitude},${data.coordinates.latitude}`
+    : null;
+
+  const schemaDay: Record<string, string> = {
+    MONDAY: "Monday",
+    TUESDAY: "Tuesday",
+    WEDNESDAY: "Wednesday",
+    THURSDAY: "Thursday",
+    FRIDAY: "Friday",
+    SATURDAY: "Saturday",
+    SUNDAY: "Sunday"
+  };
+  const openingByDay = new Map<string, { opens: string; closes: string }>();
+  for (const group of data.groups) {
+    for (const item of group.schedule) {
+      const current = openingByDay.get(item.weekday);
+      openingByDay.set(item.weekday, {
+        opens: current && current.opens < item.start ? current.opens : item.start,
+        closes: current && current.closes > item.end ? current.closes : item.end
+      });
+    }
+  }
+  const openingHoursSpecification = Array.from(openingByDay.entries()).map(
+    ([weekday, hours]) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: schemaDay[weekday] ?? weekday,
+      opens: hours.opens,
+      closes: hours.closes
+    })
+  );
 
   const structuredData = [
     breadcrumbJsonLd([
@@ -128,11 +167,35 @@ export default async function PublicBranchPage({
     {
       "@context": "https://schema.org",
       "@type": "SportsActivityLocation",
+      "@id": absoluteUrl(`/${locale}/branches/${slug}#location`),
       name: branchName,
       url: absoluteUrl(`/${locale}/branches/${slug}`),
       description: branchDescription,
+      parentOrganization: {
+        "@id": absoluteUrl("/#organization"),
+        name: "SHARK TEAM"
+      },
+      areaServed: [
+        {
+          "@type": "City",
+          name: locale === "ru" ? "Ташкент" : "Toshkent"
+        },
+        ...(pickLocalized(locale, data.district)
+          ? [
+              {
+                "@type": "AdministrativeArea",
+                name: pickLocalized(locale, data.district)
+              }
+            ]
+          : [])
+      ],
       telephone: data.publicPhone ?? undefined,
       image: hero?.url,
+      hasMap: mapUrl ?? undefined,
+      openingHoursSpecification:
+        openingHoursSpecification.length > 0
+          ? openingHoursSpecification
+          : undefined,
       address: {
         "@type": "PostalAddress",
         streetAddress: pickLocalized(locale, data.address),
@@ -183,6 +246,16 @@ export default async function PublicBranchPage({
             <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?branch=${encodeURIComponent(slug)}`}>
               {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
             </Link>
+            {mapUrl ? (
+              <a
+                className="button secondary"
+                href={mapUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {locale === "ru" ? "Открыть на карте" : "Xaritada ochish"}
+              </a>
+            ) : null}
           </div>
         </div>
         <div
@@ -205,7 +278,24 @@ export default async function PublicBranchPage({
             <span>{locale === "ru" ? "Направления" : "Yo‘nalishlar"}</span>
             <strong>{data.sports.map((sport) => pickLocalized(locale, sport.name)).join(" · ")}</strong>
           </div>
+          <div>
+            <span>{locale === "ru" ? "Время" : "Vaqt"}</span>
+            <strong>{pickLocalized(locale, data.workingHours) || "—"}</strong>
+          </div>
         </div>
+      </section>
+
+      <section className="content-section">
+        <div className="section-heading">
+          <p className="eyebrow">LOCAL · SHARK TEAM</p>
+          <h2>{localHeading}</h2>
+        </div>
+        <p className="lead">
+          {facilityNotes ||
+            (locale === "ru"
+              ? `Филиал находится по адресу ${pickLocalized(locale, data.address)}. ${pickLocalized(locale, data.landmark) || ""}`
+              : `Filial manzili: ${pickLocalized(locale, data.address)}. ${pickLocalized(locale, data.landmark) || ""}`)}
+        </p>
       </section>
 
       <section className="content-section">
