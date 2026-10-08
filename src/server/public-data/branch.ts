@@ -122,6 +122,14 @@ export async function getBranchPublicData(slug: string) {
     landmark: { ru: branch.landmarkRu, uz: branch.landmarkUz },
     entranceNote: { ru: branch.entranceNoteRu, uz: branch.entranceNoteUz },
     publicPhone: branch.publicPhone,
+    workingHours: {
+      ru: branch.workingHoursRu,
+      uz: branch.workingHoursUz
+    },
+    facilityNotes: {
+      ru: branch.facilityNotesRu,
+      uz: branch.facilityNotesUz
+    },
     coordinates:
       branch.latitude !== null && branch.longitude !== null
         ? {
