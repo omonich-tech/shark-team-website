@@ -44,13 +44,17 @@ export async function PATCH(
   const status = String(body.status ?? before.status) as ContentStatus;
   const sortOrder = Number(body.sortOrder ?? before.sortOrder);
   const branchId =
-    typeof body.branchId === "string"
-      ? body.branchId || null
-      : before.branchId;
+    body.branchId === null
+      ? null
+      : typeof body.branchId === "string"
+        ? body.branchId || null
+        : before.branchId;
   const sportId =
-    typeof body.sportId === "string"
-      ? body.sportId || null
-      : before.sportId;
+    body.sportId === null
+      ? null
+      : typeof body.sportId === "string"
+        ? body.sportId || null
+        : before.sportId;
 
   if (!questionRu || !questionUz || !answerRu || !answerUz) {
     return NextResponse.json(
