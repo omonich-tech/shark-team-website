@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { isPublicLocale } from "@/lib/public-i18n";
+import {
+  parseContentSections,
+  sectionText
+} from "@/lib/content-sections";
 import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +87,49 @@ export default async function ContactsPage({
   const body = (locale === "ru" ? content.bodyRu : content.bodyUz) ?? "";
   const hours =
     (locale === "ru" ? content.contactHoursRu : content.contactHoursUz) ?? null;
+  const sections = parseContentSections(content.sectionsJson);
+  const channelsEyebrow = sectionText(
+    sections,
+    "channelsEyebrow",
+    locale,
+    locale === "ru" ? "СВЯЗАТЬСЯ" : "BOG‘LANISH"
+  );
+  const channelsTitle = sectionText(
+    sections,
+    "channelsTitle",
+    locale,
+    locale === "ru" ? "Выберите удобный канал" : "Qulay aloqa kanalini tanlang"
+  );
+  const branchesEyebrow = sectionText(
+    sections,
+    "branchesEyebrow",
+    locale,
+    locale === "ru" ? "ФИЛИАЛЫ" : "FILIALLAR"
+  );
+  const branchesTitle = sectionText(
+    sections,
+    "branchesTitle",
+    locale,
+    locale === "ru"
+      ? "Активные локации SHARK TEAM"
+      : "Faol SHARK TEAM manzillari"
+  );
+  const ctaTitle = sectionText(
+    sections,
+    "ctaTitle",
+    locale,
+    locale === "ru"
+      ? "Хотите сразу подобрать пробное занятие?"
+      : "Sinov mashg‘ulotini darhol tanlamoqchimisiz?"
+  );
+  const ctaLead = sectionText(
+    sections,
+    "ctaLead",
+    locale,
+    locale === "ru"
+      ? "Выберите спорт, филиал, возраст ребёнка и свободную дату."
+      : "Sport turi, filial, bolaning yoshi va bo‘sh sanani tanlang."
+  );
 
   const channels = [
     content.contactPhone
@@ -145,14 +192,8 @@ export default async function ContactsPage({
 
       <section className="content-section">
         <div className="section-heading">
-          <p className="eyebrow">
-            {locale === "ru" ? "СВЯЗАТЬСЯ" : "BOG‘LANISH"}
-          </p>
-          <h2>
-            {locale === "ru"
-              ? "Выберите удобный канал"
-              : "Qulay aloqa kanalini tanlang"}
-          </h2>
+          <p className="eyebrow">{channelsEyebrow}</p>
+          <h2>{channelsTitle}</h2>
         </div>
 
         {channels.length > 0 ? (
@@ -192,14 +233,8 @@ export default async function ContactsPage({
       <section className="content-section">
         <div className="section-heading shark-section-heading">
           <div>
-            <p className="eyebrow">
-              {locale === "ru" ? "ФИЛИАЛЫ" : "FILIALLAR"}
-            </p>
-            <h2>
-              {locale === "ru"
-                ? "Активные локации SHARK TEAM"
-                : "Faol SHARK TEAM manzillari"}
-            </h2>
+            <p className="eyebrow">{branchesEyebrow}</p>
+            <h2>{branchesTitle}</h2>
           </div>
           <Link className="shark-text-link" href={`/${locale}/branches`}>
             {locale === "ru" ? "Все филиалы →" : "Barcha filiallar →"}
@@ -269,16 +304,8 @@ export default async function ContactsPage({
       <section className="shark-final-cta">
         <div>
           <p className="eyebrow">SHARK TEAM</p>
-          <h2>
-            {locale === "ru"
-              ? "Хотите сразу подобрать пробное занятие?"
-              : "Sinov mashg‘ulotini darhol tanlamoqchimisiz?"}
-          </h2>
-          <p>
-            {locale === "ru"
-              ? "Выберите спорт, филиал, возраст ребёнка и свободную дату."
-              : "Sport turi, filial, bolaning yoshi va bo‘sh sanani tanlang."}
-          </p>
+          <h2>{ctaTitle}</h2>
+          <p>{ctaLead}</p>
         </div>
         <Link className="button primary" href={`/${locale}/trial`}>
           {locale === "ru" ? "Записаться →" : "Yozilish →"}
