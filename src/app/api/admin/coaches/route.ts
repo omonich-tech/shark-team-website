@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -89,6 +90,10 @@ export async function POST(request: NextRequest) {
       qualificationUz: optionalString(body.qualificationUz),
       publicBioRu: optionalString(body.publicBioRu, 2000),
       publicBioUz: optionalString(body.publicBioUz, 2000),
+      seoTitleRu: optionalString(body.seoTitleRu, 180),
+      seoTitleUz: optionalString(body.seoTitleUz, 180),
+      seoDescriptionRu: optionalString(body.seoDescriptionRu, 320),
+      seoDescriptionUz: optionalString(body.seoDescriptionUz, 320),
       startedAt
     }
   });
@@ -100,6 +105,13 @@ export async function POST(request: NextRequest) {
     entityId: coach.id,
     after: coach
   });
+
+  revalidatePath("/ru");
+  revalidatePath("/uz");
+  revalidatePath("/ru/coaches");
+  revalidatePath("/uz/coaches");
+  revalidatePath(`/ru/coaches/${coach.id}`);
+  revalidatePath(`/uz/coaches/${coach.id}`);
 
   return NextResponse.json({ ok: true, coach }, { status: 201 });
 }
