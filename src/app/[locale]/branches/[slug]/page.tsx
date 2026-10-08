@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
 import { formatUzs, isPublicLocale, pickLocalized, weekdayLabel } from "@/lib/public-i18n";
 import { tryGetBranchPublicData } from "@/server/public-data/branch";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function PublicBranchPage({
   params
@@ -11,6 +13,7 @@ export default async function PublicBranchPage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { locale, slug } = await params;
+  noStore();
   if (!isPublicLocale(locale)) notFound();
 
   const data = await tryGetBranchPublicData(slug);
