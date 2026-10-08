@@ -150,6 +150,29 @@ if (!value("PUBLIC_CONTACT_PHONE")) {
   );
 }
 
+if (!value("GOOGLE_SITE_VERIFICATION")) {
+  warnings.push(
+    "GOOGLE_SITE_VERIFICATION is not set; configure it only if using Search Console HTML-tag verification (DNS verification is also valid)"
+  );
+}
+
+if (!value("YANDEX_SITE_VERIFICATION")) {
+  warnings.push(
+    "YANDEX_SITE_VERIFICATION is not set; configure it only if using Yandex Webmaster meta-tag verification (DNS verification is preferred when the root URL redirects)"
+  );
+}
+
+const indexNowKey = value("INDEXNOW_KEY");
+if (!indexNowKey) {
+  warnings.push(
+    "INDEXNOW_KEY is not set; IndexNow URL notifications are disabled"
+  );
+} else if (!/^[A-Za-z0-9-]{8,128}$/.test(indexNowKey)) {
+  errors.push(
+    "INDEXNOW_KEY must be 8-128 characters using only letters, numbers, and dashes"
+  );
+}
+
 const posthogToken = value("NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN");
 const posthogHost = value("NEXT_PUBLIC_POSTHOG_HOST");
 
