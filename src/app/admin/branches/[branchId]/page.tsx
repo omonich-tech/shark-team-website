@@ -112,7 +112,11 @@ export default async function AdminBranchEditPage({
             { name: "entranceNoteRu", label: "Как найти вход RU", type: "textarea" },
             { name: "entranceNoteUz", label: "Как найти вход UZ", type: "textarea" },
             { name: "facilityNotesRu", label: "Описание объекта RU", type: "textarea" },
-            { name: "facilityNotesUz", label: "Описание объекта UZ", type: "textarea" }
+            { name: "facilityNotesUz", label: "Описание объекта UZ", type: "textarea" },
+            { name: "seoTitleRu", label: "SEO title RU" },
+            { name: "seoTitleUz", label: "SEO title UZ" },
+            { name: "seoDescriptionRu", label: "SEO description RU", type: "textarea" },
+            { name: "seoDescriptionUz", label: "SEO description UZ", type: "textarea" }
           ]}
           initialValues={{
             status: branch.status,
@@ -135,7 +139,11 @@ export default async function AdminBranchEditPage({
             entranceNoteRu: branch.entranceNoteRu,
             entranceNoteUz: branch.entranceNoteUz,
             facilityNotesRu: branch.facilityNotesRu,
-            facilityNotesUz: branch.facilityNotesUz
+            facilityNotesUz: branch.facilityNotesUz,
+            seoTitleRu: branch.seoTitleRu,
+            seoTitleUz: branch.seoTitleUz,
+            seoDescriptionRu: branch.seoDescriptionRu,
+            seoDescriptionUz: branch.seoDescriptionUz
           }}
         />
       </section>
