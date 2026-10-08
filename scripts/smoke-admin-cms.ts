@@ -611,7 +611,10 @@ async function main() {
   const homeHtml = await home.text();
 
   assert(homeHtml.includes("CI CMS Hero"), "Published CMS hero is not public");
-  assert(homeHtml.includes("CI вопрос?"), "Published FAQ is not public");
+  assert(
+    homeHtml.includes("CI глобальный FAQ?"),
+    "Published global FAQ is not public"
+  );
   assert(homeHtml.includes("CI Safe Media"), "Consent-safe media is not public");
   assert(
     !homeHtml.includes("CI Pending Minor"),
