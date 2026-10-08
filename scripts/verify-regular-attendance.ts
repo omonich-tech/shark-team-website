@@ -2,6 +2,7 @@ import "dotenv/config";
 import {
   AbsenceReason,
   AttendanceStatus,
+  SessionStatus,
   StudentEnrollmentStatus
 } from "../src/generated/prisma/client";
 import { getPrisma } from "../src/lib/prisma";
@@ -35,12 +36,13 @@ async function main() {
   const enrollment = child.enrollments[0];
   assert(enrollment, "Attendance smoke enrollment not found");
 
-  const session = await prisma.trainingSession.findFirst({
+  let session = await prisma.trainingSession.findFirst({
     where: {
       groupId: enrollment.groupId,
       startsAt: {
         gte: enrollment.startDate
       },
+      status: SessionStatus.SCHEDULED,
       trialBookings: {
         none: {
           lead: {
@@ -54,7 +56,45 @@ async function main() {
     }
   });
 
-  assert(session, "Attendance smoke session not found");
+  let createdSessionId: string | null = null;
+
+  if (!session) {
+    let startsAt = new Date(
+      Math.max(
+        enrollment.startDate.getTime() + 60 * 60 * 1000,
+        Date.now() - 30 * 60 * 1000
+      )
+    );
+
+    while (
+      await prisma.trainingSession.findUnique({
+        where: {
+          groupId_startsAt: {
+            groupId: enrollment.groupId,
+            startsAt
+          }
+        },
+        select: { id: true }
+      })
+    ) {
+      startsAt = new Date(startsAt.getTime() + 7 * 60 * 1000);
+    }
+
+    session = await prisma.trainingSession.create({
+      data: {
+        groupId: enrollment.groupId,
+        coachId: enrollment.group.primaryCoachId,
+        startsAt,
+        endsAt: new Date(startsAt.getTime() + 60 * 60 * 1000),
+        status: SessionStatus.SCHEDULED,
+        regularCapacity: enrollment.group.capacityRegular,
+        trialCapacity: 0,
+        trialBookingEnabled: false
+      }
+    });
+
+    createdSessionId = session.id;
+  }
 
   await prisma.attendance.deleteMany({
     where: {
@@ -142,6 +182,12 @@ async function main() {
   await prisma.attendance.delete({
     where: { id: absent.attendance.id }
   });
+
+  if (createdSessionId) {
+    await prisma.trainingSession.delete({
+      where: { id: createdSessionId }
+    });
+  }
 
   console.log("Regular attendance workflow verification passed.");
 }
