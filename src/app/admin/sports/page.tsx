@@ -61,7 +61,11 @@ export default async function AdminSportsPage() {
             { name: "ageMax", label: "Возраст до", type: "number" },
             { name: "sortOrder", label: "Порядок", type: "number" },
             { name: "shortDescriptionRu", label: "Короткое описание RU", type: "textarea" },
-            { name: "shortDescriptionUz", label: "Короткое описание UZ", type: "textarea" }
+            { name: "shortDescriptionUz", label: "Короткое описание UZ", type: "textarea" },
+            { name: "seoTitleRu", label: "SEO title RU" },
+            { name: "seoTitleUz", label: "SEO title UZ" },
+            { name: "seoDescriptionRu", label: "SEO description RU", type: "textarea" },
+            { name: "seoDescriptionUz", label: "SEO description UZ", type: "textarea" }
           ]}
           initialValues={{
             nameRu: "",
@@ -72,7 +76,11 @@ export default async function AdminSportsPage() {
             ageMax: null,
             sortOrder: sports.length,
             shortDescriptionRu: "",
-            shortDescriptionUz: ""
+            shortDescriptionUz: "",
+            seoTitleRu: "",
+            seoTitleUz: "",
+            seoDescriptionRu: "",
+            seoDescriptionUz: ""
           }}
         />
       </section>
