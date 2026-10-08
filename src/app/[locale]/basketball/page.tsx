@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
 
 export default async function LegacyBasketballPage({
@@ -8,5 +8,5 @@ export default async function LegacyBasketballPage({
 }) {
   const { locale } = await params;
   if (!isPublicLocale(locale)) notFound();
-  redirect(`/${locale}/sports/basketball`);
+  permanentRedirect(`/${locale}/sports/basketball`);
 }
