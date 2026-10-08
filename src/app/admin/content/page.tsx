@@ -3,7 +3,7 @@ import {
   ContentSectionsEditor,
   type ContentSectionField
 } from "@/components/admin/content-sections-editor";
-import { parseContentSections } from "@/lib/content-sections";
+import { contentSectionsWithDefaults } from "@/lib/content-sections";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -241,7 +241,7 @@ export default async function AdminContentPage() {
           title="Секции главной"
           description="Преимущества, шаги пробного, заголовки секций и финальный CTA."
           fields={homeSectionFields}
-          initialSections={parseContentSections(home.sectionsJson)}
+          initialSections={contentSectionsWithDefaults("home", home.sectionsJson)}
         />
       </section>
 
@@ -278,7 +278,7 @@ export default async function AdminContentPage() {
           title="Секции «О нас»"
           description="Заголовки истории, принципы и финальный CTA."
           fields={aboutSectionFields}
-          initialSections={parseContentSections(about.sectionsJson)}
+          initialSections={contentSectionsWithDefaults("about", about.sectionsJson)}
         />
       </section>
 
@@ -327,7 +327,7 @@ export default async function AdminContentPage() {
           title="Секции контактов"
           description="Заголовки каналов, филиалов и финального CTA."
           fields={contactsSectionFields}
-          initialSections={parseContentSections(contacts.sectionsJson)}
+          initialSections={contentSectionsWithDefaults("contacts", contacts.sectionsJson)}
         />
       </section>
     </>
