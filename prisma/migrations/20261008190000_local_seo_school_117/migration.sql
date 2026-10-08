@@ -14,41 +14,58 @@ SET
 WHERE "id" = 'BR-SCHOOL-117-01';
 
 
+
 INSERT INTO "FaqItem"
   ("id", "status", "branchId", "sportId", "questionRu", "questionUz", "answerRu", "answerUz", "sortOrder", "createdAt", "updatedAt")
-VALUES
-  (
-    'FAQ-S117-LOCATION-01', 'PUBLISHED', 'BR-SCHOOL-117-01', NULL,
-    'Где находится секция баскетбола SHARK TEAM на Юнусабаде?',
-    'Yunusoboddagi SHARK TEAM basketbol seksiyasi qayerda joylashgan?',
-    'Тренировки проходят в спортивном зале школы №117: ул. Хитой, 9, Юнусабадский район, Ташкент, рядом с метро «Шахристан».',
-    'Mashg‘ulotlar 117-maktab sport zalida o‘tadi: Xitoy ko‘chasi, 9, Yunusobod tumani, Toshkent, «Shahriston» metro bekati yaqinida.',
-    10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-  ),
-  (
-    'FAQ-S117-AGE-01', 'PUBLISHED', 'BR-SCHOOL-117-01', NULL,
-    'Для какого возраста подходит баскетбол в школе №117?',
-    '117-maktabdagi basketbol qaysi yoshdagilar uchun?',
-    'В филиале работают баскетбольные группы для детей от 6 до 15 лет. Ребёнка подбирают в группу по возрасту.',
-    'Filialda 6 yoshdan 15 yoshgacha bo‘lgan bolalar uchun basketbol guruhlari mavjud. Bola yoshiga mos guruhga joylashtiriladi.',
-    20, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-  ),
-  (
-    'FAQ-S117-SCHEDULE-01', 'PUBLISHED', 'BR-SCHOOL-117-01', NULL,
-    'Когда проходят тренировки по баскетболу на Юнусабаде?',
-    'Yunusobodda basketbol mashg‘ulotlari qachon o‘tadi?',
-    'Тренировки проходят по вторникам, четвергам и субботам с 17:00 до 20:00. Конкретное время зависит от возрастной группы.',
-    'Mashg‘ulotlar seshanba, payshanba va shanba kunlari 17:00 dan 20:00 gacha o‘tadi. Aniq vaqt yosh guruhiga bog‘liq.',
-    30, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-  ),
-  (
-    'FAQ-S117-TRIAL-01', 'PUBLISHED', 'BR-SCHOOL-117-01', NULL,
-    'Можно ли записаться на пробное занятие?',
-    'Sinov mashg‘ulotiga yozilish mumkinmi?',
-    'Да. На странице филиала можно выбрать пробное занятие, подходящую возрастную группу и доступное время.',
-    'Ha. Filial sahifasida sinov mashg‘ulotini, yoshga mos guruhni va mavjud vaqtni tanlash mumkin.',
-    40, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-  )
+SELECT
+  faq."id",
+  'PUBLISHED'::"ContentStatus",
+  branch."id",
+  NULL,
+  faq."questionRu",
+  faq."questionUz",
+  faq."answerRu",
+  faq."answerUz",
+  faq."sortOrder",
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM "Branch" AS branch
+CROSS JOIN (
+  VALUES
+    (
+      'FAQ-S117-LOCATION-01',
+      'Где находится секция баскетбола SHARK TEAM на Юнусабаде?',
+      'Yunusoboddagi SHARK TEAM basketbol seksiyasi qayerda joylashgan?',
+      'Тренировки проходят в спортивном зале школы №117: ул. Хитой, 9, Юнусабадский район, Ташкент, рядом с метро «Шахристан».',
+      'Mashg‘ulotlar 117-maktab sport zalida o‘tadi: Xitoy ko‘chasi, 9, Yunusobod tumani, Toshkent, «Shahriston» metro bekati yaqinida.',
+      10
+    ),
+    (
+      'FAQ-S117-AGE-01',
+      'Для какого возраста подходит баскетбол в школе №117?',
+      '117-maktabdagi basketbol qaysi yoshdagilar uchun?',
+      'В филиале работают баскетбольные группы для детей от 6 до 15 лет. Ребёнка подбирают в группу по возрасту.',
+      'Filialda 6 yoshdan 15 yoshgacha bo‘lgan bolalar uchun basketbol guruhlari mavjud. Bola yoshiga mos guruhga joylashtiriladi.',
+      20
+    ),
+    (
+      'FAQ-S117-SCHEDULE-01',
+      'Когда проходят тренировки по баскетболу на Юнусабаде?',
+      'Yunusobodda basketbol mashg‘ulotlari qachon o‘tadi?',
+      'Тренировки проходят по вторникам, четвергам и субботам с 17:00 до 20:00. Конкретное время зависит от возрастной группы.',
+      'Mashg‘ulotlar seshanba, payshanba va shanba kunlari 17:00 dan 20:00 gacha o‘tadi. Aniq vaqt yosh guruhiga bog‘liq.',
+      30
+    ),
+    (
+      'FAQ-S117-TRIAL-01',
+      'Можно ли записаться на пробное занятие?',
+      'Sinov mashg‘ulotiga yozilish mumkinmi?',
+      'Да. На странице филиала можно выбрать пробное занятие, подходящую возрастную группу и доступное время.',
+      'Ha. Filial sahifasida sinov mashg‘ulotini, yoshga mos guruhni va mavjud vaqtni tanlash mumkin.',
+      40
+    )
+) AS faq("id", "questionRu", "questionUz", "answerRu", "answerUz", "sortOrder")
+WHERE branch."id" = 'BR-SCHOOL-117-01'
 ON CONFLICT ("id") DO UPDATE SET
   "status" = EXCLUDED."status",
   "branchId" = EXCLUDED."branchId",
