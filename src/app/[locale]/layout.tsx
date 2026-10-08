@@ -43,13 +43,7 @@ export async function generateMetadata({
       default: title,
       template: "%s | SHARK TEAM"
     },
-    description,
-    alternates: {
-      languages: {
-        ru: "/ru",
-        uz: "/uz"
-      }
-    }
+    description
   };
 }
 
