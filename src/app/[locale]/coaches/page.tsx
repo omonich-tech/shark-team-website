@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import {
   LifecycleStatus,
@@ -7,8 +9,31 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { isPublicLocale } from "@/lib/public-i18n";
+import { absoluteUrl, breadcrumbJsonLd, buildPublicMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isPublicLocale(locale)) return {};
+
+  return buildPublicMetadata({
+    locale,
+    path: "/coaches",
+    title:
+      locale === "ru"
+        ? "Тренеры SHARK TEAM"
+        : "SHARK TEAM murabbiylari",
+    description:
+      locale === "ru"
+        ? "Тренеры детских спортивных секций SHARK TEAM в Ташкенте: опыт, направления, филиалы и активные группы."
+        : "Toshkentdagi SHARK TEAM bolalar sport seksiyalari murabbiylari: tajriba, yo‘nalishlar, filiallar va guruhlar."
+  });
+}
 
 export default async function CoachesPage({
   params
@@ -55,8 +80,30 @@ export default async function CoachesPage({
       })
     : [];
 
+  const structuredData = [
+    breadcrumbJsonLd([
+      { name: "SHARK TEAM", path: `/${locale}` },
+      {
+        name: locale === "ru" ? "Тренеры" : "Murabbiylar",
+        path: `/${locale}/coaches`
+      }
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      itemListElement: coaches.map((coach, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: [coach.firstName, coach.lastName].filter(Boolean).join(" "),
+        url: absoluteUrl(`/${locale}/coaches/${coach.id}`)
+      }))
+    }
+  ];
+
   return (
-    <main className="page-main">
+    <>
+      <JsonLd data={structuredData} />
+      <main className="page-main">
       <section className="page-hero compact shark-page-hero">
         <p className="eyebrow">{locale === "ru" ? "КОМАНДА" : "JAMOA"}</p>
         <h1>{locale === "ru" ? "Тренеры SHARK TEAM" : "SHARK TEAM murabbiylari"}</h1>
@@ -129,6 +176,7 @@ export default async function CoachesPage({
           ) : null}
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
