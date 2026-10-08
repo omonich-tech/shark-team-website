@@ -7767,3 +7767,158 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Group CMS */
+.admin-group-catalog th,
+.admin-group-catalog td {
+  vertical-align: top;
+}
+
+.admin-group-catalog td:nth-child(6) {
+  min-width: 170px;
+  color: #596b80;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.admin-group-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 13px 14px;
+  border: 1px solid #e6edf4;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.admin-group-summary > div {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-group-summary strong {
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.admin-group-summary span {
+  color: #8a98aa;
+  font-size: 9px;
+}
+
+.admin-group-summary em {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #fff7e8;
+  color: #9a6415;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.admin-schedule-block,
+.admin-schedule-editor {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #e3eaf1;
+  border-radius: 14px;
+  background: #fbfdff;
+}
+
+.admin-schedule-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 13px;
+}
+
+.admin-schedule-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-schedule-head strong {
+  color: var(--navy);
+  font-size: 12px;
+}
+
+.admin-schedule-head small {
+  color: #8492a6;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.admin-schedule-head > button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #dce5ee;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #1479f3;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.admin-schedule-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.4fr) minmax(105px, 0.7fr) minmax(105px, 0.7fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.admin-schedule-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-schedule-row select,
+.admin-schedule-row input {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dce4ed;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #344054;
+  font: inherit;
+  font-size: 10px;
+}
+
+.admin-danger-link {
+  border: 0;
+  background: transparent;
+  color: #c5484d;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.admin-danger-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+@media (max-width: 760px) {
+  .admin-group-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-schedule-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-schedule-row > select {
+    grid-column: 1 / -1;
+  }
+
+  .admin-schedule-row .admin-danger-link {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
