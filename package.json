@@ -66,7 +66,8 @@
     "verify:schema-version": "tsx scripts/verify-schema-version.ts",
     "smoke:web-analytics": "tsx scripts/smoke-web-analytics.ts",
     "db:prepare-payme-smoke": "tsx scripts/prepare-payme-smoke.ts",
-    "smoke:content-cms": "tsx scripts/smoke-content-cms.ts"
+    "smoke:content-cms": "tsx scripts/smoke-content-cms.ts",
+    "smoke:seo": "tsx scripts/smoke-seo.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
