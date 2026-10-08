@@ -24,11 +24,13 @@ const emptyFaq = {
 export function FaqEditor({
   initialItems,
   branchId,
-  sportId
+  sportId,
+  scopeLabel
 }: {
   initialItems: Faq[];
-  branchId: string;
-  sportId: string;
+  branchId: string | null;
+  sportId: string | null;
+  scopeLabel: string;
 }) {
   const [items, setItems] = useState(initialItems);
   const [draft, setDraft] = useState(emptyFaq);
@@ -114,7 +116,10 @@ export function FaqEditor({
     <div className="faq-editor">
       <form className="admin-faq-card" onSubmit={create}>
         <div className="admin-faq-head">
-          <strong>Новый FAQ</strong>
+          <div>
+            <strong>Новый FAQ</strong>
+            <small>{scopeLabel}</small>
+          </div>
           <select
             value={draft.status}
             onChange={(event) =>
