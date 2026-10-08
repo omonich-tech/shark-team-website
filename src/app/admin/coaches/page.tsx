@@ -67,7 +67,11 @@ export default async function AdminCoachesPage() {
             { name: "experienceYears", label: "Опыт, лет", type: "number" },
             { name: "startedAt", label: "В SHARK TEAM с", type: "date" },
             { name: "publicBioRu", label: "Публичное описание RU", type: "textarea" },
-            { name: "publicBioUz", label: "Публичное описание UZ", type: "textarea" }
+            { name: "publicBioUz", label: "Публичное описание UZ", type: "textarea" },
+            { name: "seoTitleRu", label: "SEO title RU" },
+            { name: "seoTitleUz", label: "SEO title UZ" },
+            { name: "seoDescriptionRu", label: "SEO description RU", type: "textarea" },
+            { name: "seoDescriptionUz", label: "SEO description UZ", type: "textarea" }
           ]}
           initialValues={{
             firstName: "",
@@ -77,7 +81,11 @@ export default async function AdminCoachesPage() {
             experienceYears: null,
             startedAt: null,
             publicBioRu: "",
-            publicBioUz: ""
+            publicBioUz: "",
+            seoTitleRu: "",
+            seoTitleUz: "",
+            seoDescriptionRu: "",
+            seoDescriptionUz: ""
           }}
         />
       </section>
