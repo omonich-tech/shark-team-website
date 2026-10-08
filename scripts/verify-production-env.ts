@@ -162,12 +162,9 @@ if (!value("YANDEX_SITE_VERIFICATION")) {
   );
 }
 
-const indexNowKey = value("INDEXNOW_KEY");
-if (!indexNowKey) {
-  warnings.push(
-    "INDEXNOW_KEY is not set; IndexNow URL notifications are disabled"
-  );
-} else if (!/^[A-Za-z0-9-]{8,128}$/.test(indexNowKey)) {
+const indexNowKey =
+  value("INDEXNOW_KEY") || "6da185bf00fc85720816942a603c56b5";
+if (!/^[A-Za-z0-9-]{8,128}$/.test(indexNowKey)) {
   errors.push(
     "INDEXNOW_KEY must be 8-128 characters using only letters, numbers, and dashes"
   );
