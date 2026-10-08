@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  ContentStatus,
   LifecycleStatus,
   MediaConsentStatus,
   MediaTargetType,
@@ -48,34 +49,43 @@ export default async function SportPage({
 
   if (!sport) notFound();
 
-  const media = await prisma.mediaAsset.findMany({
-        where: {
-          targetType: MediaTargetType.SPORT,
-          targetId: sport.id,
-          OR: [
-            { containsMinors: false },
-            {
-              containsMinors: true,
-              consentStatus: MediaConsentStatus.APPROVED
-            }
-          ]
-        },
-        orderBy: [
-          { isPrimary: "desc" },
-          { sortOrder: "asc" },
-          { createdAt: "asc" }
+  const [media, trialPrice, faq] = await Promise.all([
+    prisma.mediaAsset.findMany({
+      where: {
+        targetType: MediaTargetType.SPORT,
+        targetId: sport.id,
+        OR: [
+          { containsMinors: false },
+          {
+            containsMinors: true,
+            consentStatus: MediaConsentStatus.APPROVED
+          }
         ]
-      });
-
-  const trialPrice = await prisma.price.findFirst({
-        where: {
-          sportId: sport.id,
-          productType: PriceProductType.TRIAL,
-          status: LifecycleStatus.ACTIVE,
-          OR: [{ validTo: null }, { validTo: { gt: new Date() } }]
-        },
-        orderBy: { validFrom: "desc" }
-      });
+      },
+      orderBy: [
+        { isPrimary: "desc" },
+        { sortOrder: "asc" },
+        { createdAt: "asc" }
+      ]
+    }),
+    prisma.price.findFirst({
+      where: {
+        sportId: sport.id,
+        productType: PriceProductType.TRIAL,
+        status: LifecycleStatus.ACTIVE,
+        OR: [{ validTo: null }, { validTo: { gt: new Date() } }]
+      },
+      orderBy: { validFrom: "desc" }
+    }),
+    prisma.faqItem.findMany({
+      where: {
+        status: ContentStatus.PUBLISHED,
+        sportId: sport.id,
+        branchId: null
+      },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
+    })
+  ]);
 
   const hero = media.find((item) => item.contentType?.startsWith("image/"));
   const name = locale === "ru" ? sport.nameRu : sport.nameUz;
@@ -180,6 +190,29 @@ export default async function SportPage({
           </div>
         </section>
       )}
+
+      {faq.length > 0 ? (
+        <section className="content-section">
+          <div className="section-heading">
+            <p className="eyebrow">FAQ</p>
+            <h2>
+              {locale === "ru"
+                ? "Вопросы о направлении"
+                : "Yo‘nalish haqida savollar"}
+            </h2>
+          </div>
+          <div className="faq-list shark-faq-list">
+            {faq.map((item) => (
+              <details className="faq-item" key={item.id}>
+                <summary>
+                  {locale === "ru" ? item.questionRu : item.questionUz}
+                </summary>
+                <p>{locale === "ru" ? item.answerRu : item.answerUz}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }
