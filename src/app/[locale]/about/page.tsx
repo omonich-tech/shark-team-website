@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
+import {
+  parseContentSections,
+  sectionText
+} from "@/lib/content-sections";
 import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 import { tryGetPublicHomeData } from "@/server/public-data/home";
 
@@ -71,6 +75,7 @@ export default async function AboutPage({
       : page.content.heroLeadUz) ?? "";
   const body =
     (locale === "ru" ? page.content.bodyRu : page.content.bodyUz) ?? "";
+  const sections = parseContentSections(page.content.sectionsJson);
   const paragraphs = body
     .split(/\n\s*\n/)
     .map((value) => value.trim())
@@ -94,7 +99,7 @@ export default async function AboutPage({
           [String(activeGroups), "faol guruh"]
         ];
 
-  const principles =
+  const principleFallback =
     locale === "ru"
       ? [
           ["Развитие", "Не только техника спорта, но и координация, физическая база, уверенность и самостоятельность."],
@@ -108,6 +113,56 @@ export default async function AboutPage({
           ["Jamoa", "Bola tengdoshlari bilan mashq qiladi, hamkorlik, qo‘llab-quvvatlash va mas’uliyatni o‘rganadi."],
           ["Xavfsiz muhit", "Yosh guruhlari, nazorat qilinadigan yuklama va ota-ona bilan ochiq muloqot."]
         ];
+
+  const principles = principleFallback.map(([title, description], index) => [
+    sectionText(sections, `principle${index + 1}Title`, locale, title),
+    sectionText(sections, `principle${index + 1}Body`, locale, description)
+  ]);
+
+  const storyEyebrow = sectionText(
+    sections,
+    "storyEyebrow",
+    locale,
+    locale === "ru" ? "НАШ ПОДХОД" : "BIZNING YONDASHUV"
+  );
+  const storyTitle = sectionText(
+    sections,
+    "storyTitle",
+    locale,
+    locale === "ru"
+      ? "Среда, в которой ребёнок растёт через спорт"
+      : "Bola sport orqali rivojlanadigan muhit"
+  );
+  const principlesEyebrow = sectionText(
+    sections,
+    "principlesEyebrow",
+    locale,
+    locale === "ru" ? "ПРИНЦИПЫ" : "TAMOYILLAR"
+  );
+  const principlesTitle = sectionText(
+    sections,
+    "principlesTitle",
+    locale,
+    locale === "ru"
+      ? "Что мы хотим дать ребёнку"
+      : "Bolaga nima berishni istaymiz"
+  );
+  const ctaTitle = sectionText(
+    sections,
+    "ctaTitle",
+    locale,
+    locale === "ru"
+      ? "Найдите спорт, который подойдёт вашему ребёнку"
+      : "Farzandingizga mos sport turini toping"
+  );
+  const ctaLead = sectionText(
+    sections,
+    "ctaLead",
+    locale,
+    locale === "ru"
+      ? "Выберите направление, филиал и удобную дату пробного занятия."
+      : "Yo‘nalish, filial va qulay sinov sanasini tanlang."
+  );
 
   return (
     <main className="page-main">
@@ -147,14 +202,8 @@ export default async function AboutPage({
       <section className="content-section about-story-section">
         <div className="section-heading shark-section-heading">
           <div>
-            <p className="eyebrow">
-              {locale === "ru" ? "НАШ ПОДХОД" : "BIZNING YONDASHUV"}
-            </p>
-            <h2>
-              {locale === "ru"
-                ? "Среда, в которой ребёнок растёт через спорт"
-                : "Bola sport orqali rivojlanadigan muhit"}
-            </h2>
+            <p className="eyebrow">{storyEyebrow}</p>
+            <h2>{storyTitle}</h2>
           </div>
         </div>
 
@@ -178,14 +227,8 @@ export default async function AboutPage({
 
       <section className="content-section">
         <div className="section-heading">
-          <p className="eyebrow">
-            {locale === "ru" ? "ПРИНЦИПЫ" : "TAMOYILLAR"}
-          </p>
-          <h2>
-            {locale === "ru"
-              ? "Что мы хотим дать ребёнку"
-              : "Bolaga nima berishni istaymiz"}
-          </h2>
+          <p className="eyebrow">{principlesEyebrow}</p>
+          <h2>{principlesTitle}</h2>
         </div>
         <div className="about-principles-grid">
           {principles.map(([name, description], index) => (
@@ -201,16 +244,8 @@ export default async function AboutPage({
       <section className="shark-final-cta">
         <div>
           <p className="eyebrow">SHARK TEAM</p>
-          <h2>
-            {locale === "ru"
-              ? "Найдите спорт, который подойдёт вашему ребёнку"
-              : "Farzandingizga mos sport turini toping"}
-          </h2>
-          <p>
-            {locale === "ru"
-              ? "Выберите направление, филиал и удобную дату пробного занятия."
-              : "Yo‘nalish, filial va qulay sinov sanasini tanlang."}
-          </p>
+          <h2>{ctaTitle}</h2>
+          <p>{ctaLead}</p>
         </div>
         <div className="hero-actions">
           <Link className="button primary" href={`/${locale}/trial`}>
