@@ -231,7 +231,7 @@ async function main() {
 
   const indexNowKey = process.env.INDEXNOW_KEY?.trim();
   if (indexNowKey) {
-    const keyFile = await fetch(baseUrl + "/indexnow-key.txt");
+    const keyFile = await fetch(baseUrl + "/" + indexNowKey + ".txt");
     const keyBody = await keyFile.text();
     assert(keyFile.ok, "IndexNow key file did not render");
     assert(keyBody === indexNowKey, "IndexNow key file content is wrong");

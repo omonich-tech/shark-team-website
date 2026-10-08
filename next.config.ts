@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const isProduction = process.env.NODE_ENV === "production";
+const indexNowKey = process.env.INDEXNOW_KEY?.trim() ?? "";
+const hasValidIndexNowKey = /^[A-Za-z0-9-]{8,128}$/.test(indexNowKey);
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -44,6 +46,14 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
   async rewrites() {
     return [
+      ...(hasValidIndexNowKey
+        ? [
+            {
+              source: `/${indexNowKey}.txt`,
+              destination: `/api/indexnow-key/${indexNowKey}`
+            }
+          ]
+        : []),
       {
         source: "/ingest/static/:path*",
         destination: "https://eu-assets.i.posthog.com/static/:path*"

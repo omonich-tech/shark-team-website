@@ -1,7 +1,6 @@
 import { appUrl } from "@/lib/seo";
 
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
-const INDEXNOW_KEY_PATH = "/indexnow-key.txt";
 const INDEXNOW_KEY_RE = /^[A-Za-z0-9-]{8,128}$/;
 
 export function getIndexNowKey() {
@@ -21,7 +20,13 @@ export function getIndexNowKey() {
 }
 
 export function indexNowKeyLocation() {
-  return `${appUrl()}${INDEXNOW_KEY_PATH}`;
+  const key = getIndexNowKey();
+
+  if (!key) {
+    throw new Error("INDEXNOW_KEY is not configured");
+  }
+
+  return `${appUrl()}/${key}.txt`;
 }
 
 function normalizeUrls(values: string[]) {
