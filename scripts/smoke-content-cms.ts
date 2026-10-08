@@ -52,6 +52,27 @@ async function page(path: string) {
   return html;
 }
 
+async function pageEventually(
+  path: string,
+  expected: string,
+  attempts = 3
+) {
+  let html = "";
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const response = await fetch(baseUrl + path, {
+      headers: { "Cache-Control": "no-cache" }
+    });
+    html = await response.text();
+    assert(response.ok, path + " did not render");
+
+    if (html.includes(expected)) return html;
+    await new Promise((resolve) => setTimeout(resolve, 80));
+  }
+
+  return html;
+}
+
 async function main() {
   assert(username && password, "Admin credentials are missing");
   const prisma = getPrisma();
@@ -290,7 +311,10 @@ async function main() {
     "Branch FAQ is missing from getBranchPublicData"
   );
 
-  const branch = await page("/ru/branches/school-117");
+  const branch = await pageEventually(
+    "/ru/branches/school-117",
+    branchQuestion
+  );
   assert(
     branch.includes(branchQuestion),
     "Branch FAQ is missing from branch page"
