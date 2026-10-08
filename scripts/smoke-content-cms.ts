@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { getPrisma } from "../src/lib/prisma";
+import { getBranchPublicData } from "../src/server/public-data/branch";
 
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const username = process.env.ADMIN_USERNAME;
@@ -52,6 +54,7 @@ async function page(path: string) {
 
 async function main() {
   assert(username && password, "Admin credentials are missing");
+  const prisma = getPrisma();
 
   const login = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",
@@ -267,6 +270,26 @@ async function main() {
   assert(sport.includes(sportQuestion), "Sport FAQ is missing from sport page");
   assert(!sport.includes(branchQuestion), "Branch FAQ leaked into sport page");
 
+  const storedBranchFaq = await prisma.faqItem.findFirst({
+    where: { questionRu: branchQuestion }
+  });
+  assert(storedBranchFaq, "Branch FAQ was not stored in database");
+  assert(
+    storedBranchFaq.branchId === "BR-SCHOOL-117-01" &&
+      storedBranchFaq.sportId === null &&
+      storedBranchFaq.status === "PUBLISHED",
+    "Branch FAQ scope was stored incorrectly"
+  );
+
+  const directBranchData = await getBranchPublicData("school-117");
+  assert(directBranchData, "Seed branch public data could not be loaded");
+  assert(
+    directBranchData.faq.some(
+      (item) => item.question.ru === branchQuestion
+    ),
+    "Branch FAQ is missing from getBranchPublicData"
+  );
+
   const branch = await page("/ru/branches/school-117");
   assert(
     branch.includes(branchQuestion),
@@ -309,7 +332,12 @@ async function main() {
   console.log("Content CMS HTTP smoke test passed.");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .then(async () => {
+    await getPrisma().$disconnect();
+  })
+  .catch(async (error) => {
+    console.error(error);
+    await getPrisma().$disconnect();
+    process.exit(1);
+  });
