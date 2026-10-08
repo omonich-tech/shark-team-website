@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { ContentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -75,10 +76,16 @@ export async function PATCH(
 
   const [branch, sport] = await Promise.all([
     branchId
-      ? prisma.branch.findUnique({ where: { id: branchId }, select: { id: true } })
+      ? prisma.branch.findUnique({
+          where: { id: branchId },
+          select: { id: true, slug: true }
+        })
       : Promise.resolve(null),
     sportId
-      ? prisma.sport.findUnique({ where: { id: sportId }, select: { id: true } })
+      ? prisma.sport.findUnique({
+          where: { id: sportId },
+          select: { id: true, slug: true }
+        })
       : Promise.resolve(null)
   ]);
 
@@ -111,6 +118,41 @@ export async function PATCH(
     before,
     after
   });
+
+  const oldBranch = before.branchId
+    ? await prisma.branch.findUnique({
+        where: { id: before.branchId },
+        select: { slug: true }
+      })
+    : null;
+  const oldSport = before.sportId
+    ? await prisma.sport.findUnique({
+        where: { id: before.sportId },
+        select: { slug: true }
+      })
+    : null;
+
+  if (
+    (!before.branchId && !before.sportId) ||
+    (!branchId && !sportId)
+  ) {
+    revalidatePath("/ru");
+    revalidatePath("/uz");
+  }
+
+  for (const slug of [oldBranch?.slug, branch?.slug]) {
+    if (slug) {
+      revalidatePath(`/ru/branches/${slug}`);
+      revalidatePath(`/uz/branches/${slug}`);
+    }
+  }
+
+  for (const slug of [oldSport?.slug, sport?.slug]) {
+    if (slug) {
+      revalidatePath(`/ru/sports/${slug}`);
+      revalidatePath(`/uz/sports/${slug}`);
+    }
+  }
 
   return NextResponse.json({ ok: true, faq: after });
 }
