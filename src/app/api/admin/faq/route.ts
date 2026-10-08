@@ -45,18 +45,32 @@ export async function POST(request: NextRequest) {
   }
 
   const prisma = getPrisma();
+  const branchId =
+    typeof body.branchId === "string" && body.branchId ? body.branchId : null;
+  const sportId =
+    typeof body.sportId === "string" && body.sportId ? body.sportId : null;
+
+  const [branch, sport] = await Promise.all([
+    branchId
+      ? prisma.branch.findUnique({ where: { id: branchId }, select: { id: true } })
+      : Promise.resolve(null),
+    sportId
+      ? prisma.sport.findUnique({ where: { id: sportId }, select: { id: true } })
+      : Promise.resolve(null)
+  ]);
+
+  if ((branchId && !branch) || (sportId && !sport)) {
+    return NextResponse.json(
+      { ok: false, error: "FAQ_SCOPE_NOT_FOUND" },
+      { status: 400 }
+    );
+  }
 
   const faq = await prisma.faqItem.create({
     data: {
       status,
-      branchId:
-        typeof body.branchId === "string" && body.branchId
-          ? body.branchId
-          : null,
-      sportId:
-        typeof body.sportId === "string" && body.sportId
-          ? body.sportId
-          : null,
+      branchId,
+      sportId,
       questionRu,
       questionUz,
       answerRu,
