@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -130,7 +131,11 @@ export async function PATCH(
       workingHoursRu: optionalString(body.workingHoursRu, 180),
       workingHoursUz: optionalString(body.workingHoursUz, 180),
       facilityNotesRu: optionalString(body.facilityNotesRu, 700),
-      facilityNotesUz: optionalString(body.facilityNotesUz, 700)
+      facilityNotesUz: optionalString(body.facilityNotesUz, 700),
+      seoTitleRu: optionalString(body.seoTitleRu, 180),
+      seoTitleUz: optionalString(body.seoTitleUz, 180),
+      seoDescriptionRu: optionalString(body.seoDescriptionRu, 320),
+      seoDescriptionUz: optionalString(body.seoDescriptionUz, 320)
     }
   });
 
@@ -142,6 +147,17 @@ export async function PATCH(
     before,
     after
   });
+
+  revalidatePath("/ru");
+  revalidatePath("/uz");
+  revalidatePath("/ru/branches");
+  revalidatePath("/uz/branches");
+  revalidatePath("/ru/contacts");
+  revalidatePath("/uz/contacts");
+  for (const value of [before.slug, after.slug]) {
+    revalidatePath(`/ru/branches/${value}`);
+    revalidatePath(`/uz/branches/${value}`);
+  }
 
   return NextResponse.json({ ok: true, branch: after });
 }
