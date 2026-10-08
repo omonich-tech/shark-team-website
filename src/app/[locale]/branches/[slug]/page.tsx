@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { ContentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { formatUzs, isPublicLocale, pickLocalized, weekdayLabel } from "@/lib/public-i18n";
@@ -15,7 +15,7 @@ export default async function PublicBranchPage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { locale, slug } = await params;
-  noStore();
+  await connection();
   if (!isPublicLocale(locale)) notFound();
 
   const data = await tryGetBranchPublicData(slug);
