@@ -281,8 +281,35 @@ export async function PATCH(
   const branchChanged = branchId !== before.branchId;
   const startChanged = dateKey(startDate) !== dateKey(before.startDate);
   const endChanged = dateKey(endDate) !== dateKey(before.endDate);
+
+  const scheduleKey = (
+    items: Array<{
+      weekday: Weekday;
+      startMinutes: number;
+      endMinutes: number;
+    }>
+  ) =>
+    items
+      .map(
+        (item) =>
+          item.weekday + ":" + item.startMinutes + ":" + item.endMinutes
+      )
+      .sort()
+      .join("|");
+
+  const scheduleChanged =
+    schedule !== null &&
+    scheduleKey(schedule) !==
+      scheduleKey(
+        before.scheduleRules.map((rule) => ({
+          weekday: rule.weekday,
+          startMinutes: rule.startMinutes,
+          endMinutes: rule.endMinutes
+        }))
+      );
+
   const requiresRegeneration =
-    Boolean(schedule) || branchChanged || startChanged || endChanged;
+    scheduleChanged || branchChanged || startChanged || endChanged;
 
   if (requiresRegeneration) {
     const protectedFuture = await prisma.trainingSession.count({
@@ -374,7 +401,7 @@ export async function PATCH(
       });
     }
 
-    if (schedule) {
+    if (scheduleChanged && schedule) {
       await tx.groupScheduleRule.updateMany({
         where: {
           groupId,
