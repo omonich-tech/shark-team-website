@@ -5,6 +5,11 @@ const metadataBase = new URL(
   process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 );
 
+const googleSiteVerification =
+  process.env.GOOGLE_SITE_VERIFICATION?.trim() || null;
+const yandexSiteVerification =
+  process.env.YANDEX_SITE_VERIFICATION?.trim() || null;
+
 export const metadata: Metadata = {
   metadataBase,
   title: "SHARK TEAM",
@@ -34,6 +39,15 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <head>
+        {googleSiteVerification ? (
+          <meta
+            name="google-site-verification"
+            content={googleSiteVerification}
+          />
+        ) : null}
+        {yandexSiteVerification ? (
+          <meta name="yandex-verification" content={yandexSiteVerification} />
+        ) : null}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>{children}</body>
