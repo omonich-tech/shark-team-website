@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   EnrollmentStatus,
@@ -19,20 +20,40 @@ type ScheduleInput = {
 function parseTime(value: unknown) {
   if (typeof value !== "string") return null;
   const match = /^(\d{2}):(\d{2})$/.exec(value);
-
   if (!match) return null;
 
   const hour = Number(match[1]);
   const minute = Number(match[2]);
-
   if (hour > 23 || minute > 59) return null;
+
   return hour * 60 + minute;
 }
 
-function addDays(dateKey: string, amount: number) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day + amount));
-  return date.toISOString().slice(0, 10);
+function parseDate(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return undefined;
+  }
+
+  const parsed = new Date(value + "T00:00:00.000Z");
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function dateKey(value: Date | null) {
+  return value ? value.toISOString().slice(0, 10) : null;
+}
+
+function addDays(value: string, amount: number) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + amount))
+    .toISOString()
+    .slice(0, 10);
+}
+
+function optionalString(value: unknown, max: number) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  return value.trim().slice(0, max) || null;
 }
 
 export async function PATCH(
@@ -55,6 +76,7 @@ export async function PATCH(
   const before = await prisma.trainingGroup.findUnique({
     where: { id: groupId },
     include: {
+      branch: true,
       scheduleRules: {
         where: { status: LifecycleStatus.ACTIVE }
       }
@@ -68,6 +90,19 @@ export async function PATCH(
     );
   }
 
+  const branchId =
+    typeof body.branchId === "string" ? body.branchId : before.branchId;
+  const sportId =
+    typeof body.sportId === "string" ? body.sportId : before.sportId;
+  const primaryCoachId =
+    typeof body.primaryCoachId === "string"
+      ? body.primaryCoachId
+      : before.primaryCoachId;
+  const internalName =
+    typeof body.internalName === "string"
+      ? body.internalName.trim().slice(0, 160)
+      : before.internalName;
+
   const ageMin = Number(body.ageMin ?? before.ageMin);
   const ageMax = Number(body.ageMax ?? before.ageMax);
   const capacityRegular = Number(
@@ -79,6 +114,40 @@ export async function PATCH(
     body.capacityTrial === ""
       ? null
       : Number(body.capacityTrial);
+
+  const status = String(body.status ?? before.status) as LifecycleStatus;
+  const enrollmentStatus = String(
+    body.enrollmentStatus ?? before.enrollmentStatus
+  ) as EnrollmentStatus;
+
+  const level =
+    body.level === undefined
+      ? before.level
+      : optionalString(body.level, 120);
+  const notesInternal =
+    body.notesInternal === undefined
+      ? before.notesInternal
+      : optionalString(body.notesInternal, 2000);
+  const startDate =
+    body.startDate === undefined ? before.startDate : parseDate(body.startDate);
+  const endDate =
+    body.endDate === undefined ? before.endDate : parseDate(body.endDate);
+
+  if (
+    !branchId ||
+    !sportId ||
+    !primaryCoachId ||
+    !internalName ||
+    level === undefined ||
+    notesInternal === undefined ||
+    startDate === undefined ||
+    endDate === undefined
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_GROUP_FIELDS" },
+      { status: 400 }
+    );
+  }
 
   if (
     !Number.isInteger(ageMin) ||
@@ -108,11 +177,6 @@ export async function PATCH(
     );
   }
 
-  const status = String(body.status ?? before.status) as LifecycleStatus;
-  const enrollmentStatus = String(
-    body.enrollmentStatus ?? before.enrollmentStatus
-  ) as EnrollmentStatus;
-
   if (
     !Object.values(LifecycleStatus).includes(status) ||
     !Object.values(EnrollmentStatus).includes(enrollmentStatus)
@@ -120,6 +184,41 @@ export async function PATCH(
     return NextResponse.json(
       { ok: false, error: "INVALID_STATUS" },
       { status: 400 }
+    );
+  }
+
+  if (startDate && endDate && startDate > endDate) {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_GROUP_DATE_RANGE" },
+      { status: 400 }
+    );
+  }
+
+  const [branch, sport, coach] = await Promise.all([
+    prisma.branch.findFirst({
+      where: {
+        id: branchId,
+        status: { not: LifecycleStatus.ARCHIVED }
+      }
+    }),
+    prisma.sport.findFirst({
+      where: {
+        id: sportId,
+        status: { not: LifecycleStatus.ARCHIVED }
+      }
+    }),
+    prisma.coach.findFirst({
+      where: {
+        id: primaryCoachId,
+        status: { not: LifecycleStatus.ARCHIVED }
+      }
+    })
+  ]);
+
+  if (!branch || !sport || !coach) {
+    return NextResponse.json(
+      { ok: false, error: "GROUP_RELATION_NOT_FOUND" },
+      { status: 404 }
     );
   }
 
@@ -179,22 +278,30 @@ export async function PATCH(
   }
 
   const now = new Date();
+  const branchChanged = branchId !== before.branchId;
+  const startChanged = dateKey(startDate) !== dateKey(before.startDate);
+  const endChanged = dateKey(endDate) !== dateKey(before.endDate);
+  const requiresRegeneration =
+    Boolean(schedule) || branchChanged || startChanged || endChanged;
 
-  if (schedule) {
-    const bookedFuture = await prisma.trainingSession.count({
+  if (requiresRegeneration) {
+    const protectedFuture = await prisma.trainingSession.count({
       where: {
         groupId,
         startsAt: { gt: now },
-        trialBookings: { some: {} }
+        OR: [
+          { trialBookings: { some: {} } },
+          { attendances: { some: {} } }
+        ]
       }
     });
 
-    if (bookedFuture > 0) {
+    if (protectedFuture > 0) {
       return NextResponse.json(
         {
           ok: false,
           error: "FUTURE_SESSIONS_HAVE_BOOKINGS",
-          bookedFuture
+          bookedFuture: protectedFuture
         },
         { status: 409 }
       );
@@ -202,19 +309,61 @@ export async function PATCH(
   }
 
   const after = await prisma.$transaction(async (tx) => {
+    await tx.branchSport.upsert({
+      where: { branchId_sportId: { branchId, sportId } },
+      update: { status: LifecycleStatus.ACTIVE },
+      create: {
+        branchId,
+        sportId,
+        status: LifecycleStatus.ACTIVE
+      }
+    });
+
+    await tx.coachSport.upsert({
+      where: {
+        coachId_sportId: { coachId: primaryCoachId, sportId }
+      },
+      update: { status: LifecycleStatus.ACTIVE },
+      create: {
+        coachId: primaryCoachId,
+        sportId,
+        status: LifecycleStatus.ACTIVE
+      }
+    });
+
+    await tx.coachBranch.upsert({
+      where: {
+        coachId_branchId: { coachId: primaryCoachId, branchId }
+      },
+      update: { status: LifecycleStatus.ACTIVE },
+      create: {
+        coachId: primaryCoachId,
+        branchId,
+        status: LifecycleStatus.ACTIVE
+      }
+    });
+
     const updated = await tx.trainingGroup.update({
       where: { id: groupId },
       data: {
+        branchId,
+        sportId,
+        primaryCoachId,
+        internalName,
         status,
         enrollmentStatus,
         ageMin,
         ageMax,
         capacityRegular,
-        capacityTrial
+        capacityTrial,
+        level,
+        notesInternal,
+        startDate,
+        endDate
       }
     });
 
-    if (schedule) {
+    if (requiresRegeneration) {
       await tx.trainingSession.deleteMany({
         where: {
           groupId,
@@ -223,7 +372,9 @@ export async function PATCH(
           attendances: { none: {} }
         }
       });
+    }
 
+    if (schedule) {
       await tx.groupScheduleRule.updateMany({
         where: {
           groupId,
@@ -237,36 +388,53 @@ export async function PATCH(
 
       await tx.groupScheduleRule.createMany({
         data: schedule.map((rule, index) => ({
-          id: `RULE-${groupId}-${Date.now()}-${index}`,
+          id: `RULE-${groupId}-${Date.now()}-${index}-${randomUUID()}`,
           groupId,
           weekday: rule.weekday,
           startMinutes: rule.startMinutes,
           endMinutes: rule.endMinutes,
-          validFrom: now,
+          validFrom: startDate ?? now,
+          validTo: endDate,
           status: LifecycleStatus.ACTIVE
         }))
       });
-    } else {
-      await tx.trainingSession.updateMany({
+    } else if (startChanged || endChanged) {
+      await tx.groupScheduleRule.updateMany({
         where: {
           groupId,
-          startsAt: { gt: now },
-          trialBookings: { none: {} }
+          status: LifecycleStatus.ACTIVE
         },
         data: {
-          regularCapacity: capacityRegular,
-          trialCapacity: capacityTrial,
-          trialBookingEnabled:
-            enrollmentStatus === EnrollmentStatus.OPEN &&
-            capacityTrial !== null &&
-            capacityTrial > 0
+          validFrom: startDate ?? null,
+          validTo: endDate
         }
       });
     }
 
+    await tx.trainingSession.updateMany({
+      where: {
+        groupId,
+        startsAt: { gt: now },
+        trialBookings: { none: {} }
+      },
+      data: {
+        coachId: primaryCoachId,
+        regularCapacity: capacityRegular,
+        trialCapacity: capacityTrial,
+        trialBookingEnabled:
+          status === LifecycleStatus.ACTIVE &&
+          enrollmentStatus === EnrollmentStatus.OPEN &&
+          capacityTrial !== null &&
+          capacityTrial > 0
+      }
+    });
+
     return tx.trainingGroup.findUniqueOrThrow({
       where: { id: groupId },
       include: {
+        branch: true,
+        sport: true,
+        primaryCoach: true,
         scheduleRules: {
           where: { status: LifecycleStatus.ACTIVE }
         }
@@ -274,12 +442,16 @@ export async function PATCH(
     });
   });
 
-  if (schedule) {
-    const from = dateKeyInTimeZone(now, "Asia/Tashkent");
+  const shouldGenerate =
+    status === LifecycleStatus.ACTIVE &&
+    (requiresRegeneration || before.status !== LifecycleStatus.ACTIVE);
+
+  if (shouldGenerate) {
+    const from = dateKeyInTimeZone(now, branch.timezone);
     await generateTrainingSessions(prisma, {
       from,
       to: addDays(from, 84),
-      branchId: before.branchId
+      branchId
     });
   }
 
