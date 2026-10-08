@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import {
   LifecycleStatus,
@@ -7,8 +9,79 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { isPublicLocale, weekdayLabel } from "@/lib/public-i18n";
+import {
+  absoluteUrl,
+  breadcrumbJsonLd,
+  buildPublicMetadata
+} from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string; coachId: string }>;
+}): Promise<Metadata> {
+  const { locale, coachId } = await params;
+  if (!isPublicLocale(locale)) return {};
+
+  const prisma = getPrisma();
+  const coach = await prisma.coach.findFirst({
+    where: { id: coachId, status: LifecycleStatus.ACTIVE },
+    include: {
+      sportLinks: {
+        where: { status: LifecycleStatus.ACTIVE },
+        include: { sport: true }
+      }
+    }
+  });
+
+  if (!coach) return {};
+
+  const image = await prisma.mediaAsset.findFirst({
+    where: {
+      targetType: MediaTargetType.COACH,
+      targetId: coach.id,
+      contentType: { startsWith: "image/" },
+      OR: [
+        { containsMinors: false },
+        {
+          containsMinors: true,
+          consentStatus: MediaConsentStatus.APPROVED
+        }
+      ]
+    },
+    orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }]
+  });
+
+  const fullName = [coach.firstName, coach.lastName].filter(Boolean).join(" ");
+  const sports = coach.sportLinks
+    .map((link) =>
+      locale === "ru" ? link.sport.nameRu : link.sport.nameUz
+    )
+    .join(", ");
+  const title =
+    (locale === "ru" ? coach.seoTitleRu : coach.seoTitleUz) ??
+    (locale === "ru"
+      ? `Тренер ${fullName} — SHARK TEAM`
+      : `Murabbiy ${fullName} — SHARK TEAM`);
+  const description =
+    (locale === "ru"
+      ? coach.seoDescriptionRu
+      : coach.seoDescriptionUz) ??
+    (locale === "ru" ? coach.publicBioRu : coach.publicBioUz) ??
+    (locale === "ru"
+      ? `${fullName} — тренер SHARK TEAM${sports ? " по направлениям: " + sports : ""}. Группы, филиалы и запись на пробное занятие.`
+      : `${fullName} — SHARK TEAM murabbiyi${sports ? ": " + sports : ""}. Guruhlar, filiallar va sinov mashg‘ulotiga yozilish.`);
+
+  return buildPublicMetadata({
+    locale,
+    path: `/coaches/${coachId}`,
+    title,
+    description,
+    images: image ? [image.url] : []
+  });
+}
 
 function minutes(value: number) {
   const hours = Math.floor(value / 60);
@@ -82,8 +155,41 @@ export default async function CoachProfilePage({
   const qualification =
     locale === "ru" ? coach.qualificationRu : coach.qualificationUz;
 
+  const structuredData = [
+    breadcrumbJsonLd([
+      { name: "SHARK TEAM", path: `/${locale}` },
+      {
+        name: locale === "ru" ? "Тренеры" : "Murabbiylar",
+        path: `/${locale}/coaches`
+      },
+      {
+        name: fullName,
+        path: `/${locale}/coaches/${coach.id}`
+      }
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: fullName,
+      url: absoluteUrl(`/${locale}/coaches/${coach.id}`),
+      image: photo?.url,
+      jobTitle: locale === "ru" ? "Тренер" : "Murabbiy",
+      description: bio ?? undefined,
+      worksFor: {
+        "@type": "SportsOrganization",
+        name: "SHARK TEAM",
+        url: absoluteUrl(`/${locale}`)
+      },
+      knowsAbout: coach.sportLinks.map((link) =>
+        locale === "ru" ? link.sport.nameRu : link.sport.nameUz
+      )
+    }
+  ];
+
   return (
-    <main className="page-main">
+    <>
+      <JsonLd data={structuredData} />
+      <main className="page-main">
       <section className="coach-detail-hero">
         <div
           className={photo ? "coach-detail-photo has-photo" : "coach-detail-photo"}
@@ -213,6 +319,7 @@ export default async function CoachProfilePage({
           ) : null}
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
