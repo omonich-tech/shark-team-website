@@ -310,6 +310,9 @@ jobs:
       - name: Smoke test structured content CMS
         run: npm run smoke:content-cms
 
+      - name: Smoke test SEO metadata
+        run: npm run smoke:seo
+
       - name: Smoke test production hardening
         run: npm run smoke:production
 
