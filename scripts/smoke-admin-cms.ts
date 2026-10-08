@@ -301,13 +301,45 @@ async function main() {
     "POST",
     {
       status: "PUBLISHED",
-      branchId: "BR-SCHOOL-117-01",
-      sportId: "SP-BASKETBALL-01",
-      questionRu: "CI вопрос?",
-      questionUz: "CI savol?",
-      answerRu: "CI ответ из CMS.",
-      answerUz: "CI CMS javobi.",
-      sortOrder: 999
+      branchId: null,
+      sportId: null,
+      questionRu: "CI глобальный FAQ?",
+      questionUz: "CI global FAQ?",
+      answerRu: "CI глобальный ответ.",
+      answerUz: "CI global javob.",
+      sortOrder: 901
+    },
+    cookie
+  );
+
+  await json(
+    "/api/admin/faq",
+    "POST",
+    {
+      status: "PUBLISHED",
+      branchId: null,
+      sportId,
+      questionRu: "CI FAQ спорта?",
+      questionUz: "CI sport FAQ?",
+      answerRu: "CI ответ спорта.",
+      answerUz: "CI sport javobi.",
+      sortOrder: 902
+    },
+    cookie
+  );
+
+  await json(
+    "/api/admin/faq",
+    "POST",
+    {
+      status: "PUBLISHED",
+      branchId,
+      sportId: null,
+      questionRu: "CI FAQ филиала?",
+      questionUz: "CI filial FAQ?",
+      answerRu: "CI ответ филиала.",
+      answerUz: "CI filial javobi.",
+      sortOrder: 903
     },
     cookie
   );
