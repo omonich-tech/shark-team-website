@@ -211,6 +211,10 @@ model Sport {
   nameUz             String
   shortDescriptionRu String?
   shortDescriptionUz String?
+  seoTitleRu         String?
+  seoTitleUz         String?
+  seoDescriptionRu   String?
+  seoDescriptionUz   String?
   ageMin             Int?
   ageMax             Int?
   sortOrder          Int             @default(0)
@@ -250,6 +254,10 @@ model Branch {
   workingHoursUz   String?
   facilityNotesRu  String?
   facilityNotesUz  String?
+  seoTitleRu       String?
+  seoTitleUz       String?
+  seoDescriptionRu String?
+  seoDescriptionUz String?
   timezone         String          @default("Asia/Tashkent")
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -289,6 +297,10 @@ model Coach {
   qualificationUz    String?
   publicBioRu        String?
   publicBioUz        String?
+  seoTitleRu         String?
+  seoTitleUz         String?
+  seoDescriptionRu   String?
+  seoDescriptionUz   String?
   startedAt          DateTime?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
