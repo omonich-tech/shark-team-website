@@ -103,7 +103,11 @@ export default async function AdminSportEditPage({
             { name: "ageMax", label: "Возраст до", type: "number" },
             { name: "sortOrder", label: "Порядок на сайте", type: "number" },
             { name: "shortDescriptionRu", label: "Короткое описание RU", type: "textarea" },
-            { name: "shortDescriptionUz", label: "Короткое описание UZ", type: "textarea" }
+            { name: "shortDescriptionUz", label: "Короткое описание UZ", type: "textarea" },
+            { name: "seoTitleRu", label: "SEO title RU" },
+            { name: "seoTitleUz", label: "SEO title UZ" },
+            { name: "seoDescriptionRu", label: "SEO description RU", type: "textarea" },
+            { name: "seoDescriptionUz", label: "SEO description UZ", type: "textarea" }
           ]}
           initialValues={{
             status: sport.status,
@@ -114,7 +118,11 @@ export default async function AdminSportEditPage({
             ageMax: sport.ageMax,
             sortOrder: sport.sortOrder,
             shortDescriptionRu: sport.shortDescriptionRu,
-            shortDescriptionUz: sport.shortDescriptionUz
+            shortDescriptionUz: sport.shortDescriptionUz,
+            seoTitleRu: sport.seoTitleRu,
+            seoTitleUz: sport.seoTitleUz,
+            seoDescriptionRu: sport.seoDescriptionRu,
+            seoDescriptionUz: sport.seoDescriptionUz
           }}
         />
       </section>
