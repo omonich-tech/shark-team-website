@@ -98,6 +98,24 @@ async function main() {
     "Home SportsOrganization JSON-LD is missing"
   );
 
+  const googleVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+  if (googleVerification) {
+    assert(
+      home.body.includes('name="google-site-verification"') &&
+        home.body.includes(`content="${googleVerification}"`),
+      "Google Search Console verification tag is missing"
+    );
+  }
+
+  const yandexVerification = process.env.YANDEX_SITE_VERIFICATION?.trim();
+  if (yandexVerification) {
+    assert(
+      home.body.includes('name="yandex-verification"') &&
+        home.body.includes(`content="${yandexVerification}"`),
+      "Yandex Webmaster verification tag is missing"
+    );
+  }
+
   const sportPath = "/ru/sports/" + sport.slug;
   const sportPage = await html(sportPath);
   assert(sportPage.response.ok, "Sport SEO page did not render");
@@ -209,6 +227,32 @@ async function main() {
     !robotsText.includes("Disallow: /ru/trial") &&
       !robotsText.includes("Disallow: /uz/trial"),
     "robots.txt blocks pages that must expose noindex"
+  );
+
+  const indexNowKey = process.env.INDEXNOW_KEY?.trim();
+  if (indexNowKey) {
+    const keyFile = await fetch(baseUrl + "/indexnow-key.txt");
+    const keyBody = await keyFile.text();
+    assert(keyFile.ok, "IndexNow key file did not render");
+    assert(keyBody === indexNowKey, "IndexNow key file content is wrong");
+    assert(
+      keyFile.headers.get("x-robots-tag")?.includes("noindex"),
+      "IndexNow key file must be noindex"
+    );
+  }
+
+  const unauthorizedIndexNow = await fetch(baseUrl + "/api/jobs/indexnow", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      urls: [siteBase + "/ru"]
+    })
+  });
+  assert(
+    unauthorizedIndexNow.status === 401,
+    "IndexNow endpoint must reject unauthenticated requests"
   );
 
   const sitemap = await fetch(baseUrl + "/sitemap.xml");
