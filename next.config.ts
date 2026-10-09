@@ -24,10 +24,11 @@ const securityHeaders = [
       "object-src 'none'",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: https:",
-      "font-src 'self' data:",
-      "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline' https://*.posthog.com",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "style-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://tagmanager.google.com https://fonts.googleapis.com",
+      "script-src 'self' 'unsafe-inline' https://*.posthog.com https://www.googletagmanager.com https://tagmanager.google.com",
       "connect-src 'self' https:",
+      "frame-src 'self' https://www.googletagmanager.com",
       "worker-src 'self' blob: data:",
       "form-action 'self' https://checkout.paycom.uz https://test.paycom.uz"
     ].join("; ")
