@@ -337,7 +337,11 @@ export default async function PublicHome({
             <Link className="button primary" href={`/${locale}/sports`}>
               {copy.chooseSport} <span aria-hidden="true">→</span>
             </Link>
-            <Link className="button secondary" href={`/${locale}/trial`}>
+            <Link
+              className="button secondary"
+              data-analytics-event="trial_cta_click"
+              href={`/${locale}/trial`}
+            >
               {copy.trial}
             </Link>
           </div>
@@ -631,7 +635,13 @@ export default async function PublicHome({
           ))}
         </div>
         <div className="section-action">
-          <Link className="button primary" href={`/${locale}/trial`}>{copy.trial} →</Link>
+          <Link
+            className="button primary"
+            data-analytics-event="trial_cta_click"
+            href={`/${locale}/trial`}
+          >
+            {copy.trial} →
+          </Link>
         </div>
       </section>
 
@@ -659,7 +669,13 @@ export default async function PublicHome({
           <p>{copy.ctaLead}</p>
         </div>
         <div className="hero-actions">
-          <Link className="button primary" href={`/${locale}/trial`}>{copy.trial} →</Link>
+          <Link
+            className="button primary"
+            data-analytics-event="trial_cta_click"
+            href={`/${locale}/trial`}
+          >
+            {copy.trial} →
+          </Link>
           <Link className="button secondary" href={`/${locale}/sports`}>{copy.chooseSport}</Link>
         </div>
       </section>
