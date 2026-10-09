@@ -10,6 +10,19 @@ export type AnalyticsContext = {
   pageViewId: string | null;
 };
 
+export type FunnelEventDetail = {
+  label?: string | null;
+  targetPath?: string | null;
+  sportSlug?: string | null;
+  branchSlug?: string | null;
+};
+
+declare global {
+  interface Window {
+    dataLayer?: Array<Record<string, unknown>>;
+  }
+}
+
 function read(key: string, storage: Storage) {
   try {
     return storage.getItem(key);
@@ -30,16 +43,31 @@ export function getAnalyticsContext(): AnalyticsContext {
   };
 }
 
-export function trackFunnelEvent(
+export function pushMarketingFunnelEvent(
   eventName: string,
-  detail: {
-    label?: string | null;
-    targetPath?: string | null;
-    sportSlug?: string | null;
-    branchSlug?: string | null;
-  } = {}
+  detail: FunnelEventDetail = {}
 ) {
   if (typeof window === "undefined") return;
+
+  window.dataLayer = window.dataLayer ?? [];
+  window.dataLayer.push({
+    event: "shark_funnel",
+    funnel_step: eventName,
+    sport_slug: detail.sportSlug ?? undefined,
+    branch_slug: detail.branchSlug ?? undefined,
+    label: detail.label ?? undefined,
+    target_path: detail.targetPath ?? undefined,
+    shark_surface: "public"
+  });
+}
+
+export function trackFunnelEvent(
+  eventName: string,
+  detail: FunnelEventDetail = {}
+) {
+  if (typeof window === "undefined") return;
+
+  pushMarketingFunnelEvent(eventName, detail);
 
   window.dispatchEvent(
     new CustomEvent("shark:analytics-funnel", {

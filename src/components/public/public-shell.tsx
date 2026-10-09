@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/public/theme-toggle";
 import { BrandLogo } from "@/components/public/brand-logo";
 import { WebAnalyticsTracker } from "@/components/public/web-analytics-tracker";
 import { PostHogPublicRecorder } from "@/components/public/posthog-public-recorder";
+import { GoogleTagManager } from "@/components/public/google-tag-manager";
 import { tryGetPublishedContentPage } from "@/server/public-data/content-page";
 
 const labels = {
@@ -61,6 +62,7 @@ export async function PublicShell({
 
   return (
     <div className="public-site">
+      <GoogleTagManager />
       <WebAnalyticsTracker />
       <PostHogPublicRecorder />
       <header className="site-header">

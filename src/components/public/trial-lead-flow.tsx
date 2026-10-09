@@ -314,6 +314,10 @@ export function TrialLeadFlow({
 
       setManualPayment(payload as ManualCardPayment);
       setPaymentUnavailable(false);
+      trackFunnelEvent("payment_started", {
+        sportSlug,
+        branchSlug
+      });
     } catch {
       setPaymentUnavailable(true);
     }
@@ -368,6 +372,11 @@ export function TrialLeadFlow({
         return;
       }
 
+      trackFunnelEvent("lead_created", {
+        sportSlug,
+        branchSlug
+      });
+
       const bookingResponse = await fetch("/api/public/trial-bookings", {
         method: "POST",
         headers: {
@@ -396,6 +405,10 @@ export function TrialLeadFlow({
       }
 
       const nextReservation = bookingPayload.booking as Reservation;
+      trackFunnelEvent("trial_booking_created", {
+        sportSlug,
+        branchSlug
+      });
       setReservation(nextReservation);
       setResult("success");
       await Promise.all([

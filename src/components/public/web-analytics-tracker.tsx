@@ -2,7 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { analyticsStorageKeys } from "@/lib/web-analytics-client";
+import {
+  analyticsStorageKeys,
+  pushMarketingFunnelEvent
+} from "@/lib/web-analytics-client";
 
 const VISITOR_KEY = analyticsStorageKeys.visitor;
 const SESSION_KEY = analyticsStorageKeys.session;
@@ -268,6 +271,8 @@ export function WebAnalyticsTracker() {
       if (!pageViewId || !visitorId || !sessionId) return;
 
       const customEvent = interactive.getAttribute("data-analytics-event");
+      const label = safeLabel(interactive);
+      const targetPath = safeTarget(interactive);
 
       send({
         event: "click",
@@ -275,13 +280,18 @@ export function WebAnalyticsTracker() {
         visitorId,
         sessionId,
         path: window.location.pathname,
-        label: safeLabel(interactive),
-        targetPath: safeTarget(interactive),
+        label,
+        targetPath,
         elementTag: interactive.tagName.toLowerCase(),
         eventName: customEvent ?? "click"
       });
 
       if (customEvent) {
+        pushMarketingFunnelEvent(customEvent, {
+          label,
+          targetPath
+        });
+
         send({
           event: "funnel",
           eventName: customEvent,
@@ -289,8 +299,8 @@ export function WebAnalyticsTracker() {
           visitorId,
           sessionId,
           path: window.location.pathname,
-          label: safeLabel(interactive),
-          targetPath: safeTarget(interactive)
+          label,
+          targetPath
         });
       }
     }
