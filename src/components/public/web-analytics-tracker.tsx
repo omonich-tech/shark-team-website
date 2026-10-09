@@ -264,15 +264,22 @@ export function WebAnalyticsTracker() {
         return;
       }
 
+      const customEvent = interactive.getAttribute("data-analytics-event");
+      const label = safeLabel(interactive);
+      const targetPath = safeTarget(interactive);
+
+      if (customEvent) {
+        pushMarketingFunnelEvent(customEvent, {
+          label,
+          targetPath
+        });
+      }
+
       const pageViewId = pageViewIdRef.current;
       const visitorId = visitorIdRef.current;
       const sessionId = sessionIdRef.current;
 
       if (!pageViewId || !visitorId || !sessionId) return;
-
-      const customEvent = interactive.getAttribute("data-analytics-event");
-      const label = safeLabel(interactive);
-      const targetPath = safeTarget(interactive);
 
       send({
         event: "click",
@@ -287,11 +294,6 @@ export function WebAnalyticsTracker() {
       });
 
       if (customEvent) {
-        pushMarketingFunnelEvent(customEvent, {
-          label,
-          targetPath
-        });
-
         send({
           event: "funnel",
           eventName: customEvent,
