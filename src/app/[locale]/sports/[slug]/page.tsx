@@ -161,6 +161,7 @@ export default async function SportPage({
   const mark =
     fallback?.mark ??
     String(Math.max(1, sport.sortOrder + 1)).padStart(2, "0");
+  const story = fallback?.story[locale === "ru" ? "ru" : "uz"] ?? null;
 
   const structuredData = [
     breadcrumbJsonLd([
@@ -218,7 +219,14 @@ export default async function SportPage({
           </Link>
           <p className="eyebrow">SHARK TEAM · {mark}</p>
           <h1>{name}</h1>
-          <p className="lead">{description}</p>
+          <p className="lead">{story?.heroLead ?? description}</p>
+          {story ? (
+            <div className="sport-trait-list" aria-label={locale === "ru" ? "Ключевые качества спорта" : "Sportning asosiy jihatlari"}>
+              {story.traits.map((trait) => (
+                <span key={trait}>{trait}</span>
+              ))}
+            </div>
+          ) : null}
           {sport.groups.length ? (
             <div className="hero-actions">
               <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?sport=${encodeURIComponent(slug)}`}>
@@ -238,6 +246,135 @@ export default async function SportPage({
           <strong>{name}</strong>
         </div>
       </section>
+
+      {story ? (
+        <>
+          <section className="content-section sport-story-section">
+            <div className="section-heading sport-story-heading">
+              <p className="eyebrow">
+                {locale === "ru" ? "ПОЧЕМУ ЭТО ИНТЕРЕСНО" : "NEGA BU QIZIQ"}
+              </p>
+              <h2>
+                {locale === "ru"
+                  ? `Почему ${name.toLowerCase()} может по-настоящему увлечь`
+                  : `${name} nimasi bilan qiziqtirishi mumkin`}
+              </h2>
+              <p>
+                {locale === "ru"
+                  ? "Не список абстрактных преимуществ, а то, что ребёнок реально чувствует на тренировке."
+                  : "Shunchaki afzalliklar ro‘yxati emas — bola mashg‘ulotda haqiqatan his qiladigan narsalar."}
+              </p>
+            </div>
+
+            <div className="sport-story-card-grid">
+              {story.why.map((item, index) => (
+                <article className="sport-story-card" key={item.title}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="content-section sport-story-development">
+            <div className="sport-story-duo">
+              <article className="sport-story-panel">
+                <p className="eyebrow">{locale === "ru" ? "ТЕЛО" : "JISMONIY RIVOJLANISH"}</p>
+                <h2>{locale === "ru" ? "Что развивает физически" : "Jismonan nimalarni rivojlantiradi"}</h2>
+                <ul className="sport-benefit-list">
+                  {story.physical.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
+
+              <article className="sport-story-panel sport-story-panel-dark">
+                <p className="eyebrow">{locale === "ru" ? "ХАРАКТЕР" : "XARAKTER"}</p>
+                <h2>{locale === "ru" ? "Что тренирует в характере" : "Xarakterda nimalarni shakllantiradi"}</h2>
+                <ul className="sport-benefit-list">
+                  {story.character.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
+            </div>
+          </section>
+
+          <section className="content-section">
+            <div className="section-heading sport-story-heading">
+              <p className="eyebrow">{locale === "ru" ? "ВНУТРИ ТРЕНИРОВКИ" : "MASHG‘ULOT ICHIDA"}</p>
+              <h2>{locale === "ru" ? "Как выглядит занятие" : "Mashg‘ulot qanday o‘tadi"}</h2>
+            </div>
+            <div className="sport-training-grid">
+              {story.training.map((step, index) => (
+                <article key={step.title}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="content-section">
+            <div className="sport-story-duo sport-story-duo-lists">
+              <article className="sport-story-panel">
+                <p className="eyebrow">{locale === "ru" ? "НАВЫКИ" : "KO‘NIKMALAR"}</p>
+                <h2>
+                  {locale === "ru"
+                    ? "Чему ребёнок постепенно научится"
+                    : "Bola asta-sekin nimalarni o‘rganadi"}
+                </h2>
+                <ul className="sport-check-list">
+                  {story.skills.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
+
+              <article className="sport-story-panel">
+                <p className="eyebrow">{locale === "ru" ? "КОМУ ПОДОЙДЁТ" : "KIMGA MOS"}</p>
+                <h2>
+                  {locale === "ru"
+                    ? "Этот спорт стоит попробовать, если ребёнок…"
+                    : "Bu sportni sinab ko‘rish mumkin, agar bola…"}
+                </h2>
+                <ul className="sport-check-list">
+                  {story.fit.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
+            </div>
+          </section>
+
+          <section className="content-section sport-beginner-strip">
+            <div>
+              <p className="eyebrow">{locale === "ru" ? "МОЖНО С НУЛЯ" : "NOLDAN BOSHLASH MUMKIN"}</p>
+              <h2>{locale === "ru" ? "Опыт до первой тренировки не нужен" : "Birinchi mashg‘ulotgacha tajriba shart emas"}</h2>
+            </div>
+            <p>{story.beginner}</p>
+          </section>
+
+          {sport.groups.length ? (
+            <section className="content-section sport-story-cta">
+              <div>
+                <p className="eyebrow">SHARK TEAM</p>
+                <h2>{story.ctaTitle}</h2>
+                <p>{story.ctaLead}</p>
+              </div>
+              <Link
+                className="button primary"
+                data-analytics-event="trial_cta_click"
+                href={`/${locale}/trial?sport=${encodeURIComponent(slug)}`}
+              >
+                {locale === "ru" ? "Попробовать на тренировке →" : "Mashg‘ulotda sinab ko‘rish →"}
+              </Link>
+            </section>
+          ) : null}
+        </>
+      ) : null}
 
       {sport.groups.length ? (
         <section className="content-section">
