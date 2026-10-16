@@ -255,6 +255,65 @@ export default async function SportPage({
         </div>
       </section>
 
+      {branches.length ? (
+        <section className="content-section">
+          <div className="section-heading">
+            <p className="eyebrow">{locale === "ru" ? "ГДЕ ЗАНИМАТЬСЯ" : "QAYERDA MASHG‘ULOT"}</p>
+            <h2>{locale === "ru" ? "Филиалы с этим направлением" : "Bu yo‘nalish mavjud filiallar"}</h2>
+          </div>
+          <div className="sport-branch-grid">
+            {branches.map((branch) => {
+              const branchName =
+                locale === "ru" ? branch.publicNameRu : branch.publicNameUz;
+              const district =
+                locale === "ru" ? branch.districtRu : branch.districtUz;
+              const address =
+                locale === "ru" ? branch.addressRu : branch.addressUz;
+              const workingHours =
+                locale === "ru" ? branch.workingHoursRu : branch.workingHoursUz;
+              const hasActiveGroup = sport.groups.some(
+                (group) => group.branchId === branch.id
+              );
+
+              return (
+                <Link
+                  className="sport-branch-card"
+                  href={`/${locale}/branches/${branch.slug}`}
+                  key={branch.id}
+                >
+                  <div>
+                    <span className="sport-branch-status">
+                      {hasActiveGroup
+                        ? locale === "ru"
+                          ? "Есть активная группа"
+                          : "Faol guruh bor"
+                        : locale === "ru"
+                          ? "Филиал подключён"
+                          : "Filial ulangan"}
+                    </span>
+                    <h3>{branchName}</h3>
+                    <p>{[district, address].filter(Boolean).join(" · ")}</p>
+                  </div>
+                  <div className="sport-branch-hours">
+                    <span>{locale === "ru" ? "Дни и время работы" : "Ish kunlari va vaqti"}</span>
+                    <strong>{workingHours || "—"}</strong>
+                    <small>
+                      {hasActiveGroup
+                        ? locale === "ru"
+                          ? "Открыть филиал и расписание →"
+                          : "Filial va jadvalni ochish →"
+                        : locale === "ru"
+                          ? "Расписание группы появится после её создания →"
+                          : "Guruh jadvali yaratilgandan keyin chiqadi →"}
+                    </small>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       {story ? (
         <>
           <section className="content-section sport-story-section">
@@ -382,65 +441,6 @@ export default async function SportPage({
             </section>
           ) : null}
         </>
-      ) : null}
-
-      {branches.length ? (
-        <section className="content-section">
-          <div className="section-heading">
-            <p className="eyebrow">{locale === "ru" ? "ГДЕ ЗАНИМАТЬСЯ" : "QAYERDA MASHG‘ULOT"}</p>
-            <h2>{locale === "ru" ? "Филиалы с этим направлением" : "Bu yo‘nalish mavjud filiallar"}</h2>
-          </div>
-          <div className="sport-branch-grid">
-            {branches.map((branch) => {
-              const branchName =
-                locale === "ru" ? branch.publicNameRu : branch.publicNameUz;
-              const district =
-                locale === "ru" ? branch.districtRu : branch.districtUz;
-              const address =
-                locale === "ru" ? branch.addressRu : branch.addressUz;
-              const workingHours =
-                locale === "ru" ? branch.workingHoursRu : branch.workingHoursUz;
-              const hasActiveGroup = sport.groups.some(
-                (group) => group.branchId === branch.id
-              );
-
-              return (
-                <Link
-                  className="sport-branch-card"
-                  href={`/${locale}/branches/${branch.slug}`}
-                  key={branch.id}
-                >
-                  <div>
-                    <span className="sport-branch-status">
-                      {hasActiveGroup
-                        ? locale === "ru"
-                          ? "Есть активная группа"
-                          : "Faol guruh bor"
-                        : locale === "ru"
-                          ? "Филиал подключён"
-                          : "Filial ulangan"}
-                    </span>
-                    <h3>{branchName}</h3>
-                    <p>{[district, address].filter(Boolean).join(" · ")}</p>
-                  </div>
-                  <div className="sport-branch-hours">
-                    <span>{locale === "ru" ? "Дни и время работы" : "Ish kunlari va vaqti"}</span>
-                    <strong>{workingHours || "—"}</strong>
-                    <small>
-                      {hasActiveGroup
-                        ? locale === "ru"
-                          ? "Открыть филиал и расписание →"
-                          : "Filial va jadvalni ochish →"
-                        : locale === "ru"
-                          ? "Расписание группы появится после её создания →"
-                          : "Guruh jadvali yaratilgandan keyin chiqadi →"}
-                    </small>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
       ) : null}
 
       {sport.groups.length ? (
