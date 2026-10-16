@@ -568,10 +568,11 @@ async function main() {
     `${baseUrl}/ru/branches/ci-branch`
   );
   const publicBranchHtml = await publicBranch.text();
+  const normalizedPublicBranchHtml = publicBranchHtml.replaceAll("<!-- -->", "");
   assert(
     publicBranch.ok &&
-      publicBranchHtml.includes("CI Branch Updated") &&
-      publicBranchHtml.includes("10–12 лет"),
+      normalizedPublicBranchHtml.includes("CI Branch Updated") &&
+      normalizedPublicBranchHtml.includes("10–12 лет"),
     "Dynamic public branch page did not render created branch/group"
   );
 
