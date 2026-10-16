@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EnrollmentStatus } from "@/generated/prisma/client";
 import { JsonLd } from "@/components/public/json-ld";
 import { getPrisma } from "@/lib/prisma";
 import { PUBLIC_GROUP_WHERE } from "@/server/public-data/visibility";
@@ -105,13 +106,19 @@ export default async function SchedulePage({
                 <Link href={`/${locale}/coaches/${group.primaryCoach.id}`}>
                   {[group.primaryCoach.firstName, group.primaryCoach.lastName].filter(Boolean).join(" ")}
                 </Link>
-                <Link
-                  className="shark-text-link"
-                  data-analytics-event="trial_cta_click"
-                  href={`/${locale}/trial?sport=${encodeURIComponent(group.sport.slug)}&branch=${encodeURIComponent(group.branch.slug)}`}
-                >
-                  {locale === "ru" ? "Пробное →" : "Sinov →"}
-                </Link>
+                {group.enrollmentStatus === EnrollmentStatus.OPEN ? (
+                  <Link
+                    className="shark-text-link"
+                    data-analytics-event="trial_cta_click"
+                    href={`/${locale}/trial?sport=${encodeURIComponent(group.sport.slug)}&branch=${encodeURIComponent(group.branch.slug)}`}
+                  >
+                    {locale === "ru" ? "Пробное →" : "Sinov →"}
+                  </Link>
+                ) : (
+                  <span className="schedule-enrollment-status">
+                    {locale === "ru" ? "Набор закрыт" : "Qabul yopiq"}
+                  </span>
+                )}
               </div>
             </article>
           ))}
