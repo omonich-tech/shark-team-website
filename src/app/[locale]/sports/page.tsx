@@ -117,12 +117,20 @@ export default async function SportsPage({
                 <div className="sport-catalog-body">
                   <h2>{name}</h2>
                   {description ? <p>{description}</p> : null}
-                  {sport.ageMin !== null || sport.ageMax !== null ? (
-                    <small className="sport-age-hint">
-                      {locale === "ru" ? "Возраст" : "Yosh"} ·{" "}
-                      {sport.ageMin ?? "—"}–{sport.ageMax ?? "—"}
-                    </small>
-                  ) : null}
+                  <small className="sport-age-hint">
+                    {sport.ageMin !== null || sport.ageMax !== null ? (
+                      <>
+                        {locale === "ru" ? "Возраст" : "Yosh"} ·{" "}
+                        {sport.ageMin ?? "—"}–{sport.ageMax ?? "—"} ·{" "}
+                      </>
+                    ) : null}
+                    {sport.branchLinks.length}{" "}
+                    {locale === "ru"
+                      ? sport.branchLinks.length === 1
+                        ? "филиал"
+                        : "филиалов"
+                      : "filial"}
+                  </small>
                   <strong>
                     {sport.groups.length
                       ? locale === "ru"
