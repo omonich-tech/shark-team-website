@@ -8494,6 +8494,22 @@ h3 {
   color: var(--ps-blue);
 }
 
+.branch-info-links a,
+.contact-branch-sports a {
+  color: inherit;
+}
+
+.branch-info-links a:hover,
+.contact-branch-sports a:hover {
+  color: var(--ps-blue);
+}
+
+.schedule-enrollment-status {
+  color: var(--ps-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
 /* Public coach profile v2 */
 .coach-profile-v2 .content-section {
   margin-top: 46px;
@@ -8577,7 +8593,8 @@ h3 {
   margin-top: 22px;
 }
 
-.coach-specialty-list-v2 span {
+.coach-specialty-list-v2 span,
+.coach-specialty-list-v2 a {
   display: inline-flex;
   min-height: 32px;
   align-items: center;
