@@ -8211,6 +8211,420 @@ h3 {
 }
 
 
+/* Public coach profile v2 */
+.coach-profile-v2 .content-section {
+  margin-top: 46px;
+}
+
+.coach-hero-v2 {
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.18fr);
+  min-height: 500px;
+  border: 1px solid var(--ps-line);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--ps-blue) 12%, transparent), transparent 22rem),
+    var(--ps-surface);
+  box-shadow: var(--ps-shadow);
+}
+
+.coach-photo-v2 {
+  position: relative;
+  min-height: 500px;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(17, 183, 255, 0.28), transparent 15rem),
+    linear-gradient(155deg, #0b3e65, #031421);
+  background-position: center;
+  background-size: cover;
+}
+
+.coach-photo-v2.has-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 56%, rgba(2, 13, 23, 0.24));
+  pointer-events: none;
+}
+
+.coach-photo-placeholder-v2 {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+}
+
+.coach-photo-placeholder-v2 > span {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: clamp(72px, 10vw, 132px);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 0.8;
+}
+
+.coach-photo-placeholder-v2 > small {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.28em;
+}
+
+.coach-hero-copy-v2 {
+  align-self: center;
+  padding: clamp(36px, 5vw, 66px);
+}
+
+.coach-hero-copy-v2 .shark-back-link {
+  margin-bottom: 34px;
+}
+
+.coach-hero-copy-v2 h1 {
+  max-width: 760px;
+  margin-bottom: 0;
+  font-size: clamp(46px, 6vw, 76px);
+  line-height: 0.92;
+}
+
+.coach-specialty-list-v2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.coach-specialty-list-v2 span {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--ps-blue) 28%, var(--ps-line));
+  border-radius: 999px;
+  background: var(--ps-soft-blue);
+  color: var(--ps-blue);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.coach-bio-v2 {
+  max-width: 720px;
+  margin: 26px 0 0;
+  color: var(--ps-muted);
+  font-size: clamp(15px, 1.45vw, 18px);
+  line-height: 1.72;
+}
+
+.coach-hero-actions-v2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.coach-facts-v2 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.coach-facts-v2 article {
+  min-height: 96px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 20px 22px;
+  border: 1px solid var(--ps-line);
+  border-radius: 17px;
+  background: var(--ps-surface);
+}
+
+.coach-facts-v2 span {
+  color: var(--ps-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.coach-facts-v2 strong {
+  color: var(--ps-text);
+  font-size: clamp(22px, 2.4vw, 30px);
+  line-height: 1;
+}
+
+.coach-professional-v2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.coach-professional-v2 > article {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 34px;
+  padding: clamp(26px, 4vw, 40px);
+  border: 1px solid var(--ps-line);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, var(--ps-surface), color-mix(in srgb, var(--ps-surface-2) 52%, var(--ps-surface)));
+}
+
+.coach-professional-v2 h2 {
+  max-width: 480px;
+  font-size: clamp(28px, 3.2vw, 40px);
+}
+
+.coach-professional-v2 > article > p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--ps-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.coach-section-heading-v2 {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.coach-section-heading-v2 > div {
+  min-width: 0;
+}
+
+.coach-section-heading-v2 > span {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  border: 1px solid var(--ps-line);
+  border-radius: 999px;
+  background: var(--ps-surface);
+  color: var(--ps-muted);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.coach-branch-grid-v2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.coach-branch-card-v2 {
+  min-height: 180px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px;
+  border: 1px solid var(--ps-line);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--ps-blue) 13%, transparent), transparent 15rem),
+    var(--ps-surface);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.coach-branch-card-v2:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--ps-blue) 34%, var(--ps-line));
+  box-shadow: 0 16px 34px rgba(7, 26, 51, 0.07);
+}
+
+.coach-branch-card-v2 span {
+  color: var(--ps-blue);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.coach-branch-card-v2 h3 {
+  margin: 9px 0 8px;
+  font-size: clamp(23px, 2.5vw, 32px);
+}
+
+.coach-branch-card-v2 p {
+  margin: 0;
+  color: var(--ps-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.coach-branch-card-v2 > strong {
+  flex: 0 0 auto;
+  color: var(--ps-blue);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.coach-group-grid-v2 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.coach-group-card-v2 {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border: 1px solid var(--ps-line);
+  border-radius: 20px;
+  background: var(--ps-surface);
+}
+
+.coach-group-top-v2 {
+  display: grid;
+  gap: 8px;
+}
+
+.coach-group-top-v2 > span {
+  color: var(--ps-blue);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.coach-group-top-v2 > strong {
+  color: var(--ps-text);
+  font-size: 25px;
+  line-height: 1.05;
+}
+
+.coach-schedule-v2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 30px;
+}
+
+.coach-schedule-v2 > span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid var(--ps-line);
+  border-radius: 9px;
+  background: var(--ps-surface-2);
+  color: var(--ps-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.coach-group-footer-v2 {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 28px;
+  border-top: 1px solid var(--ps-line);
+}
+
+.coach-group-footer-v2 > a:first-child {
+  color: var(--ps-muted);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.coach-group-cta-v2 {
+  color: var(--ps-blue);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+@media (max-width: 1000px) {
+  .coach-hero-v2 {
+    grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  }
+
+  .coach-group-grid-v2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .coach-profile-v2 .content-section {
+    margin-top: 36px;
+  }
+
+  .coach-hero-v2,
+  .coach-professional-v2,
+  .coach-branch-grid-v2,
+  .coach-group-grid-v2,
+  .coach-facts-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .coach-photo-v2 {
+    min-height: 390px;
+  }
+
+  .coach-hero-copy-v2 {
+    padding: 28px 24px 34px;
+  }
+
+  .coach-hero-copy-v2 .shark-back-link {
+    margin-bottom: 24px;
+  }
+
+  .coach-hero-copy-v2 h1 {
+    font-size: clamp(42px, 13vw, 62px);
+  }
+
+  .coach-hero-actions-v2 .button {
+    width: 100%;
+  }
+
+  .coach-facts-v2 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .coach-facts-v2 article {
+    min-height: 82px;
+    padding: 15px 13px;
+  }
+
+  .coach-facts-v2 strong {
+    font-size: 20px;
+  }
+
+  .coach-professional-v2 > article {
+    min-height: auto;
+  }
+
+  .coach-section-heading-v2 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .coach-branch-card-v2 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .coach-group-card-v2 {
+    min-height: 270px;
+  }
+}
+
+@media (max-width: 480px) {
+  .coach-facts-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .coach-facts-v2 article {
+    min-height: 76px;
+  }
+}
+
 /* Group CMS */
 .admin-group-catalog th,
 .admin-group-catalog td {
