@@ -8,6 +8,11 @@ import {
   MediaTargetType
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  PUBLIC_BRANCH_WHERE,
+  PUBLIC_COACH_WHERE,
+  PUBLIC_SPORT_WHERE
+} from "@/server/public-data/visibility";
 import { isPublicLocale } from "@/lib/public-i18n";
 import { absoluteUrl, breadcrumbJsonLd, buildPublicMetadata } from "@/lib/seo";
 
@@ -45,14 +50,20 @@ export default async function CoachesPage({
 
   const prisma = getPrisma();
   const coaches = await prisma.coach.findMany({
-    where: { status: LifecycleStatus.ACTIVE },
+    where: PUBLIC_COACH_WHERE,
     include: {
       sportLinks: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          sport: PUBLIC_SPORT_WHERE
+        },
         include: { sport: true }
       },
       branchLinks: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          branch: PUBLIC_BRANCH_WHERE
+        },
         include: { branch: true }
       }
     },
