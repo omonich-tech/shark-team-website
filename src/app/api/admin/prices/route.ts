@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import {
   LifecycleStatus,
@@ -103,6 +104,34 @@ export async function POST(request: NextRequest) {
     before,
     after
   });
+
+  const [branch, sport] = await Promise.all([
+    branchId
+      ? prisma.branch.findUnique({
+          where: { id: branchId },
+          select: { slug: true }
+        })
+      : Promise.resolve(null),
+    sportId
+      ? prisma.sport.findUnique({
+          where: { id: sportId },
+          select: { slug: true }
+        })
+      : Promise.resolve(null)
+  ]);
+
+  revalidatePath("/ru/prices");
+  revalidatePath("/uz/prices");
+
+  if (branch) {
+    revalidatePath(`/ru/branches/${branch.slug}`);
+    revalidatePath(`/uz/branches/${branch.slug}`);
+  }
+
+  if (sport) {
+    revalidatePath(`/ru/sports/${sport.slug}`);
+    revalidatePath(`/uz/sports/${sport.slug}`);
+  }
 
   return NextResponse.json(
     { ok: true, price: after },
