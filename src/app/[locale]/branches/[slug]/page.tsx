@@ -98,14 +98,7 @@ export default async function PublicBranchPage({
       item.targetId === data.id &&
       item.contentType?.startsWith("image/")
   );
-  const coaches = Array.from(
-    new Map(
-      data.groups.map((group) => [
-        group.coach.id,
-        group.coach
-      ])
-    ).values()
-  );
+  const coaches = data.coaches;
 
   const branchName = pickLocalized(locale, data.name);
   const branchDescription =
@@ -342,11 +335,23 @@ export default async function PublicBranchPage({
           <div className="section-heading"><h2>{locale === "ru" ? "Тренеры" : "Murabbiylar"}</h2></div>
           <div className="branch-mini-list">
             {coaches.map((coach) => (
-              <div className="branch-mini-card" key={coach.id}>
+              <Link
+                className="branch-mini-card branch-mini-card-link"
+                href={`/${locale}/coaches/${coach.id}`}
+                key={coach.id}
+              >
                 <span className="branch-mini-avatar">{coach.firstName.slice(0, 1)}</span>
-                <strong>{[coach.firstName, coach.lastName].filter(Boolean).join(" ")}</strong>
-              </div>
+                <div>
+                  <strong>{[coach.firstName, coach.lastName].filter(Boolean).join(" ")}</strong>
+                  <small>{locale === "ru" ? "Профиль тренера →" : "Murabbiy profili →"}</small>
+                </div>
+              </Link>
             ))}
+            {coaches.length === 0 ? (
+              <div className="shark-coming-soon">
+                {locale === "ru" ? "Тренер пока не назначен." : "Murabbiy hali tayinlanmagan."}
+              </div>
+            ) : null}
           </div>
         </div>
         <div>
