@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { AdminEntityForm } from "@/components/admin/entity-form";
 import { BranchSportsEditor } from "@/components/admin/branch-sports-editor";
+import { BranchWorkingHoursEditor } from "@/components/admin/branch-working-hours-editor";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -105,8 +106,6 @@ export default async function AdminBranchEditPage({
             { name: "landmarkRu", label: "Ориентир RU" },
             { name: "landmarkUz", label: "Ориентир UZ" },
             { name: "publicPhone", label: "Публичный телефон", placeholder: "+998 ..." },
-            { name: "workingHoursRu", label: "Время работы RU", placeholder: "Пн–Сб, 09:00–20:00" },
-            { name: "workingHoursUz", label: "Время работы UZ" },
             { name: "latitude", label: "Широта", type: "number" },
             { name: "longitude", label: "Долгота", type: "number" },
             { name: "entranceNoteRu", label: "Как найти вход RU", type: "textarea" },
@@ -132,8 +131,6 @@ export default async function AdminBranchEditPage({
             landmarkRu: branch.landmarkRu,
             landmarkUz: branch.landmarkUz,
             publicPhone: branch.publicPhone,
-            workingHoursRu: branch.workingHoursRu,
-            workingHoursUz: branch.workingHoursUz,
             latitude: branch.latitude ? Number(branch.latitude) : null,
             longitude: branch.longitude ? Number(branch.longitude) : null,
             entranceNoteRu: branch.entranceNoteRu,
@@ -145,6 +142,23 @@ export default async function AdminBranchEditPage({
             seoDescriptionRu: branch.seoDescriptionRu,
             seoDescriptionUz: branch.seoDescriptionUz
           }}
+        />
+      </section>
+
+      <section className="admin-panel admin-editor-panel">
+        <div className="admin-panel-head">
+          <div>
+            <p className="admin-panel-kicker">График</p>
+            <h2>Дни и время работы</h2>
+            <small>
+              Выберите дни недели кликом и задайте время. Эти данные автоматически
+              показываются на публичной странице филиала и на страницах видов спорта.
+            </small>
+          </div>
+        </div>
+        <BranchWorkingHoursEditor
+          branchId={branch.id}
+          initialWorkingHoursRu={branch.workingHoursRu}
         />
       </section>
 
