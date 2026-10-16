@@ -106,12 +106,18 @@ jobs:
       - name: Verify core data
         run: npm run db:verify
 
+      - name: Set deterministic future session window
+        run: |
+          DOW=$(TZ=Asia/Tashkent date +%u)
+          OFFSET=$((8 - DOW))
+          SESSION_FROM=$(TZ=Asia/Tashkent date -d "+${OFFSET} days" +%F)
+          SESSION_TO=$(TZ=Asia/Tashkent date -d "${SESSION_FROM} +13 days" +%F)
+          echo "SESSION_FROM=${SESSION_FROM}" >> "$GITHUB_ENV"
+          echo "SESSION_TO=${SESSION_TO}" >> "$GITHUB_ENV"
+          echo "SESSION_BRANCH_ID=BR-SCHOOL-117-01" >> "$GITHUB_ENV"
+
       - name: Generate deterministic test sessions
         run: npm run db:sessions
-        env:
-          SESSION_FROM: "2026-09-29"
-          SESSION_TO: "2026-10-12"
-          SESSION_BRANCH_ID: "BR-SCHOOL-117-01"
 
       - name: Verify generated sessions
         run: npm run db:verify-sessions
@@ -120,10 +126,6 @@ jobs:
         run: |
           npm run db:sessions
           npm run db:verify-sessions
-        env:
-          SESSION_FROM: "2026-09-29"
-          SESSION_TO: "2026-10-12"
-          SESSION_BRANCH_ID: "BR-SCHOOL-117-01"
 
       - name: Prepare booking smoke data
         run: npm run db:prepare-booking-smoke
