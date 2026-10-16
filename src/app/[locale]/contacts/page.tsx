@@ -284,13 +284,10 @@ export default async function ContactsPage({
 
         <div className="contact-branch-list">
           {branches.map((branch) => {
-            const sports = Array.from(
-              new Set(
-                branch.sportLinks.map((link) =>
-                  locale === "ru" ? link.sport.nameRu : link.sport.nameUz
-                )
-              )
-            ).join(" · ");
+            const sports = branch.sportLinks.map((link) => ({
+              slug: link.sport.slug,
+              name: locale === "ru" ? link.sport.nameRu : link.sport.nameUz
+            }));
 
             return (
               <article className="contact-branch-card" key={branch.id}>
@@ -306,7 +303,18 @@ export default async function ContactsPage({
                   <p>
                     {locale === "ru" ? branch.addressRu : branch.addressUz}
                   </p>
-                  {sports ? <small>{sports}</small> : null}
+                  {sports.length ? (
+                    <small className="contact-branch-sports">
+                      {sports.map((sport, index) => (
+                        <span key={sport.slug}>
+                          {index > 0 ? " · " : ""}
+                          <Link href={`/${locale}/sports/${sport.slug}`}>
+                            {sport.name}
+                          </Link>
+                        </span>
+                      ))}
+                    </small>
+                  ) : null}
                 </div>
 
                 <div className="contact-branch-meta">
