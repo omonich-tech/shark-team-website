@@ -7,6 +7,10 @@ import {
   Weekday
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  PUBLIC_COACH_WHERE,
+  PUBLIC_SPORT_WHERE
+} from "@/server/public-data/visibility";
 
 const weekdayOrder: Record<Weekday, number> = {
   MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4,
@@ -27,20 +31,25 @@ export async function getBranchPublicData(slug: string) {
     where: { slug },
     include: {
       sportLinks: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          sport: PUBLIC_SPORT_WHERE
+        },
         include: { sport: true }
       },
       coachLinks: {
         where: {
           status: LifecycleStatus.ACTIVE,
-          coach: { status: LifecycleStatus.ACTIVE }
+          coach: PUBLIC_COACH_WHERE
         },
         include: { coach: true }
       },
       groups: {
         where: {
           status: LifecycleStatus.ACTIVE,
-          enrollmentStatus: { not: "CLOSED" }
+          enrollmentStatus: { not: "CLOSED" },
+          sport: PUBLIC_SPORT_WHERE,
+          primaryCoach: PUBLIC_COACH_WHERE
         },
         orderBy: { ageMin: "asc" },
         include: {
@@ -63,7 +72,7 @@ export async function getBranchPublicData(slug: string) {
     ])
   );
   const sportIds = Array.from(
-    new Set(branch.groups.map((group) => group.sportId))
+    new Set(branch.sportLinks.map((link) => link.sportId))
   );
 
   const [prices, media, faq] = await Promise.all([
