@@ -30,7 +30,7 @@ export async function getPublicHomeData() {
       include: {
         groups: {
           where: PUBLIC_GROUP_WHERE,
-          select: { id: true }
+          select: { id: true, enrollmentStatus: true }
         }
       },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
