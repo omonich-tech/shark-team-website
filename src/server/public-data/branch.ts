@@ -11,6 +11,10 @@ import {
   PUBLIC_COACH_WHERE,
   PUBLIC_SPORT_WHERE
 } from "@/server/public-data/visibility";
+import {
+  activePriceWhere,
+  resolveEffectivePrice
+} from "@/server/public-data/pricing";
 
 const weekdayOrder: Record<Weekday, number> = {
   MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4,
@@ -78,10 +82,14 @@ export async function getBranchPublicData(slug: string) {
   const [prices, media, faq] = await Promise.all([
     prisma.price.findMany({
       where: {
-        branchId: branch.id,
-        status: LifecycleStatus.ACTIVE,
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gt: now } }]
+        ...activePriceWhere(now),
+        OR: [
+          { branchId: branch.id },
+          {
+            branchId: null,
+            sportId: { in: sportIds.length ? sportIds : ["__none__"] }
+          }
+        ]
       },
       orderBy: [{ productType: "asc" }, { validFrom: "desc" }]
     }),
@@ -206,10 +214,25 @@ export async function getBranchPublicData(slug: string) {
       alt: { ru: item.altRu, uz: item.altUz }
     })),
     prices: {
-      trial:
-        prices.find((price) => price.productType === PriceProductType.TRIAL) ?? null,
-      subscription:
-        prices.find((price) => price.productType === PriceProductType.SUBSCRIPTION) ?? null
+      bySport: branch.sportLinks
+        .filter(({ sport }) => sport.status === LifecycleStatus.ACTIVE)
+        .map(({ sport }) => ({
+          sport: {
+            id: sport.id,
+            slug: sport.slug,
+            name: { ru: sport.nameRu, uz: sport.nameUz }
+          },
+          trial: resolveEffectivePrice(
+            prices,
+            PriceProductType.TRIAL,
+            { sportId: sport.id, branchId: branch.id }
+          ),
+          subscription: resolveEffectivePrice(
+            prices,
+            PriceProductType.SUBSCRIPTION,
+            { sportId: sport.id, branchId: branch.id }
+          )
+        }))
     },
     faq: faq.map((item) => ({
       id: item.id,
