@@ -362,16 +362,43 @@ export default async function PublicBranchPage({
           </div>
         </div>
         <div>
-          <div className="section-heading"><h2>{locale === "ru" ? "Стоимость" : "Narxlar"}</h2></div>
-          <div className="price-grid">
-            <article className="price-card">
-              <span>{locale === "ru" ? "Пробное" : "Sinov"}</span>
-              <strong>{data.prices.trial ? formatUzs(data.prices.trial.amount, locale) : "—"}</strong>
-            </article>
-            <article className="price-card featured">
-              <span>{locale === "ru" ? "Абонемент" : "Abonement"}</span>
-              <strong>{data.prices.subscription ? formatUzs(data.prices.subscription.amount, locale) : "—"}</strong>
-            </article>
+          <div className="section-heading">
+            <h2>{locale === "ru" ? "Стоимость" : "Narxlar"}</h2>
+          </div>
+          <div className="branch-price-by-sport">
+            {data.prices.bySport.map((item) => (
+              <div className="branch-price-sport-row" key={item.sport.id}>
+                <Link
+                  className="branch-price-sport-name"
+                  href={`/${locale}/sports/${item.sport.slug}`}
+                >
+                  {locale === "ru" ? item.sport.name.ru : item.sport.name.uz}
+                </Link>
+                <div className="price-grid">
+                  <article className="price-card">
+                    <span>{locale === "ru" ? "Пробное" : "Sinov"}</span>
+                    <strong>
+                      {item.trial ? formatUzs(item.trial.amount, locale) : "—"}
+                    </strong>
+                  </article>
+                  <article className="price-card featured">
+                    <span>{locale === "ru" ? "Абонемент" : "Abonement"}</span>
+                    <strong>
+                      {item.subscription
+                        ? formatUzs(item.subscription.amount, locale)
+                        : "—"}
+                    </strong>
+                  </article>
+                </div>
+              </div>
+            ))}
+            {data.prices.bySport.length === 0 ? (
+              <div className="shark-coming-soon">
+                {locale === "ru"
+                  ? "Цены для этого филиала пока не опубликованы."
+                  : "Bu filial uchun narxlar hali e’lon qilinmagan."}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
