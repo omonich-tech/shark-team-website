@@ -130,8 +130,14 @@ export async function PATCH(
       latitude,
       longitude,
       publicPhone: optionalString(body.publicPhone, 40),
-      workingHoursRu: optionalString(body.workingHoursRu, 180),
-      workingHoursUz: optionalString(body.workingHoursUz, 180),
+      workingHoursRu:
+        body.workingHoursRu === undefined
+          ? before.workingHoursRu
+          : optionalString(body.workingHoursRu, 180),
+      workingHoursUz:
+        body.workingHoursUz === undefined
+          ? before.workingHoursUz
+          : optionalString(body.workingHoursUz, 180),
       facilityNotesRu: optionalString(body.facilityNotesRu, 700),
       facilityNotesUz: optionalString(body.facilityNotesUz, 700),
       seoTitleRu: optionalString(body.seoTitleRu, 180),
