@@ -83,14 +83,19 @@ export default async function PublicBranchPage({
   if (!data) notFound();
 
   const prisma = getPrisma();
-  const branchFaq = await prisma.faqItem.findMany({
+  const branchFaqItems = await prisma.faqItem.findMany({
     where: {
       status: ContentStatus.PUBLISHED,
-      branchId: data.id,
-      sportId: null
+      branchId: data.id
     },
+    include: { sport: true },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
   });
+  const branchFaq = branchFaqItems.filter(
+    (item) =>
+      !item.sport ||
+      item.sport.status === LifecycleStatus.ACTIVE
+  );
 
   const hero = data.media.find(
     (item) =>
@@ -438,7 +443,14 @@ export default async function PublicBranchPage({
           <div className="faq-list shark-faq-list">
             {branchFaq.map((item) => (
               <details className="faq-item" key={item.id}>
-                <summary>{locale === "ru" ? item.questionRu : item.questionUz}</summary>
+                <summary>
+                  {locale === "ru" ? item.questionRu : item.questionUz}
+                  {item.sport ? (
+                    <small className="faq-scope-label">
+                      {locale === "ru" ? item.sport.nameRu : item.sport.nameUz}
+                    </small>
+                  ) : null}
+                </summary>
                 <p>{locale === "ru" ? item.answerRu : item.answerUz}</p>
               </details>
             ))}
