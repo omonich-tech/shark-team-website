@@ -28,6 +28,13 @@ export async function getPublicHomeData() {
     prisma.sport.findMany({
       where: PUBLIC_SPORT_WHERE,
       include: {
+        branchLinks: {
+          where: {
+            status: LifecycleStatus.ACTIVE,
+            branch: PUBLIC_BRANCH_WHERE
+          },
+          select: { branchId: true }
+        },
         groups: {
           where: PUBLIC_GROUP_WHERE,
           select: { id: true, enrollmentStatus: true }
