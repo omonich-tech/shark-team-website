@@ -1,10 +1,9 @@
 import {
-  EnrollmentStatus,
-  LifecycleStatus,
   SessionStatus,
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { BOOKABLE_GROUP_WHERE } from "@/server/public-data/visibility";
 
 export async function getTrialOptions(
   age: number,
@@ -33,17 +32,16 @@ export async function getTrialOptions(
 
   const group = await prisma.trainingGroup.findFirst({
     where: {
-      status: LifecycleStatus.ACTIVE,
-      enrollmentStatus: EnrollmentStatus.OPEN,
+      ...BOOKABLE_GROUP_WHERE,
       ageMin: { lte: age },
       ageMax: { gte: age },
       branch: {
-        slug: branchSlug,
-        status: LifecycleStatus.ACTIVE
+        ...BOOKABLE_GROUP_WHERE.branch,
+        slug: branchSlug
       },
       sport: {
-        slug: sportSlug,
-        status: LifecycleStatus.ACTIVE
+        ...BOOKABLE_GROUP_WHERE.sport,
+        slug: sportSlug
       }
     },
     include: {
