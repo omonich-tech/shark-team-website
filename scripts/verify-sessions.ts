@@ -3,15 +3,26 @@ import { getPrisma } from "../src/lib/prisma";
 
 const prisma = getPrisma();
 
+function requiredDate(name: "SESSION_FROM" | "SESSION_TO") {
+  const value = process.env[name];
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`${name} must be set as YYYY-MM-DD for session verification.`);
+  }
+  return value;
+}
+
 async function main() {
+  const from = requiredDate("SESSION_FROM");
+  const to = requiredDate("SESSION_TO");
+
   const sessions = await prisma.trainingSession.findMany({
     where: {
       group: {
         branchId: "BR-SCHOOL-117-01"
       },
       sourceDate: {
-        gte: new Date("2026-09-29T00:00:00.000Z"),
-        lte: new Date("2026-10-12T00:00:00.000Z")
+        gte: new Date(`${from}T00:00:00.000Z`),
+        lte: new Date(`${to}T00:00:00.000Z`)
       }
     },
     include: {

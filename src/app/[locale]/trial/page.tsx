@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import {
-  EnrollmentStatus,
-  LifecycleStatus
-} from "@/generated/prisma/client";
 import { TrialLeadFlow } from "@/components/public/trial-lead-flow";
 import { getPrisma } from "@/lib/prisma";
+import {
+  BOOKABLE_GROUP_WHERE,
+  PUBLIC_SPORT_WHERE
+} from "@/server/public-data/visibility";
 import { isPublicLocale } from "@/lib/public-i18n";
 
 export const dynamic = "force-dynamic";
@@ -34,22 +34,14 @@ export default async function TrialPage({
   const prisma = getPrisma();
   const sports = await prisma.sport.findMany({
     where: {
-      status: LifecycleStatus.ACTIVE,
+      ...PUBLIC_SPORT_WHERE,
       groups: {
-        some: {
-          status: LifecycleStatus.ACTIVE,
-          enrollmentStatus: EnrollmentStatus.OPEN,
-          branch: { status: LifecycleStatus.ACTIVE }
-        }
+        some: BOOKABLE_GROUP_WHERE
       }
     },
     include: {
       groups: {
-        where: {
-          status: LifecycleStatus.ACTIVE,
-          enrollmentStatus: EnrollmentStatus.OPEN,
-          branch: { status: LifecycleStatus.ACTIVE }
-        },
+        where: BOOKABLE_GROUP_WHERE,
         include: { branch: true }
       }
     },

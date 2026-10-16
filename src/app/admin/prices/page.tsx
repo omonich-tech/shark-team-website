@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   branchId?: string | string[];
   sportId?: string | string[];
+  groupId?: string | string[];
 }>;
 
 function singleParam(value: string | string[] | undefined) {
@@ -39,11 +40,27 @@ export default async function AdminPricesPage({
 
   const requestedBranchId = singleParam(params.branchId);
   const requestedSportId = singleParam(params.sportId);
+  const requestedGroupId = singleParam(params.groupId);
 
   const selectedBranch =
     branches.find((branch) => branch.id === requestedBranchId) ?? branches[0] ?? null;
   const selectedSport =
     sports.find((sport) => sport.id === requestedSportId) ?? sports[0] ?? null;
+
+  const groups =
+    selectedBranch && selectedSport
+      ? await prisma.trainingGroup.findMany({
+          where: {
+            branchId: selectedBranch.id,
+            sportId: selectedSport.id,
+            status: { not: LifecycleStatus.ARCHIVED }
+          },
+          orderBy: [{ ageMin: "asc" }, { createdAt: "asc" }]
+        })
+      : [];
+
+  const selectedGroup =
+    groups.find((group) => group.id === requestedGroupId) ?? null;
 
   const prices =
     selectedBranch && selectedSport
@@ -51,6 +68,7 @@ export default async function AdminPricesPage({
           where: {
             branchId: selectedBranch.id,
             sportId: selectedSport.id,
+            groupId: selectedGroup?.id ?? null,
             status: LifecycleStatus.ACTIVE
           },
           orderBy: {
@@ -123,6 +141,22 @@ export default async function AdminPricesPage({
                 ))}
               </select>
             </label>
+
+            <label className="admin-field">
+              <span>Группа</span>
+              <select
+                name="groupId"
+                defaultValue={selectedGroup?.id ?? ""}
+                disabled={!selectedBranch || !selectedSport}
+              >
+                <option value="">Все группы этого спорта</option>
+                {groups.map((group) => (
+                  <option value={group.id} key={group.id}>
+                    {group.internalName} · {group.ageMin}–{group.ageMax}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div className="admin-editor-actions">
@@ -145,6 +179,7 @@ export default async function AdminPricesPage({
                 <p className="admin-panel-kicker">Текущие цены</p>
                 <h2>
                   {selectedBranch.publicNameRu} · {selectedSport.nameRu}
+                  {selectedGroup ? ` · ${selectedGroup.internalName}` : ""}
                 </h2>
                 <small>
                   Сохранение создаст новую версию. Предыдущие значения останутся в истории.
@@ -156,6 +191,7 @@ export default async function AdminPricesPage({
             <PriceEditor
               branchId={selectedBranch.id}
               sportId={selectedSport.id}
+              groupId={selectedGroup?.id ?? null}
               trialAmount={currentTrial?.amount ?? null}
               subscriptionAmount={currentSubscription?.amount ?? null}
             />
@@ -196,7 +232,7 @@ export default async function AdminPricesPage({
                   {prices.length === 0 ? (
                     <tr>
                       <td colSpan={4}>
-                        Для этой пары филиал / вид спорта цены ещё не заданы.
+                        Для выбранного филиала / спорта / группы цены ещё не заданы.
                       </td>
                     </tr>
                   ) : null}

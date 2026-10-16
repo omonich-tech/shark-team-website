@@ -8,6 +8,11 @@ import {
   MediaTargetType
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  PUBLIC_BRANCH_WHERE,
+  PUBLIC_COACH_WHERE,
+  PUBLIC_SPORT_WHERE
+} from "@/server/public-data/visibility";
 import { isPublicLocale } from "@/lib/public-i18n";
 import { absoluteUrl, breadcrumbJsonLd, buildPublicMetadata } from "@/lib/seo";
 
@@ -45,12 +50,13 @@ export default async function BranchCatalogPage({
 
   const prisma = getPrisma();
   const branches = await prisma.branch.findMany({
-    where: {
-      status: LifecycleStatus.ACTIVE
-    },
+    where: PUBLIC_BRANCH_WHERE,
     include: {
       sportLinks: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          sport: PUBLIC_SPORT_WHERE
+        },
         include: {
           sport: true
         }
@@ -58,16 +64,10 @@ export default async function BranchCatalogPage({
       coachLinks: {
         where: {
           status: LifecycleStatus.ACTIVE,
-          coach: { status: LifecycleStatus.ACTIVE }
+          coach: PUBLIC_COACH_WHERE
         },
         include: {
           coach: true
-        }
-      },
-      groups: {
-        where: { status: LifecycleStatus.ACTIVE },
-        select: {
-          primaryCoach: true
         }
       }
     },
@@ -142,20 +142,15 @@ export default async function BranchCatalogPage({
               )
             );
             const coachNames = Array.from(
-              new Set([
-                ...branch.coachLinks.map((link) =>
-                  [link.coach.firstName, link.coach.lastName]
-                    .filter(Boolean)
-                    .join(" ")
-                ),
-                ...branch.groups
-                  .filter((group) => group.primaryCoach.status === LifecycleStatus.ACTIVE)
-                  .map((group) =>
-                    [group.primaryCoach.firstName, group.primaryCoach.lastName]
+              new Set(
+                branch.coachLinks
+                  .map((link) =>
+                    [link.coach.firstName, link.coach.lastName]
                       .filter(Boolean)
                       .join(" ")
                   )
-              ].filter(Boolean))
+                  .filter(Boolean)
+              )
             );
             const photo = media.find(
               (item) =>

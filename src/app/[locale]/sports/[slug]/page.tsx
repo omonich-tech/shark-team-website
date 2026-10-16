@@ -4,12 +4,21 @@ import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import {
   ContentStatus,
+  EnrollmentStatus,
   LifecycleStatus,
   MediaConsentStatus,
   MediaTargetType,
   PriceProductType
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  PUBLIC_BRANCH_WHERE,
+  PUBLIC_COACH_WHERE
+} from "@/server/public-data/visibility";
+import {
+  activePriceWhere,
+  resolveEffectivePrice
+} from "@/server/public-data/pricing";
 import { isPublicLocale, weekdayLabel } from "@/lib/public-i18n";
 import { getSportCatalogEntry } from "@/lib/sport-catalog";
 import {
@@ -100,12 +109,35 @@ export default async function SportPage({
       branchLinks: {
         where: {
           status: LifecycleStatus.ACTIVE,
-          branch: { status: LifecycleStatus.ACTIVE }
+          branch: PUBLIC_BRANCH_WHERE
         },
         include: { branch: true }
       },
+      coachLinks: {
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          coach: PUBLIC_COACH_WHERE
+        },
+        include: {
+          coach: {
+            include: {
+              branchLinks: {
+                where: {
+                  status: LifecycleStatus.ACTIVE,
+                  branch: PUBLIC_BRANCH_WHERE
+                },
+                include: { branch: true }
+              }
+            }
+          }
+        }
+      },
       groups: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          branch: PUBLIC_BRANCH_WHERE,
+          primaryCoach: PUBLIC_COACH_WHERE
+        },
         include: {
           branch: true,
           primaryCoach: true,
@@ -121,7 +153,7 @@ export default async function SportPage({
 
   if (!sport) notFound();
 
-  const [media, trialPrice, faq] = await Promise.all([
+  const [media, prices, faqItems] = await Promise.all([
     prisma.mediaAsset.findMany({
       where: {
         targetType: MediaTargetType.SPORT,
@@ -140,25 +172,31 @@ export default async function SportPage({
         { createdAt: "asc" }
       ]
     }),
-    prisma.price.findFirst({
+    prisma.price.findMany({
       where: {
-        sportId: sport.id,
-        productType: PriceProductType.TRIAL,
-        status: LifecycleStatus.ACTIVE,
-        OR: [{ validTo: null }, { validTo: { gt: new Date() } }]
+        ...activePriceWhere(),
+        OR: [
+          { sportId: sport.id },
+          { sportId: null }
+        ]
       },
       orderBy: { validFrom: "desc" }
     }),
     prisma.faqItem.findMany({
       where: {
         status: ContentStatus.PUBLISHED,
-        sportId: sport.id,
-        branchId: null
+        sportId: sport.id
       },
+      include: { branch: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
     })
   ]);
 
+  const faq = faqItems.filter(
+    (item) =>
+      !item.branch ||
+      item.branch.status === LifecycleStatus.ACTIVE
+  );
   const hero = media.find((item) => item.contentType?.startsWith("image/"));
   const name = locale === "ru" ? sport.nameRu : sport.nameUz;
   const description =
@@ -170,6 +208,10 @@ export default async function SportPage({
     String(Math.max(1, sport.sortOrder + 1)).padStart(2, "0");
   const story = fallback?.story[locale === "ru" ? "ru" : "uz"] ?? null;
   const branches = sport.branchLinks.map((link) => link.branch);
+  const coaches = sport.coachLinks.map((link) => link.coach);
+  const hasOpenGroup = sport.groups.some(
+    (group) => group.enrollmentStatus === EnrollmentStatus.OPEN
+  );
 
   const structuredData = [
     breadcrumbJsonLd([
@@ -235,7 +277,7 @@ export default async function SportPage({
               ))}
             </div>
           ) : null}
-          {sport.groups.length ? (
+          {hasOpenGroup ? (
             <div className="hero-actions">
               <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?sport=${encodeURIComponent(slug)}`}>
                 {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
@@ -310,6 +352,63 @@ export default async function SportPage({
                 </Link>
               );
             })}
+          </div>
+        </section>
+      ) : null}
+
+      {coaches.length ? (
+        <section className="content-section">
+          <div className="section-heading shark-section-heading">
+            <div>
+              <p className="eyebrow">{locale === "ru" ? "ТРЕНЕРЫ" : "MURABBIYLAR"}</p>
+              <h2>
+                {locale === "ru"
+                  ? "Кто ведёт это направление"
+                  : "Bu yo‘nalishni kim olib boradi"}
+              </h2>
+            </div>
+            <Link className="shark-text-link" href={`/${locale}/coaches`}>
+              {locale === "ru" ? "Все тренеры →" : "Barcha murabbiylar →"}
+            </Link>
+          </div>
+
+          <div className="shark-coach-grid">
+            {coaches.map((coach) => (
+              <Link
+                className="shark-coach-card shark-coach-card-link"
+                href={`/${locale}/coaches/${coach.id}`}
+                key={coach.id}
+              >
+                <div className="shark-coach-photo">
+                  <span>{coach.firstName.slice(0, 1)}</span>
+                </div>
+                <div>
+                  <h3>
+                    {[coach.firstName, coach.lastName].filter(Boolean).join(" ")}
+                  </h3>
+                  <p>
+                    {coach.branchLinks.length
+                      ? coach.branchLinks
+                          .map((item) =>
+                            locale === "ru"
+                              ? item.branch.publicNameRu
+                              : item.branch.publicNameUz
+                          )
+                          .join(" · ")
+                      : locale === "ru"
+                        ? "Филиал уточняется"
+                        : "Filial aniqlanmoqda"}
+                  </p>
+                  {coach.experienceYears ? (
+                    <span>
+                      {locale === "ru"
+                        ? `Опыт ${coach.experienceYears}+ лет`
+                        : `Tajriba ${coach.experienceYears}+ yil`}
+                    </span>
+                  ) : null}
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
       ) : null}
@@ -424,7 +523,7 @@ export default async function SportPage({
             <p>{story.beginner}</p>
           </section>
 
-          {sport.groups.length ? (
+          {hasOpenGroup ? (
             <section className="content-section sport-story-cta">
               <div>
                 <p className="eyebrow">SHARK TEAM</p>
@@ -454,9 +553,18 @@ export default async function SportPage({
               const schedule = group.scheduleRules
                 .map(
                   (rule) =>
-                    `${weekdayLabel(rule.weekday, locale)} ${minutes(rule.startMinutes)}`
+                    `${weekdayLabel(rule.weekday, locale)} ${minutes(rule.startMinutes)}–${minutes(rule.endMinutes)}`
                 )
                 .join(" · ");
+              const trialPrice = resolveEffectivePrice(
+                prices,
+                PriceProductType.TRIAL,
+                {
+                  sportId: sport.id,
+                  branchId: group.branchId,
+                  groupId: group.id
+                }
+              );
               return (
                 <article className="sport-group-row" key={group.id}>
                   <div>
@@ -469,12 +577,12 @@ export default async function SportPage({
                     <p>{schedule || "—"}</p>
                   </div>
                   <div className="sport-group-meta">
-                    <span>
+                    <Link href={`/${locale}/coaches/${group.primaryCoach.id}`}>
                       {locale === "ru" ? "Тренер" : "Murabbiy"} ·{" "}
                       {[group.primaryCoach.firstName, group.primaryCoach.lastName]
                         .filter(Boolean)
                         .join(" ")}
-                    </span>
+                    </Link>
                     {trialPrice ? (
                       <strong>
                         {new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "uz-UZ").format(
@@ -522,6 +630,13 @@ export default async function SportPage({
               <details className="faq-item" key={item.id}>
                 <summary>
                   {locale === "ru" ? item.questionRu : item.questionUz}
+                  {item.branch ? (
+                    <small className="faq-scope-label">
+                      {locale === "ru"
+                        ? item.branch.publicNameRu
+                        : item.branch.publicNameUz}
+                    </small>
+                  ) : null}
                 </summary>
                 <p>{locale === "ru" ? item.answerRu : item.answerUz}</p>
               </details>

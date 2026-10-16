@@ -3,7 +3,11 @@ import Link from "next/link";
 import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { ContentStatus } from "@/generated/prisma/client";
+import {
+  ContentStatus,
+  EnrollmentStatus,
+  LifecycleStatus
+} from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { formatUzs, isPublicLocale, pickLocalized, weekdayLabel } from "@/lib/public-i18n";
 import {
@@ -83,14 +87,19 @@ export default async function PublicBranchPage({
   if (!data) notFound();
 
   const prisma = getPrisma();
-  const branchFaq = await prisma.faqItem.findMany({
+  const branchFaqItems = await prisma.faqItem.findMany({
     where: {
       status: ContentStatus.PUBLISHED,
-      branchId: data.id,
-      sportId: null
+      branchId: data.id
     },
+    include: { sport: true },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
   });
+  const branchFaq = branchFaqItems.filter(
+    (item) =>
+      !item.sport ||
+      item.sport.status === LifecycleStatus.ACTIVE
+  );
 
   const hero = data.media.find(
     (item) =>
@@ -98,13 +107,9 @@ export default async function PublicBranchPage({
       item.targetId === data.id &&
       item.contentType?.startsWith("image/")
   );
-  const coaches = Array.from(
-    new Map(
-      [
-        ...data.coaches,
-        ...data.groups.map((group) => group.coach)
-      ].map((coach) => [coach.id, coach])
-    ).values()
+  const coaches = data.coaches;
+  const hasOpenGroup = data.groups.some(
+    (group) => group.enrollmentStatus === EnrollmentStatus.OPEN
   );
 
   const branchName = pickLocalized(locale, data.name);
@@ -116,13 +121,9 @@ export default async function PublicBranchPage({
     .map((sport) => pickLocalized(locale, sport.name))
     .join(" · ");
   const localHeading =
-    slug === "school-117"
-      ? locale === "ru"
-        ? "Баскетбол для детей на Юнусабаде"
-        : "Yunusobodda bolalar uchun basketbol"
-      : locale === "ru"
-        ? `${sportsLabel} для детей — ${pickLocalized(locale, data.district) || "Ташкент"}`
-        : `Bolalar uchun ${sportsLabel} — ${pickLocalized(locale, data.district) || "Toshkent"}`;
+    locale === "ru"
+      ? `${sportsLabel || "Спортивные секции"} для детей — ${pickLocalized(locale, data.district) || "Ташкент"}`
+      : `Bolalar uchun ${sportsLabel || "sport seksiyalari"} — ${pickLocalized(locale, data.district) || "Toshkent"}`;
   const facilityNotes = pickLocalized(locale, data.facilityNotes);
   const mapUrl = data.coordinates
     ? `https://yandex.uz/maps/?ll=${data.coordinates.longitude}%2C${data.coordinates.latitude}&z=17&pt=${data.coordinates.longitude},${data.coordinates.latitude}`
@@ -247,9 +248,11 @@ export default async function PublicBranchPage({
               : ""}
           </p>
           <div className="hero-actions">
-            <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?branch=${encodeURIComponent(slug)}`}>
-              {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
-            </Link>
+            {hasOpenGroup ? (
+              <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?branch=${encodeURIComponent(slug)}`}>
+                {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
+              </Link>
+            ) : null}
             {mapUrl ? (
               <a
                 className="button secondary"
@@ -280,7 +283,16 @@ export default async function PublicBranchPage({
           </div>
           <div>
             <span>{locale === "ru" ? "Направления" : "Yo‘nalishlar"}</span>
-            <strong>{data.sports.map((sport) => pickLocalized(locale, sport.name)).join(" · ")}</strong>
+            <strong className="branch-info-links">
+              {data.sports.map((sport, index) => (
+                <span key={sport.id}>
+                  {index > 0 ? " · " : ""}
+                  <Link href={`/${locale}/sports/${sport.slug}`}>
+                    {pickLocalized(locale, sport.name)}
+                  </Link>
+                </span>
+              ))}
+            </strong>
           </div>
           <div>
             <span>{locale === "ru" ? "Дни и время работы" : "Ish kunlari va vaqti"}</span>
@@ -292,7 +304,7 @@ export default async function PublicBranchPage({
       <section className="content-section">
         <div className="section-heading">
           <p className="eyebrow">
-            {locale === "ru" ? "ЮНУСАБАД · SHARK TEAM" : "YUNUSOBOD · SHARK TEAM"}
+            {(pickLocalized(locale, data.district) || (locale === "ru" ? "ТАШКЕНТ" : "TOSHKENT")).toUpperCase()} · SHARK TEAM
           </p>
           <h2>{localHeading}</h2>
         </div>
@@ -313,7 +325,15 @@ export default async function PublicBranchPage({
           {data.groups.map((group) => (
             <article className="sport-group-row" key={group.id}>
               <div>
-                <span>{`${pickLocalized(locale, group.sport.name)} · ${group.ageMin}–${group.ageMax} ${locale === "ru" ? "лет" : "yosh"}`}</span>
+                <span>
+                  <Link href={`/${locale}/sports/${group.sport.slug}`}>
+                    {pickLocalized(locale, group.sport.name)}
+                  </Link>{" "}
+                  · {group.ageMin}–{group.ageMax} {locale === "ru" ? "лет" : "yosh"} ·{" "}
+                  {group.enrollmentStatus === EnrollmentStatus.OPEN
+                    ? locale === "ru" ? "идёт набор" : "qabul ochiq"
+                    : locale === "ru" ? "набор на паузе" : "qabul pauzada"}
+                </span>
                 <h3>
                   {group.schedule[0]
                     ? `${group.schedule[0].start}–${group.schedule[0].end}`
@@ -324,10 +344,10 @@ export default async function PublicBranchPage({
                 </p>
               </div>
               <div className="sport-group-meta">
-                <span>
+                <Link href={`/${locale}/coaches/${group.coach.id}`}>
                   {locale === "ru" ? "Тренер" : "Murabbiy"} ·{" "}
                   {[group.coach.firstName, group.coach.lastName].filter(Boolean).join(" ")}
-                </span>
+                </Link>
                 <strong>
                   {locale === "ru" ? "До" : "Gacha"} {group.capacityRegular}
                 </strong>
@@ -362,16 +382,43 @@ export default async function PublicBranchPage({
           </div>
         </div>
         <div>
-          <div className="section-heading"><h2>{locale === "ru" ? "Стоимость" : "Narxlar"}</h2></div>
-          <div className="price-grid">
-            <article className="price-card">
-              <span>{locale === "ru" ? "Пробное" : "Sinov"}</span>
-              <strong>{data.prices.trial ? formatUzs(data.prices.trial.amount, locale) : "—"}</strong>
-            </article>
-            <article className="price-card featured">
-              <span>{locale === "ru" ? "Абонемент" : "Abonement"}</span>
-              <strong>{data.prices.subscription ? formatUzs(data.prices.subscription.amount, locale) : "—"}</strong>
-            </article>
+          <div className="section-heading">
+            <h2>{locale === "ru" ? "Стоимость" : "Narxlar"}</h2>
+          </div>
+          <div className="branch-price-by-sport">
+            {data.prices.bySport.map((item) => (
+              <div className="branch-price-sport-row" key={item.sport.id}>
+                <Link
+                  className="branch-price-sport-name"
+                  href={`/${locale}/sports/${item.sport.slug}`}
+                >
+                  {locale === "ru" ? item.sport.name.ru : item.sport.name.uz}
+                </Link>
+                <div className="price-grid">
+                  <article className="price-card">
+                    <span>{locale === "ru" ? "Пробное" : "Sinov"}</span>
+                    <strong>
+                      {item.trial ? formatUzs(item.trial.amount, locale) : "—"}
+                    </strong>
+                  </article>
+                  <article className="price-card featured">
+                    <span>{locale === "ru" ? "Абонемент" : "Abonement"}</span>
+                    <strong>
+                      {item.subscription
+                        ? formatUzs(item.subscription.amount, locale)
+                        : "—"}
+                    </strong>
+                  </article>
+                </div>
+              </div>
+            ))}
+            {data.prices.bySport.length === 0 ? (
+              <div className="shark-coming-soon">
+                {locale === "ru"
+                  ? "Цены для этого филиала пока не опубликованы."
+                  : "Bu filial uchun narxlar hali e’lon qilinmagan."}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -411,7 +458,14 @@ export default async function PublicBranchPage({
           <div className="faq-list shark-faq-list">
             {branchFaq.map((item) => (
               <details className="faq-item" key={item.id}>
-                <summary>{locale === "ru" ? item.questionRu : item.questionUz}</summary>
+                <summary>
+                  {locale === "ru" ? item.questionRu : item.questionUz}
+                  {item.sport ? (
+                    <small className="faq-scope-label">
+                      {locale === "ru" ? item.sport.nameRu : item.sport.nameUz}
+                    </small>
+                  ) : null}
+                </summary>
                 <p>{locale === "ru" ? item.answerRu : item.answerUz}</p>
               </details>
             ))}

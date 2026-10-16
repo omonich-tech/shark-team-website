@@ -14,6 +14,8 @@ const labels = {
     sports: "Виды спорта",
     branches: "Филиалы",
     coaches: "Тренеры",
+    schedule: "Расписание",
+    prices: "Цены",
     about: "О нас",
     contacts: "Контакты",
     trial: "Пробное",
@@ -25,6 +27,8 @@ const labels = {
     sports: "Sport turlari",
     branches: "Filiallar",
     coaches: "Murabbiylar",
+    schedule: "Jadval",
+    prices: "Narxlar",
     about: "Biz haqimizda",
     contacts: "Kontaktlar",
     trial: "Sinov",
@@ -140,6 +144,8 @@ export async function PublicShell({
           <Link href={`/${locale}/sports`}>{copy.sports}</Link>
           <Link href={`/${locale}/branches`}>{copy.branches}</Link>
           <Link href={`/${locale}/coaches`}>{copy.coaches}</Link>
+          <Link href={`/${locale}/schedule`}>{copy.schedule}</Link>
+          <Link href={`/${locale}/prices`}>{copy.prices}</Link>
           <Link href={`/${locale}/about`}>{copy.about}</Link>
           <Link href={`/${locale}/contacts`}>{copy.contacts}</Link>
           <Link data-analytics-event="trial_cta_click" href={`/${locale}/trial`}>

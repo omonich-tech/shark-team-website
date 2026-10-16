@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/public/json-ld";
 import {
@@ -52,7 +53,13 @@ export default async function PricesPage({
     include: {
       sport: true,
       branch: true,
-      group: true
+      group: {
+        include: {
+          branch: true,
+          sport: true,
+          primaryCoach: true
+        }
+      }
     },
     orderBy: [
       { sportId: "asc" },
@@ -60,6 +67,23 @@ export default async function PricesPage({
       { productType: "asc" },
       { validFrom: "desc" }
     ]
+  });
+
+  const publicPrices = prices.filter((price) => {
+    if (price.sport && price.sport.status !== LifecycleStatus.ACTIVE) return false;
+    if (price.branch && price.branch.status !== LifecycleStatus.ACTIVE) return false;
+    if (
+      price.group &&
+      (
+        price.group.status !== LifecycleStatus.ACTIVE ||
+        price.group.branch.status !== LifecycleStatus.ACTIVE ||
+        price.group.sport.status !== LifecycleStatus.ACTIVE ||
+        price.group.primaryCoach.status !== LifecycleStatus.ACTIVE
+      )
+    ) {
+      return false;
+    }
+    return true;
   });
 
   return (
@@ -86,7 +110,7 @@ export default async function PricesPage({
 
       <section className="content-section">
         <div className="price-catalog-grid">
-          {prices.map((price) => (
+          {publicPrices.map((price) => (
             <article className={price.productType === PriceProductType.TRIAL ? "price-card" : "price-card featured"} key={price.id}>
               <span>
                 {price.productType === PriceProductType.TRIAL
@@ -95,17 +119,34 @@ export default async function PricesPage({
               </span>
               <strong>{formatUzs(price.amount, locale)}</strong>
               <p>
-                {price.sport
-                  ? locale === "ru" ? price.sport.nameRu : price.sport.nameUz
-                  : "SHARK TEAM"}
+                {price.sport ? (
+                  <Link href={`/${locale}/sports/${price.sport.slug}`}>
+                    {locale === "ru" ? price.sport.nameRu : price.sport.nameUz}
+                  </Link>
+                ) : (
+                  "SHARK TEAM"
+                )}
               </p>
               {price.branch ? (
-                <small>{locale === "ru" ? price.branch.publicNameRu : price.branch.publicNameUz}</small>
+                <small>
+                  <Link href={`/${locale}/branches/${price.branch.slug}`}>
+                    {locale === "ru"
+                      ? price.branch.publicNameRu
+                      : price.branch.publicNameUz}
+                  </Link>
+                </small>
+              ) : null}
+              {price.group ? (
+                <small>
+                  {locale === "ru" ? "Группа" : "Guruh"} ·{" "}
+                  {price.group.ageMin}–{price.group.ageMax}{" "}
+                  {locale === "ru" ? "лет" : "yosh"}
+                </small>
               ) : null}
             </article>
           ))}
 
-          {prices.length === 0 ? (
+          {publicPrices.length === 0 ? (
             <div className="shark-coming-soon">
               {locale === "ru" ? "Действующие цены пока не опубликованы." : "Amaldagi narxlar hali e’lon qilinmagan."}
             </div>

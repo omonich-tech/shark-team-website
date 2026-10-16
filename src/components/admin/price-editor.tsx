@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 export function PriceEditor({
   branchId,
   sportId,
+  groupId,
   trialAmount,
   subscriptionAmount
 }: {
   branchId: string;
   sportId: string;
+  groupId?: string | null;
   trialAmount: number | null;
   subscriptionAmount: number | null;
 }) {
@@ -32,7 +34,8 @@ export function PriceEditor({
         productType,
         amount,
         branchId,
-        sportId
+        sportId,
+        groupId: groupId ?? null
       })
     });
 

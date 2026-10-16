@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EnrollmentStatus, LifecycleStatus } from "@/generated/prisma/client";
 import { JsonLd } from "@/components/public/json-ld";
-import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { PUBLIC_GROUP_WHERE } from "@/server/public-data/visibility";
 import { isPublicLocale, weekdayLabel } from "@/lib/public-i18n";
 import { breadcrumbJsonLd, buildPublicMetadata } from "@/lib/seo";
 
@@ -44,7 +46,7 @@ export default async function SchedulePage({
 
   const prisma = getPrisma();
   const groups = await prisma.trainingGroup.findMany({
-    where: { status: LifecycleStatus.ACTIVE },
+    where: PUBLIC_GROUP_WHERE,
     include: {
       sport: true,
       branch: true,
@@ -84,18 +86,39 @@ export default async function SchedulePage({
             <article className="sport-group-row" key={group.id}>
               <div>
                 <span>
-                  {locale === "ru" ? group.sport.nameRu : group.sport.nameUz} ·{" "}
-                  {group.ageMin}–{group.ageMax} {locale === "ru" ? "лет" : "yosh"}
+                  <Link href={`/${locale}/sports/${group.sport.slug}`}>
+                    {locale === "ru" ? group.sport.nameRu : group.sport.nameUz}
+                  </Link>{" "}
+                  · {group.ageMin}–{group.ageMax} {locale === "ru" ? "лет" : "yosh"}
                 </span>
-                <h3>{locale === "ru" ? group.branch.publicNameRu : group.branch.publicNameUz}</h3>
+                <h3>
+                  <Link href={`/${locale}/branches/${group.branch.slug}`}>
+                    {locale === "ru" ? group.branch.publicNameRu : group.branch.publicNameUz}
+                  </Link>
+                </h3>
                 <p>
                   {group.scheduleRules
-                    .map((rule) => `${weekdayLabel(rule.weekday, locale)} ${time(rule.startMinutes)}`)
+                    .map((rule) => `${weekdayLabel(rule.weekday, locale)} ${time(rule.startMinutes)}–${time(rule.endMinutes)}`)
                     .join(" · ")}
                 </p>
               </div>
               <div className="sport-group-meta">
-                <span>{[group.primaryCoach.firstName, group.primaryCoach.lastName].filter(Boolean).join(" ")}</span>
+                <Link href={`/${locale}/coaches/${group.primaryCoach.id}`}>
+                  {[group.primaryCoach.firstName, group.primaryCoach.lastName].filter(Boolean).join(" ")}
+                </Link>
+                {group.enrollmentStatus === EnrollmentStatus.OPEN ? (
+                  <Link
+                    className="shark-text-link"
+                    data-analytics-event="trial_cta_click"
+                    href={`/${locale}/trial?sport=${encodeURIComponent(group.sport.slug)}&branch=${encodeURIComponent(group.branch.slug)}`}
+                  >
+                    {locale === "ru" ? "Пробное →" : "Sinov →"}
+                  </Link>
+                ) : (
+                  <span className="schedule-enrollment-status">
+                    {locale === "ru" ? "Набор закрыт" : "Qabul yopiq"}
+                  </span>
+                )}
               </div>
             </article>
           ))}

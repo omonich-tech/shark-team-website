@@ -97,16 +97,16 @@ export default async function AboutPage({
   const stats =
     locale === "ru"
       ? [
-          [String(data?.sports.length ?? 0), "видов спорта"],
-          [String(data?.branches.length ?? 0), "активных филиалов"],
-          [String(data?.coaches.length ?? 0), "тренеров"],
-          [String(activeGroups), "активных групп"]
+          [String(data?.sports.length ?? 0), "видов спорта", `/${locale}/sports`],
+          [String(data?.branches.length ?? 0), "активных филиалов", `/${locale}/branches`],
+          [String(data?.coaches.length ?? 0), "тренеров", `/${locale}/coaches`],
+          [String(activeGroups), "активных групп", `/${locale}/schedule`]
         ]
       : [
-          [String(data?.sports.length ?? 0), "sport turi"],
-          [String(data?.branches.length ?? 0), "faol filial"],
-          [String(data?.coaches.length ?? 0), "murabbiy"],
-          [String(activeGroups), "faol guruh"]
+          [String(data?.sports.length ?? 0), "sport turi", `/${locale}/sports`],
+          [String(data?.branches.length ?? 0), "faol filial", `/${locale}/branches`],
+          [String(data?.coaches.length ?? 0), "murabbiy", `/${locale}/coaches`],
+          [String(activeGroups), "faol guruh", `/${locale}/schedule`]
         ];
 
   const principleFallback =
@@ -235,11 +235,11 @@ export default async function AboutPage({
           </div>
 
           <div className="about-stats-grid">
-            {stats.map(([value, label]) => (
-              <div key={label}>
+            {stats.map(([value, label, href]) => (
+              <Link href={href} key={label}>
                 <strong>{value}</strong>
                 <span>{label}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

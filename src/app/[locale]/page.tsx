@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "@/components/public/json-ld";
+import { EnrollmentStatus } from "@/generated/prisma/client";
 import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
 import {
@@ -234,28 +235,30 @@ export default async function PublicHome({
           descriptionUz:
             sport.shortDescriptionUz ?? fallback?.descriptionUz ?? "",
           mark: fallback?.mark ?? String(index + 1).padStart(2, "0"),
+          branchLinks: sport.branchLinks,
           groups: sport.groups
         };
       })
     : SPORT_CATALOG.map((sport) => ({
         id: sport.slug,
         ...sport,
-        groups: [] as { id: string }[]
+        branchLinks: [] as { branchId: string }[],
+        groups: [] as { id: string; enrollmentStatus: EnrollmentStatus }[]
       }));
 
   const aboutStats =
     locale === "ru"
       ? [
-          [String(data?.sports.length ?? 0), "видов спорта"],
-          [String(data?.branches.length ?? 0), "филиалов"],
-          [String(data?.coaches.length ?? 0), "тренеров"],
-          [String(activeGroupCount), "активных групп"]
+          [String(data?.sports.length ?? 0), "видов спорта", `/${locale}/sports`],
+          [String(data?.branches.length ?? 0), "филиалов", `/${locale}/branches`],
+          [String(data?.coaches.length ?? 0), "тренеров", `/${locale}/coaches`],
+          [String(activeGroupCount), "активных групп", `/${locale}/schedule`]
         ]
       : [
-          [String(data?.sports.length ?? 0), "sport turi"],
-          [String(data?.branches.length ?? 0), "filial"],
-          [String(data?.coaches.length ?? 0), "murabbiy"],
-          [String(activeGroupCount), "faol guruh"]
+          [String(data?.sports.length ?? 0), "sport turi", `/${locale}/sports`],
+          [String(data?.branches.length ?? 0), "filial", `/${locale}/branches`],
+          [String(data?.coaches.length ?? 0), "murabbiy", `/${locale}/coaches`],
+          [String(activeGroupCount), "faol guruh", `/${locale}/schedule`]
         ];
 
   const benefitFallback =
@@ -392,11 +395,11 @@ export default async function PublicHome({
           }
         >
           <div className="shark-about-stats">
-            {aboutStats.map(([value, label]) => (
-              <div key={label}>
+            {aboutStats.map(([value, label, href]) => (
+              <Link href={href} key={label}>
                 <strong>{value}</strong>
                 <span>{label}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -419,7 +422,9 @@ export default async function PublicHome({
                 item.targetId === sport.id &&
                 item.contentType?.startsWith("image/")
             );
-            const isLive = Boolean(sport.groups.length);
+            const isLive = sport.groups.some(
+              (group) => group.enrollmentStatus === EnrollmentStatus.OPEN
+            );
 
             return (
               <Link
@@ -451,6 +456,16 @@ export default async function PublicHome({
                     <p>
                       {locale === "ru" ? sport.descriptionRu : sport.descriptionUz}
                     </p>
+                  ) : null}
+                  {sport.branchLinks.length ? (
+                    <small className="shark-sport-branch-count">
+                      {sport.branchLinks.length}{" "}
+                      {locale === "ru"
+                        ? sport.branchLinks.length === 1
+                          ? "филиал"
+                          : "филиалов"
+                        : "filial"}
+                    </small>
                   ) : null}
                   <span className="shark-arrow" aria-hidden="true">→</span>
                 </div>
@@ -583,7 +598,11 @@ export default async function PublicHome({
                 item.contentType?.startsWith("image/")
             );
             const sports = Array.from(
-              new Set(branch.groups.map((group) => locale === "ru" ? group.sport.nameRu : group.sport.nameUz))
+              new Set(
+                branch.sportLinks.map((link) =>
+                  locale === "ru" ? link.sport.nameRu : link.sport.nameUz
+                )
+              )
             );
 
             return (
