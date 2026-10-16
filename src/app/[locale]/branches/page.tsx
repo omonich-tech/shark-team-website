@@ -63,6 +63,12 @@ export default async function BranchCatalogPage({
         include: {
           coach: true
         }
+      },
+      groups: {
+        where: { status: LifecycleStatus.ACTIVE },
+        select: {
+          primaryCoach: true
+        }
       }
     },
     orderBy: { createdAt: "asc" }
@@ -135,10 +141,21 @@ export default async function BranchCatalogPage({
                   )
               )
             );
-            const coachNames = branch.coachLinks.map((link) =>
-              [link.coach.firstName, link.coach.lastName]
-                .filter(Boolean)
-                .join(" ")
+            const coachNames = Array.from(
+              new Set([
+                ...branch.coachLinks.map((link) =>
+                  [link.coach.firstName, link.coach.lastName]
+                    .filter(Boolean)
+                    .join(" ")
+                ),
+                ...branch.groups
+                  .filter((group) => group.primaryCoach.status === LifecycleStatus.ACTIVE)
+                  .map((group) =>
+                    [group.primaryCoach.firstName, group.primaryCoach.lastName]
+                      .filter(Boolean)
+                      .join(" ")
+                  )
+              ].filter(Boolean))
             );
             const photo = media.find(
               (item) =>
