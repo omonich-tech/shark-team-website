@@ -16,14 +16,16 @@ const weekdays = [
 export function GroupCreateForm({
   branches,
   sports,
-  coaches
+  coaches,
+  fixedBranchId
 }: {
   branches: Array<{ id: string; name: string }>;
   sports: Array<{ id: string; name: string }>;
   coaches: Array<{ id: string; name: string }>;
+  fixedBranchId?: string;
 }) {
   const router = useRouter();
-  const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
+  const [branchId, setBranchId] = useState(fixedBranchId ?? branches[0]?.id ?? "");
   const [sportId, setSportId] = useState(sports[0]?.id ?? "");
   const [primaryCoachId, setPrimaryCoachId] = useState(coaches[0]?.id ?? "");
   const [internalName, setInternalName] = useState("");
@@ -113,19 +115,28 @@ export function GroupCreateForm({
   return (
     <form className="admin-group-editor" onSubmit={submit}>
       <div className="admin-editor-grid">
-        <label className="admin-field">
-          <span>Филиал</span>
-          <select
-            value={branchId}
-            onChange={(event) => setBranchId(event.target.value)}
-          >
-            {branches.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {fixedBranchId ? (
+          <div className="admin-field admin-fixed-field">
+            <span>Филиал</span>
+            <strong>
+              {branches.find((item) => item.id === fixedBranchId)?.name ?? "—"}
+            </strong>
+          </div>
+        ) : (
+          <label className="admin-field">
+            <span>Филиал</span>
+            <select
+              value={branchId}
+              onChange={(event) => setBranchId(event.target.value)}
+            >
+              {branches.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="admin-field">
           <span>Вид спорта</span>

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import {
   EnrollmentStatus,
@@ -306,6 +307,17 @@ export async function POST(request: NextRequest) {
     entityId: group.id,
     after: group
   });
+
+  revalidatePath("/admin/groups");
+  revalidatePath(`/admin/branches/${branchId}`);
+  revalidatePath("/ru/branches");
+  revalidatePath("/uz/branches");
+  revalidatePath(`/ru/branches/${branch.slug}`);
+  revalidatePath(`/uz/branches/${branch.slug}`);
+  revalidatePath(`/ru/sports/${sport.slug}`);
+  revalidatePath(`/uz/sports/${sport.slug}`);
+  revalidatePath(`/ru/coaches/${coach.id}`);
+  revalidatePath(`/uz/coaches/${coach.id}`);
 
   return NextResponse.json({ ok: true, group }, { status: 201 });
 }

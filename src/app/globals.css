@@ -8625,6 +8625,134 @@ h3 {
   }
 }
 
+.admin-inline-create {
+  margin: 18px 22px 22px;
+  overflow: hidden;
+  border: 1px solid #dfe7ef;
+  border-radius: 14px;
+  background: #fbfdff;
+}
+
+.admin-inline-create > summary {
+  padding: 15px 18px;
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  list-style: none;
+}
+
+.admin-inline-create > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-inline-create[open] > summary {
+  border-bottom: 1px solid #e7edf3;
+  background: #f6faff;
+}
+
+.admin-inline-create-body {
+  padding: 18px;
+}
+
+.admin-inline-warning {
+  padding: 14px 16px;
+  border: 1px solid #f1d8a7;
+  border-radius: 11px;
+  background: #fff9ed;
+  color: #845d18;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.admin-fixed-field {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  min-height: 66px;
+  padding: 10px 12px;
+  border: 1px solid #dce4ed;
+  border-radius: 9px;
+  background: #f7fafc;
+}
+
+.admin-fixed-field > span {
+  color: #8492a6;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.admin-fixed-field > strong {
+  color: var(--navy);
+  font-size: 12px;
+}
+
+.admin-danger-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px;
+  border-color: #f0c5c5;
+  background: #fffafa;
+}
+
+.admin-danger-zone h2 {
+  margin-bottom: 7px;
+  color: #8f2329;
+  font-size: 20px;
+}
+
+.admin-danger-zone small {
+  display: block;
+  max-width: 720px;
+  color: #7d6264;
+  line-height: 1.55;
+}
+
+.admin-danger-zone-actions {
+  display: grid;
+  justify-items: end;
+  gap: 9px;
+}
+
+.admin-delete-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #d85a60;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #b4232b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.admin-delete-button:hover {
+  background: #fff1f2;
+}
+
+.admin-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 760px) {
+  .admin-danger-zone {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-danger-zone-actions {
+    justify-items: stretch;
+  }
+
+  .admin-delete-button {
+    width: 100%;
+  }
+}
+
 /* Group CMS */
 .admin-group-catalog th,
 .admin-group-catalog td {
