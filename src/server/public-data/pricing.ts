@@ -54,6 +54,10 @@ export function activePriceWhere(now = new Date()) {
   return {
     status: LifecycleStatus.ACTIVE,
     validFrom: { lte: now },
-    OR: [{ validTo: null }, { validTo: { gt: now } }]
+    AND: [
+      {
+        OR: [{ validTo: null }, { validTo: { gt: now } }]
+      }
+    ]
   } as const;
 }
