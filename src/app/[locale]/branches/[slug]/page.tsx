@@ -283,7 +283,7 @@ export default async function PublicBranchPage({
             <strong>{data.sports.map((sport) => pickLocalized(locale, sport.name)).join(" · ")}</strong>
           </div>
           <div>
-            <span>{locale === "ru" ? "Время" : "Vaqt"}</span>
+            <span>{locale === "ru" ? "Дни и время работы" : "Ish kunlari va vaqti"}</span>
             <strong>{pickLocalized(locale, data.workingHours) || "—"}</strong>
           </div>
         </div>
