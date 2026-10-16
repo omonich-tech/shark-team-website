@@ -2956,10 +2956,22 @@ h3 {
   --ps-navy: #041629;
   --ps-soft-blue: #dff4ff;
   --ps-shadow: 0 24px 70px rgba(7, 26, 51, 0.09);
+  --ps-texture-dot: rgba(7, 55, 94, 0.045);
+  --ps-texture-line: rgba(8, 170, 244, 0.038);
+  --ps-texture-glow: rgba(8, 170, 244, 0.075);
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(8, 170, 244, 0.08), transparent 28rem),
-    var(--ps-bg);
+  background-color: var(--ps-bg);
+  background-image:
+    radial-gradient(circle at 8% 0%, var(--ps-texture-glow), transparent 28rem),
+    repeating-radial-gradient(
+      ellipse at 12% -8%,
+      transparent 0 72px,
+      var(--ps-texture-line) 73px 74px,
+      transparent 75px 148px
+    ),
+    radial-gradient(circle, var(--ps-texture-dot) 0.7px, transparent 0.8px);
+  background-size: auto, 920px 620px, 11px 11px;
+  background-position: 0 0, -120px -80px, 0 0;
   color: var(--ps-text);
   transition: background-color 180ms ease, color 180ms ease;
 }
@@ -2976,9 +2988,21 @@ h3 {
   --ps-navy: #020d18;
   --ps-soft-blue: #0a2e49;
   --ps-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
-  background:
-    radial-gradient(circle at 90% 0%, rgba(0, 157, 229, 0.14), transparent 34rem),
-    var(--ps-bg);
+  --ps-texture-dot: rgba(152, 217, 250, 0.055);
+  --ps-texture-line: rgba(17, 183, 255, 0.05);
+  --ps-texture-glow: rgba(0, 157, 229, 0.13);
+  background-color: var(--ps-bg);
+  background-image:
+    radial-gradient(circle at 90% 0%, var(--ps-texture-glow), transparent 34rem),
+    repeating-radial-gradient(
+      ellipse at 88% -10%,
+      transparent 0 78px,
+      var(--ps-texture-line) 79px 80px,
+      transparent 81px 158px
+    ),
+    radial-gradient(circle, var(--ps-texture-dot) 0.7px, transparent 0.8px);
+  background-size: auto, 980px 660px, 12px 12px;
+  background-position: 0 0, calc(100% + 140px) -100px, 0 0;
 }
 
 .public-site * {
@@ -6201,6 +6225,19 @@ h3 {
 .public-site .footer-brand-logo-file {
   max-width: 176px;
   height: 56px;
+}
+
+@media (max-width: 680px) {
+  .public-site {
+    --ps-texture-dot: rgba(7, 55, 94, 0.028);
+    --ps-texture-line: rgba(8, 170, 244, 0.026);
+    background-size: auto, 760px 520px, 13px 13px;
+  }
+
+  :root[data-theme="dark"] .public-site {
+    --ps-texture-dot: rgba(152, 217, 250, 0.035);
+    --ps-texture-line: rgba(17, 183, 255, 0.034);
+  }
 }
 
 @media (max-width: 680px) {
