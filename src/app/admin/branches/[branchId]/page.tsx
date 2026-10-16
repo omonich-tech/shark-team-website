@@ -5,9 +5,29 @@ import { AdminEntityForm } from "@/components/admin/entity-form";
 import { BranchSportsEditor } from "@/components/admin/branch-sports-editor";
 import { BranchWorkingHoursEditor } from "@/components/admin/branch-working-hours-editor";
 import { BranchCoachesEditor } from "@/components/admin/branch-coaches-editor";
+import { BranchDangerZone } from "@/components/admin/branch-danger-zone";
+import { GroupCreateForm } from "@/components/admin/group-create-form";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+const weekdayLabel: Record<string, string> = {
+  MONDAY: "Пн",
+  TUESDAY: "Вт",
+  WEDNESDAY: "Ср",
+  THURSDAY: "Чт",
+  FRIDAY: "Пт",
+  SATURDAY: "Сб",
+  SUNDAY: "Вс"
+};
+
+function time(value: number) {
+  return (
+    String(Math.floor(value / 60)).padStart(2, "0") +
+    ":" +
+    String(value % 60).padStart(2, "0")
+  );
+}
 
 export default async function AdminBranchEditPage({
   params
@@ -25,7 +45,14 @@ export default async function AdminBranchEditPage({
         coachLinks: true,
         groups: {
           where: { status: { not: LifecycleStatus.ARCHIVED } },
-          select: { id: true }
+          include: {
+            sport: true,
+            primaryCoach: true,
+            scheduleRules: {
+              where: { status: LifecycleStatus.ACTIVE }
+            }
+          },
+          orderBy: [{ sportId: "asc" }, { ageMin: "asc" }]
         }
       }
     }),
@@ -48,6 +75,13 @@ export default async function AdminBranchEditPage({
   const activeCoachIds = branch.coachLinks
     .filter((link) => link.status === LifecycleStatus.ACTIVE)
     .map((link) => link.coachId);
+
+  const branchSports = sports.filter((sport) =>
+    activeSportIds.includes(sport.id)
+  );
+  const branchCoaches = coaches.filter((coach) =>
+    activeCoachIds.includes(coach.id)
+  );
 
   return (
     <>
@@ -214,6 +248,104 @@ export default async function AdminBranchEditPage({
           initialSportIds={activeSportIds}
         />
       </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <div>
+            <p className="admin-panel-kicker">Тренировки</p>
+            <h2>Группы филиала</h2>
+            <small>
+              Создавайте группы прямо в филиале. Филиал будет выбран автоматически.
+            </small>
+          </div>
+          <span className="admin-count">{branch.groups.length} групп</span>
+        </div>
+
+        <div className="admin-table-wrap">
+          <table className="admin-table admin-group-catalog">
+            <thead>
+              <tr>
+                <th>Группа</th>
+                <th>Спорт</th>
+                <th>Тренер</th>
+                <th>Возраст</th>
+                <th>Расписание</th>
+                <th>Статус</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {branch.groups.map((group) => {
+                const schedule = Array.from(
+                  new Set(
+                    group.scheduleRules.map(
+                      (rule) =>
+                        `${weekdayLabel[rule.weekday]} ${time(rule.startMinutes)}–${time(rule.endMinutes)}`
+                    )
+                  )
+                ).join(" · ");
+
+                return (
+                  <tr key={group.id}>
+                    <td>
+                      <strong className="admin-table-primary">
+                        {group.internalName}
+                      </strong>
+                    </td>
+                    <td>{group.sport.nameRu}</td>
+                    <td>
+                      {[group.primaryCoach.firstName, group.primaryCoach.lastName]
+                        .filter(Boolean)
+                        .join(" ")}
+                    </td>
+                    <td>{group.ageMin}–{group.ageMax}</td>
+                    <td>{schedule || "—"}</td>
+                    <td>
+                      <span className="admin-status">{group.status}</span>
+                    </td>
+                    <td>
+                      <Link href={`/admin/groups/${group.id}`}>Открыть →</Link>
+                    </td>
+                  </tr>
+                );
+              })}
+              {branch.groups.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>В этом филиале групп пока нет.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+
+        <details className="admin-inline-create">
+          <summary>+ Добавить группу</summary>
+          <div className="admin-inline-create-body">
+            {branchSports.length && branchCoaches.length ? (
+              <GroupCreateForm
+                branches={[{ id: branch.id, name: branch.publicNameRu }]}
+                sports={branchSports.map((sport) => ({
+                  id: sport.id,
+                  name: sport.nameRu
+                }))}
+                coaches={branchCoaches.map((coach) => ({
+                  id: coach.id,
+                  name: [coach.firstName, coach.lastName]
+                    .filter(Boolean)
+                    .join(" ")
+                }))}
+                fixedBranchId={branch.id}
+              />
+            ) : (
+              <div className="admin-inline-warning">
+                Сначала выберите минимум один вид спорта и одного тренера в блоках выше.
+              </div>
+            )}
+          </div>
+        </details>
+      </section>
+
+      <BranchDangerZone branchId={branch.id} branchName={branch.publicNameRu} />
     </>
   );
 }
