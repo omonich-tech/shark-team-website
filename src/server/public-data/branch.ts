@@ -30,6 +30,13 @@ export async function getBranchPublicData(slug: string) {
         where: { status: LifecycleStatus.ACTIVE },
         include: { sport: true }
       },
+      coachLinks: {
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          coach: { status: LifecycleStatus.ACTIVE }
+        },
+        include: { coach: true }
+      },
       groups: {
         where: {
           status: LifecycleStatus.ACTIVE,
@@ -50,7 +57,10 @@ export async function getBranchPublicData(slug: string) {
   if (!branch || branch.status !== LifecycleStatus.ACTIVE) return null;
 
   const coachIds = Array.from(
-    new Set(branch.groups.map((group) => group.primaryCoachId))
+    new Set([
+      ...branch.coachLinks.map((link) => link.coachId),
+      ...branch.groups.map((group) => group.primaryCoachId)
+    ])
   );
   const sportIds = Array.from(
     new Set(branch.groups.map((group) => group.sportId))
@@ -144,6 +154,13 @@ export async function getBranchPublicData(slug: string) {
         slug: sport.slug,
         name: { ru: sport.nameRu, uz: sport.nameUz }
       })),
+    coaches: branch.coachLinks.map(({ coach }) => ({
+      id: coach.id,
+      firstName: coach.firstName,
+      lastName: coach.lastName,
+      experienceYears: coach.experienceYears,
+      bio: { ru: coach.publicBioRu, uz: coach.publicBioUz }
+    })),
     groups: branch.groups.map((group) => ({
       id: group.id,
       ageMin: group.ageMin,
