@@ -15,6 +15,16 @@ const WEEKDAYS = [
 
 function parseInitialDays(value?: string | null) {
   if (!value) return [];
+
+  const range = value.match(/(Пн|Вт|Ср|Чт|Пт|Сб|Вс)\s*[–-]\s*(Пн|Вт|Ср|Чт|Пт|Сб|Вс)/);
+  if (range) {
+    const startIndex = WEEKDAYS.findIndex((day) => day.ru === range[1]);
+    const endIndex = WEEKDAYS.findIndex((day) => day.ru === range[2]);
+    if (startIndex >= 0 && endIndex >= startIndex) {
+      return WEEKDAYS.slice(startIndex, endIndex + 1).map((day) => day.value);
+    }
+  }
+
   return WEEKDAYS.filter((day) => value.includes(day.ru)).map((day) => day.value);
 }
 
