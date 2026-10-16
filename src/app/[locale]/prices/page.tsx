@@ -136,6 +136,13 @@ export default async function PricesPage({
                   </Link>
                 </small>
               ) : null}
+              {price.group ? (
+                <small>
+                  {locale === "ru" ? "Группа" : "Guruh"} ·{" "}
+                  {price.group.ageMin}–{price.group.ageMax}{" "}
+                  {locale === "ru" ? "лет" : "yosh"}
+                </small>
+              ) : null}
             </article>
           ))}
 
