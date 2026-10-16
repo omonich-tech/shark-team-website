@@ -246,9 +246,12 @@ export default async function CoachProfilePage({
 
             <div className="coach-specialty-list-v2">
               {coach.sportLinks.map((link) => (
-                <span key={link.sportId}>
+                <Link
+                  href={`/${locale}/sports/${link.sport.slug}`}
+                  key={link.sportId}
+                >
                   {locale === "ru" ? link.sport.nameRu : link.sport.nameUz}
-                </span>
+                </Link>
               ))}
             </div>
 
