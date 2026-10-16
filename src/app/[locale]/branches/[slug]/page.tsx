@@ -3,7 +3,11 @@ import Link from "next/link";
 import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { ContentStatus, LifecycleStatus } from "@/generated/prisma/client";
+import {
+  ContentStatus,
+  EnrollmentStatus,
+  LifecycleStatus
+} from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { formatUzs, isPublicLocale, pickLocalized, weekdayLabel } from "@/lib/public-i18n";
 import {
@@ -104,6 +108,9 @@ export default async function PublicBranchPage({
       item.contentType?.startsWith("image/")
   );
   const coaches = data.coaches;
+  const hasOpenGroup = data.groups.some(
+    (group) => group.enrollmentStatus === EnrollmentStatus.OPEN
+  );
 
   const branchName = pickLocalized(locale, data.name);
   const branchDescription =
@@ -245,9 +252,11 @@ export default async function PublicBranchPage({
               : ""}
           </p>
           <div className="hero-actions">
-            <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?branch=${encodeURIComponent(slug)}`}>
-              {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
-            </Link>
+            {hasOpenGroup ? (
+              <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?branch=${encodeURIComponent(slug)}`}>
+                {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
+              </Link>
+            ) : null}
             {mapUrl ? (
               <a
                 className="button secondary"
@@ -290,7 +299,7 @@ export default async function PublicBranchPage({
       <section className="content-section">
         <div className="section-heading">
           <p className="eyebrow">
-            {locale === "ru" ? "ЮНУСАБАД · SHARK TEAM" : "YUNUSOBOD · SHARK TEAM"}
+            {(pickLocalized(locale, data.district) || (locale === "ru" ? "ТАШКЕНТ" : "TOSHKENT")).toUpperCase()} · SHARK TEAM
           </p>
           <h2>{localHeading}</h2>
         </div>
@@ -315,7 +324,10 @@ export default async function PublicBranchPage({
                   <Link href={`/${locale}/sports/${group.sport.slug}`}>
                     {pickLocalized(locale, group.sport.name)}
                   </Link>{" "}
-                  · {group.ageMin}–{group.ageMax} {locale === "ru" ? "лет" : "yosh"}
+                  · {group.ageMin}–{group.ageMax} {locale === "ru" ? "лет" : "yosh"} ·{" "}
+                  {group.enrollmentStatus === EnrollmentStatus.OPEN
+                    ? locale === "ru" ? "идёт набор" : "qabul ochiq"
+                    : locale === "ru" ? "набор на паузе" : "qabul pauzada"}
                 </span>
                 <h3>
                   {group.schedule[0]
