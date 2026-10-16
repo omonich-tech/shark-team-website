@@ -152,7 +152,7 @@ export default async function SportPage({
 
   if (!sport) notFound();
 
-  const [media, prices, faq] = await Promise.all([
+  const [media, prices, faqItems] = await Promise.all([
     prisma.mediaAsset.findMany({
       where: {
         targetType: MediaTargetType.SPORT,
@@ -184,13 +184,18 @@ export default async function SportPage({
     prisma.faqItem.findMany({
       where: {
         status: ContentStatus.PUBLISHED,
-        sportId: sport.id,
-        branchId: null
+        sportId: sport.id
       },
+      include: { branch: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
     })
   ]);
 
+  const faq = faqItems.filter(
+    (item) =>
+      !item.branch ||
+      item.branch.status === LifecycleStatus.ACTIVE
+  );
   const hero = media.find((item) => item.contentType?.startsWith("image/"));
   const name = locale === "ru" ? sport.nameRu : sport.nameUz;
   const description =
@@ -621,6 +626,13 @@ export default async function SportPage({
               <details className="faq-item" key={item.id}>
                 <summary>
                   {locale === "ru" ? item.questionRu : item.questionUz}
+                  {item.branch ? (
+                    <small className="faq-scope-label">
+                      {locale === "ru"
+                        ? item.branch.publicNameRu
+                        : item.branch.publicNameUz}
+                    </small>
+                  ) : null}
                 </summary>
                 <p>{locale === "ru" ? item.answerRu : item.answerUz}</p>
               </details>
