@@ -542,7 +542,7 @@ export default async function SportPage({
         </>
       ) : null}
 
-      {hasOpenGroup ? (
+      {sport.groups.length ? (
         <section className="content-section">
           <div className="section-heading">
             <p className="eyebrow">{locale === "ru" ? "ГРУППЫ" : "GURUHLAR"}</p>
