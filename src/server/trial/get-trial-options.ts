@@ -8,8 +8,8 @@ import { getPrisma } from "@/lib/prisma";
 
 export async function getTrialOptions(
   age: number,
-  sportSlug = "basketball",
-  branchSlug = "school-117"
+  sportSlug: string,
+  branchSlug: string
 ) {
   if (!Number.isInteger(age) || age < 6 || age > 17) {
     return {
