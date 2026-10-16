@@ -4,6 +4,10 @@ import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  PUBLIC_BRANCH_WHERE,
+  PUBLIC_SPORT_WHERE
+} from "@/server/public-data/visibility";
 import { isPublicLocale } from "@/lib/public-i18n";
 import {
   parseContentSections,
@@ -63,13 +67,13 @@ export default async function ContactsPage({
   const [page, branches] = await Promise.all([
     tryGetPublishedContentPage("contacts"),
     prisma.branch.findMany({
-      where: {
-        status: LifecycleStatus.ACTIVE,
-        groups: { some: { status: LifecycleStatus.ACTIVE } }
-      },
+      where: PUBLIC_BRANCH_WHERE,
       include: {
-        groups: {
-          where: { status: LifecycleStatus.ACTIVE },
+        sportLinks: {
+          where: {
+            status: LifecycleStatus.ACTIVE,
+            sport: PUBLIC_SPORT_WHERE
+          },
           include: { sport: true }
         }
       },
@@ -282,8 +286,8 @@ export default async function ContactsPage({
           {branches.map((branch) => {
             const sports = Array.from(
               new Set(
-                branch.groups.map((group) =>
-                  locale === "ru" ? group.sport.nameRu : group.sport.nameUz
+                branch.sportLinks.map((link) =>
+                  locale === "ru" ? link.sport.nameRu : link.sport.nameUz
                 )
               )
             ).join(" · ");
