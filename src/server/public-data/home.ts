@@ -4,6 +4,12 @@ import {
   MediaTargetType
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  PUBLIC_BRANCH_WHERE,
+  PUBLIC_COACH_WHERE,
+  PUBLIC_GROUP_WHERE,
+  PUBLIC_SPORT_WHERE
+} from "@/server/public-data/visibility";
 
 const consentSafe = {
   OR: [
@@ -20,23 +26,27 @@ export async function getPublicHomeData() {
 
   const [sports, branches, coaches] = await Promise.all([
     prisma.sport.findMany({
-      where: { status: LifecycleStatus.ACTIVE },
+      where: PUBLIC_SPORT_WHERE,
       include: {
         groups: {
-          where: { status: LifecycleStatus.ACTIVE },
+          where: PUBLIC_GROUP_WHERE,
           select: { id: true }
         }
       },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
     }),
     prisma.branch.findMany({
-      where: {
-        status: LifecycleStatus.ACTIVE,
-        groups: { some: { status: LifecycleStatus.ACTIVE } }
-      },
+      where: PUBLIC_BRANCH_WHERE,
       include: {
+        sportLinks: {
+          where: {
+            status: LifecycleStatus.ACTIVE,
+            sport: PUBLIC_SPORT_WHERE
+          },
+          include: { sport: true }
+        },
         groups: {
-          where: { status: LifecycleStatus.ACTIVE },
+          where: PUBLIC_GROUP_WHERE,
           include: { sport: true }
         }
       },
@@ -44,14 +54,20 @@ export async function getPublicHomeData() {
       take: 6
     }),
     prisma.coach.findMany({
-      where: { status: LifecycleStatus.ACTIVE },
+      where: PUBLIC_COACH_WHERE,
       include: {
         sportLinks: {
-          where: { status: LifecycleStatus.ACTIVE },
+          where: {
+            status: LifecycleStatus.ACTIVE,
+            sport: PUBLIC_SPORT_WHERE
+          },
           include: { sport: true }
         },
         branchLinks: {
-          where: { status: LifecycleStatus.ACTIVE },
+          where: {
+            status: LifecycleStatus.ACTIVE,
+            branch: PUBLIC_BRANCH_WHERE
+          },
           include: { branch: true }
         }
       },
