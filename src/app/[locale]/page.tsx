@@ -235,12 +235,14 @@ export default async function PublicHome({
           descriptionUz:
             sport.shortDescriptionUz ?? fallback?.descriptionUz ?? "",
           mark: fallback?.mark ?? String(index + 1).padStart(2, "0"),
+          branchLinks: sport.branchLinks,
           groups: sport.groups
         };
       })
     : SPORT_CATALOG.map((sport) => ({
         id: sport.slug,
         ...sport,
+        branchLinks: [] as { branchId: string }[],
         groups: [] as { id: string; enrollmentStatus: EnrollmentStatus }[]
       }));
 
@@ -454,6 +456,16 @@ export default async function PublicHome({
                     <p>
                       {locale === "ru" ? sport.descriptionRu : sport.descriptionUz}
                     </p>
+                  ) : null}
+                  {sport.branchLinks.length ? (
+                    <small className="shark-sport-branch-count">
+                      {sport.branchLinks.length}{" "}
+                      {locale === "ru"
+                        ? sport.branchLinks.length === 1
+                          ? "филиал"
+                          : "филиалов"
+                        : "filial"}
+                    </small>
                   ) : null}
                   <span className="shark-arrow" aria-hidden="true">→</span>
                 </div>
