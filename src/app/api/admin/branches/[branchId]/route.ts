@@ -184,3 +184,81 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true, branch: after });
 }
+
+
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ branchId: string }> }
+) {
+  const admin = await getAdminSession();
+
+  if (!admin) {
+    return NextResponse.json(
+      { ok: false, error: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
+
+  const { branchId } = await context.params;
+  const prisma = getPrisma();
+
+  const branch = await prisma.branch.findUnique({
+    where: { id: branchId }
+  });
+
+  if (!branch) {
+    return NextResponse.json(
+      { ok: false, error: "BRANCH_NOT_FOUND" },
+      { status: 404 }
+    );
+  }
+
+  const [groups, prices, leads] = await Promise.all([
+    prisma.trainingGroup.count({ where: { branchId } }),
+    prisma.price.count({ where: { branchId } }),
+    prisma.lead.count({ where: { branchId } })
+  ]);
+
+  if (groups || prices || leads) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "BRANCH_HAS_HISTORY",
+        dependencies: { groups, prices, leads }
+      },
+      { status: 409 }
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.mediaAsset.deleteMany({
+      where: {
+        targetType: "BRANCH",
+        targetId: branchId
+      }
+    });
+
+    await tx.branch.delete({
+      where: { id: branchId }
+    });
+  });
+
+  await writeAdminAudit({
+    actorId: admin.sub,
+    action: "DELETE",
+    entityType: "Branch",
+    entityId: branchId,
+    before: branch
+  });
+
+  revalidatePath("/ru");
+  revalidatePath("/uz");
+  revalidatePath("/ru/branches");
+  revalidatePath("/uz/branches");
+  revalidatePath("/ru/contacts");
+  revalidatePath("/uz/contacts");
+  revalidatePath(`/ru/branches/${branch.slug}`);
+  revalidatePath(`/uz/branches/${branch.slug}`);
+
+  return NextResponse.json({ ok: true });
+}
