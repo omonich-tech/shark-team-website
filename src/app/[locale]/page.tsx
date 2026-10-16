@@ -249,16 +249,16 @@ export default async function PublicHome({
   const aboutStats =
     locale === "ru"
       ? [
-          [String(data?.sports.length ?? 0), "видов спорта"],
-          [String(data?.branches.length ?? 0), "филиалов"],
-          [String(data?.coaches.length ?? 0), "тренеров"],
-          [String(activeGroupCount), "активных групп"]
+          [String(data?.sports.length ?? 0), "видов спорта", `/${locale}/sports`],
+          [String(data?.branches.length ?? 0), "филиалов", `/${locale}/branches`],
+          [String(data?.coaches.length ?? 0), "тренеров", `/${locale}/coaches`],
+          [String(activeGroupCount), "активных групп", `/${locale}/schedule`]
         ]
       : [
-          [String(data?.sports.length ?? 0), "sport turi"],
-          [String(data?.branches.length ?? 0), "filial"],
-          [String(data?.coaches.length ?? 0), "murabbiy"],
-          [String(activeGroupCount), "faol guruh"]
+          [String(data?.sports.length ?? 0), "sport turi", `/${locale}/sports`],
+          [String(data?.branches.length ?? 0), "filial", `/${locale}/branches`],
+          [String(data?.coaches.length ?? 0), "murabbiy", `/${locale}/coaches`],
+          [String(activeGroupCount), "faol guruh", `/${locale}/schedule`]
         ];
 
   const benefitFallback =
@@ -395,11 +395,11 @@ export default async function PublicHome({
           }
         >
           <div className="shark-about-stats">
-            {aboutStats.map(([value, label]) => (
-              <div key={label}>
+            {aboutStats.map(([value, label, href]) => (
+              <Link href={href} key={label}>
                 <strong>{value}</strong>
                 <span>{label}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
