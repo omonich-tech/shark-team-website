@@ -53,6 +53,56 @@ export async function POST(request: NextRequest) {
   const prisma = getPrisma();
   const now = new Date();
 
+  const [branch, sport, group] = await Promise.all([
+    branchId
+      ? prisma.branch.findUnique({
+          where: { id: branchId },
+          select: { id: true, slug: true, status: true }
+        })
+      : Promise.resolve(null),
+    sportId
+      ? prisma.sport.findUnique({
+          where: { id: sportId },
+          select: { id: true, slug: true, status: true }
+        })
+      : Promise.resolve(null),
+    groupId
+      ? prisma.trainingGroup.findUnique({
+          where: { id: groupId },
+          select: {
+            id: true,
+            branchId: true,
+            sportId: true,
+            status: true
+          }
+        })
+      : Promise.resolve(null)
+  ]);
+
+  if (
+    (branchId && (!branch || branch.status === LifecycleStatus.ARCHIVED)) ||
+    (sportId && (!sport || sport.status === LifecycleStatus.ARCHIVED)) ||
+    (groupId && (!group || group.status === LifecycleStatus.ARCHIVED))
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "PRICE_SCOPE_NOT_FOUND" },
+      { status: 400 }
+    );
+  }
+
+  if (
+    group &&
+    (
+      (branchId && group.branchId !== branchId) ||
+      (sportId && group.sportId !== sportId)
+    )
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "PRICE_SCOPE_MISMATCH" },
+      { status: 400 }
+    );
+  }
+
   const before = await prisma.price.findMany({
     where: {
       productType,
@@ -104,21 +154,6 @@ export async function POST(request: NextRequest) {
     before,
     after
   });
-
-  const [branch, sport] = await Promise.all([
-    branchId
-      ? prisma.branch.findUnique({
-          where: { id: branchId },
-          select: { slug: true }
-        })
-      : Promise.resolve(null),
-    sportId
-      ? prisma.sport.findUnique({
-          where: { id: sportId },
-          select: { slug: true }
-        })
-      : Promise.resolve(null)
-  ]);
 
   revalidatePath("/ru/prices");
   revalidatePath("/uz/prices");
