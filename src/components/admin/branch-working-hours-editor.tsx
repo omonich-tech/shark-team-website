@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const WEEKDAYS = [
@@ -44,13 +44,13 @@ export function BranchWorkingHoursEditor({
   initialWorkingHoursRu?: string | null;
 }) {
   const router = useRouter();
-  const initialTime = useMemo(
-    () => parseInitialTime(initialWorkingHoursRu),
-    [initialWorkingHoursRu]
-  );
   const [days, setDays] = useState<string[]>(() => parseInitialDays(initialWorkingHoursRu));
-  const [start, setStart] = useState(initialTime.start);
-  const [end, setEnd] = useState(initialTime.end);
+  const [start, setStart] = useState(
+    () => parseInitialTime(initialWorkingHoursRu).start
+  );
+  const [end, setEnd] = useState(
+    () => parseInitialTime(initialWorkingHoursRu).end
+  );
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
 
