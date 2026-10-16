@@ -2,6 +2,7 @@ import {
   LifecycleStatus,
   PriceProductType
 } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 
 export type PriceCandidate = {
   id: string;
@@ -50,7 +51,7 @@ export function resolveEffectivePrice(
     )[0]?.price ?? null;
 }
 
-export function activePriceWhere(now = new Date()) {
+export function activePriceWhere(now = new Date()): Prisma.PriceWhereInput {
   return {
     status: LifecycleStatus.ACTIVE,
     validFrom: { lte: now },
@@ -59,5 +60,5 @@ export function activePriceWhere(now = new Date()) {
         OR: [{ validTo: null }, { validTo: { gt: now } }]
       }
     ]
-  } as const;
+  };
 }
