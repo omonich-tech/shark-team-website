@@ -583,7 +583,11 @@ export default async function PublicHome({
                 item.contentType?.startsWith("image/")
             );
             const sports = Array.from(
-              new Set(branch.groups.map((group) => locale === "ru" ? group.sport.nameRu : group.sport.nameUz))
+              new Set(
+                branch.sportLinks.map((link) =>
+                  locale === "ru" ? link.sport.nameRu : link.sport.nameUz
+                )
+              )
             );
 
             return (
