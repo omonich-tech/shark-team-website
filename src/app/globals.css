@@ -8441,6 +8441,59 @@ h3 {
 }
 
 
+/* Cross-linked public data */
+.branch-price-by-sport {
+  display: grid;
+  gap: 14px;
+}
+
+.branch-price-sport-row {
+  display: grid;
+  gap: 10px;
+}
+
+.branch-price-sport-name {
+  color: var(--ps-blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.faq-scope-label {
+  display: inline-flex;
+  margin-left: 10px;
+  padding: 4px 7px;
+  border: 1px solid var(--ps-line);
+  border-radius: 999px;
+  background: var(--ps-surface-2);
+  color: var(--ps-muted);
+  font-size: 9px;
+  font-weight: 850;
+  vertical-align: middle;
+}
+
+.coach-group-cta-v2.muted {
+  color: var(--ps-muted);
+  cursor: default;
+}
+
+.sport-group-row a {
+  color: inherit;
+}
+
+.sport-group-row a:hover {
+  color: var(--ps-blue);
+}
+
+.price-card a {
+  color: inherit;
+}
+
+.price-card a:hover {
+  color: var(--ps-blue);
+}
+
 /* Public coach profile v2 */
 .coach-profile-v2 .content-section {
   margin-top: 46px;
