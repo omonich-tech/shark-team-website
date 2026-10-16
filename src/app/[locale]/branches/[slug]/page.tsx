@@ -3,7 +3,7 @@ import Link from "next/link";
 import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { ContentStatus } from "@/generated/prisma/client";
+import { ContentStatus, LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { formatUzs, isPublicLocale, pickLocalized, weekdayLabel } from "@/lib/public-i18n";
 import {
