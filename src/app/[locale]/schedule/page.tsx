@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { EnrollmentStatus } from "@/generated/prisma/client";
+import { EnrollmentStatus, LifecycleStatus } from "@/generated/prisma/client";
 import { JsonLd } from "@/components/public/json-ld";
 import { getPrisma } from "@/lib/prisma";
 import { PUBLIC_GROUP_WHERE } from "@/server/public-data/visibility";
