@@ -4,6 +4,7 @@ import { LifecycleStatus } from "@/generated/prisma/client";
 import { AdminEntityForm } from "@/components/admin/entity-form";
 import { BranchSportsEditor } from "@/components/admin/branch-sports-editor";
 import { BranchWorkingHoursEditor } from "@/components/admin/branch-working-hours-editor";
+import { BranchCoachesEditor } from "@/components/admin/branch-coaches-editor";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +17,12 @@ export default async function AdminBranchEditPage({
   const { branchId } = await params;
   const prisma = getPrisma();
 
-  const [branch, sports] = await Promise.all([
+  const [branch, sports, coaches] = await Promise.all([
     prisma.branch.findUnique({
       where: { id: branchId },
       include: {
         sportLinks: true,
+        coachLinks: true,
         groups: {
           where: { status: { not: LifecycleStatus.ARCHIVED } },
           select: { id: true }
@@ -30,6 +32,10 @@ export default async function AdminBranchEditPage({
     prisma.sport.findMany({
       where: { status: { not: LifecycleStatus.ARCHIVED } },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
+    }),
+    prisma.coach.findMany({
+      where: { status: { not: LifecycleStatus.ARCHIVED } },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }]
     })
   ]);
 
@@ -38,6 +44,10 @@ export default async function AdminBranchEditPage({
   const activeSportIds = branch.sportLinks
     .filter((link) => link.status === LifecycleStatus.ACTIVE)
     .map((link) => link.sportId);
+
+  const activeCoachIds = branch.coachLinks
+    .filter((link) => link.status === LifecycleStatus.ACTIVE)
+    .map((link) => link.coachId);
 
   return (
     <>
@@ -66,6 +76,10 @@ export default async function AdminBranchEditPage({
         <div>
           <span>Направлений</span>
           <strong>{activeSportIds.length}</strong>
+        </div>
+        <div>
+          <span>Тренеров</span>
+          <strong>{activeCoachIds.length}</strong>
         </div>
         <div>
           <span>Групп</span>
@@ -142,6 +156,28 @@ export default async function AdminBranchEditPage({
             seoDescriptionRu: branch.seoDescriptionRu,
             seoDescriptionUz: branch.seoDescriptionUz
           }}
+        />
+      </section>
+
+      <section className="admin-panel admin-editor-panel">
+        <div className="admin-panel-head">
+          <div>
+            <p className="admin-panel-kicker">Команда</p>
+            <h2>Тренеры филиала</h2>
+            <small>
+              Выберите тренеров, которые работают в этом филиале. Эти связи показываются
+              на публичной странице филиала и в профиле тренера.
+            </small>
+          </div>
+        </div>
+        <BranchCoachesEditor
+          branchId={branch.id}
+          coaches={coaches.map((coach) => ({
+            id: coach.id,
+            name: [coach.firstName, coach.lastName].filter(Boolean).join(" "),
+            meta: coach.status
+          }))}
+          initialCoachIds={activeCoachIds}
         />
       </section>
 
