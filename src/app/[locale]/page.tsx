@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "@/components/public/json-ld";
+import { EnrollmentStatus } from "@/generated/prisma/client";
 import { notFound } from "next/navigation";
 import { isPublicLocale } from "@/lib/public-i18n";
 import {
@@ -240,7 +241,7 @@ export default async function PublicHome({
     : SPORT_CATALOG.map((sport) => ({
         id: sport.slug,
         ...sport,
-        groups: [] as { id: string }[]
+        groups: [] as { id: string; enrollmentStatus: EnrollmentStatus }[]
       }));
 
   const aboutStats =
@@ -419,7 +420,9 @@ export default async function PublicHome({
                 item.targetId === sport.id &&
                 item.contentType?.startsWith("image/")
             );
-            const isLive = Boolean(sport.groups.length);
+            const isLive = sport.groups.some(
+              (group) => group.enrollmentStatus === EnrollmentStatus.OPEN
+            );
 
             return (
               <Link
