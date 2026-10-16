@@ -3,6 +3,7 @@ import Link from "next/link";
 import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import {
+  EnrollmentStatus,
   LifecycleStatus,
   MediaConsentStatus,
   MediaTargetType
@@ -413,11 +414,13 @@ export default async function CoachProfilePage({
                         {group.ageMin}–{group.ageMax}{" "}
                         {locale === "ru" ? "лет" : "yosh"}
                       </span>
-                      <strong>
-                        {locale === "ru"
-                          ? group.sport.nameRu
-                          : group.sport.nameUz}
-                      </strong>
+                      <Link href={`/${locale}/sports/${group.sport.slug}`}>
+                        <strong>
+                          {locale === "ru"
+                            ? group.sport.nameRu
+                            : group.sport.nameUz}
+                        </strong>
+                      </Link>
                     </div>
 
                     <div className="coach-schedule-v2">
@@ -436,13 +439,19 @@ export default async function CoachProfilePage({
                           ? group.branch.publicNameRu
                           : group.branch.publicNameUz}
                       </Link>
-                      <Link
-                        className="coach-group-cta-v2"
-                        data-analytics-event="trial_cta_click"
-                        href={`/${locale}/trial?sport=${encodeURIComponent(group.sport.slug)}&branch=${encodeURIComponent(group.branch.slug)}`}
-                      >
-                        {locale === "ru" ? "Записаться →" : "Yozilish →"}
-                      </Link>
+                      {group.enrollmentStatus === EnrollmentStatus.OPEN ? (
+                        <Link
+                          className="coach-group-cta-v2"
+                          data-analytics-event="trial_cta_click"
+                          href={`/${locale}/trial?sport=${encodeURIComponent(group.sport.slug)}&branch=${encodeURIComponent(group.branch.slug)}`}
+                        >
+                          {locale === "ru" ? "Записаться →" : "Yozilish →"}
+                        </Link>
+                      ) : (
+                        <span className="coach-group-cta-v2 muted">
+                          {locale === "ru" ? "Набор закрыт" : "Qabul yopiq"}
+                        </span>
+                      )}
                     </div>
                   </article>
                 );
