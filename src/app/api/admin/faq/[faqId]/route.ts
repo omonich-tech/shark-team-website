@@ -196,5 +196,32 @@ export async function DELETE(
     before
   });
 
+  if (!before.branchId && !before.sportId) {
+    revalidatePath("/ru");
+    revalidatePath("/uz");
+  }
+
+  if (before.branchId) {
+    const branch = await prisma.branch.findUnique({
+      where: { id: before.branchId },
+      select: { slug: true }
+    });
+    if (branch) {
+      revalidatePath(`/ru/branches/${branch.slug}`);
+      revalidatePath(`/uz/branches/${branch.slug}`);
+    }
+  }
+
+  if (before.sportId) {
+    const sport = await prisma.sport.findUnique({
+      where: { id: before.sportId },
+      select: { slug: true }
+    });
+    if (sport) {
+      revalidatePath(`/ru/sports/${sport.slug}`);
+      revalidatePath(`/uz/sports/${sport.slug}`);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
