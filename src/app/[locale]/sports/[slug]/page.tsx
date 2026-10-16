@@ -102,8 +102,7 @@ export default async function SportPage({
           status: LifecycleStatus.ACTIVE,
           branch: { status: LifecycleStatus.ACTIVE }
         },
-        include: { branch: true },
-        orderBy: { branch: { createdAt: "asc" } }
+        include: { branch: true }
       },
       groups: {
         where: { status: LifecycleStatus.ACTIVE },
