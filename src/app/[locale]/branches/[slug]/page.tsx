@@ -318,7 +318,12 @@ export default async function PublicBranchPage({
           {data.groups.map((group) => (
             <article className="sport-group-row" key={group.id}>
               <div>
-                <span>{`${pickLocalized(locale, group.sport.name)} · ${group.ageMin}–${group.ageMax} ${locale === "ru" ? "лет" : "yosh"}`}</span>
+                <span>
+                  <Link href={`/${locale}/sports/${group.sport.slug}`}>
+                    {pickLocalized(locale, group.sport.name)}
+                  </Link>{" "}
+                  · {group.ageMin}–{group.ageMax} {locale === "ru" ? "лет" : "yosh"}
+                </span>
                 <h3>
                   {group.schedule[0]
                     ? `${group.schedule[0].start}–${group.schedule[0].end}`
@@ -329,10 +334,10 @@ export default async function PublicBranchPage({
                 </p>
               </div>
               <div className="sport-group-meta">
-                <span>
+                <Link href={`/${locale}/coaches/${group.coach.id}`}>
                   {locale === "ru" ? "Тренер" : "Murabbiy"} ·{" "}
                   {[group.coach.firstName, group.coach.lastName].filter(Boolean).join(" ")}
-                </span>
+                </Link>
                 <strong>
                   {locale === "ru" ? "До" : "Gacha"} {group.capacityRegular}
                 </strong>
