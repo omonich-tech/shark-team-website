@@ -4,6 +4,7 @@ import { JsonLd } from "@/components/public/json-ld";
 import { notFound } from "next/navigation";
 import {
   ContentStatus,
+  EnrollmentStatus,
   LifecycleStatus,
   MediaConsentStatus,
   MediaTargetType,
@@ -208,6 +209,9 @@ export default async function SportPage({
   const story = fallback?.story[locale === "ru" ? "ru" : "uz"] ?? null;
   const branches = sport.branchLinks.map((link) => link.branch);
   const coaches = sport.coachLinks.map((link) => link.coach);
+  const hasOpenGroup = sport.groups.some(
+    (group) => group.enrollmentStatus === EnrollmentStatus.OPEN
+  );
 
   const structuredData = [
     breadcrumbJsonLd([
@@ -273,7 +277,7 @@ export default async function SportPage({
               ))}
             </div>
           ) : null}
-          {sport.groups.length ? (
+          {hasOpenGroup ? (
             <div className="hero-actions">
               <Link className="button primary" data-analytics-event="trial_cta_click" href={`/${locale}/trial?sport=${encodeURIComponent(slug)}`}>
                 {locale === "ru" ? "Записаться на пробное" : "Sinovga yozilish"}
@@ -519,7 +523,7 @@ export default async function SportPage({
             <p>{story.beginner}</p>
           </section>
 
-          {sport.groups.length ? (
+          {hasOpenGroup ? (
             <section className="content-section sport-story-cta">
               <div>
                 <p className="eyebrow">SHARK TEAM</p>
@@ -538,7 +542,7 @@ export default async function SportPage({
         </>
       ) : null}
 
-      {sport.groups.length ? (
+      {hasOpenGroup ? (
         <section className="content-section">
           <div className="section-heading">
             <p className="eyebrow">{locale === "ru" ? "ГРУППЫ" : "GURUHLAR"}</p>
