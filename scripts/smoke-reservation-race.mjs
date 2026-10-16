@@ -47,7 +47,7 @@ async function reserve(leadId) {
 }
 
 const optionsResponse = await fetch(
-  `${baseUrl}/api/public/trial-options?age=10`
+  `${baseUrl}/api/public/trial-options?age=10&sport=basketball&branch=school-117`
 );
 const options = await optionsResponse.json();
 
