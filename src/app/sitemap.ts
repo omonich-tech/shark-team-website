@@ -1,6 +1,10 @@
 import type { MetadataRoute } from "next";
-import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  PUBLIC_BRANCH_WHERE,
+  PUBLIC_COACH_WHERE,
+  PUBLIC_SPORT_WHERE
+} from "@/server/public-data/visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -30,14 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const [branches, sports, coaches] = await Promise.all([
     prisma.branch.findMany({
-      where: {
-        status: LifecycleStatus.ACTIVE,
-        groups: {
-          some: {
-            status: LifecycleStatus.ACTIVE
-          }
-        }
-      },
+      where: PUBLIC_BRANCH_WHERE,
       select: {
         slug: true,
         updatedAt: true
@@ -47,9 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }),
     prisma.sport.findMany({
-      where: {
-        status: LifecycleStatus.ACTIVE
-      },
+      where: PUBLIC_SPORT_WHERE,
       select: {
         slug: true,
         updatedAt: true
@@ -57,9 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
     }),
     prisma.coach.findMany({
-      where: {
-        status: LifecycleStatus.ACTIVE
-      },
+      where: PUBLIC_COACH_WHERE,
       select: {
         id: true,
         updatedAt: true
