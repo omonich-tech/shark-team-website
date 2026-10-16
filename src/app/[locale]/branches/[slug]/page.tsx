@@ -283,7 +283,16 @@ export default async function PublicBranchPage({
           </div>
           <div>
             <span>{locale === "ru" ? "Направления" : "Yo‘nalishlar"}</span>
-            <strong>{data.sports.map((sport) => pickLocalized(locale, sport.name)).join(" · ")}</strong>
+            <strong className="branch-info-links">
+              {data.sports.map((sport, index) => (
+                <span key={sport.id}>
+                  {index > 0 ? " · " : ""}
+                  <Link href={`/${locale}/sports/${sport.slug}`}>
+                    {pickLocalized(locale, sport.name)}
+                  </Link>
+                </span>
+              ))}
+            </strong>
           </div>
           <div>
             <span>{locale === "ru" ? "Дни и время работы" : "Ish kunlari va vaqti"}</span>
