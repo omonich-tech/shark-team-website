@@ -30,7 +30,10 @@ export async function generateMetadata({
     where: { id: coachId, status: LifecycleStatus.ACTIVE },
     include: {
       sportLinks: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          sport: { status: LifecycleStatus.ACTIVE }
+        },
         include: { sport: true }
       }
     }
@@ -105,21 +108,30 @@ export default async function CoachProfilePage({
     },
     include: {
       sportLinks: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          sport: { status: LifecycleStatus.ACTIVE }
+        },
         include: { sport: true }
       },
       branchLinks: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          branch: { status: LifecycleStatus.ACTIVE }
+        },
         include: { branch: true }
       },
       primaryGroups: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          branch: { status: LifecycleStatus.ACTIVE },
+          sport: { status: LifecycleStatus.ACTIVE }
+        },
         include: {
           sport: true,
           branch: true,
           scheduleRules: {
-            where: { status: LifecycleStatus.ACTIVE },
-            orderBy: [{ weekday: "asc" }, { startMinutes: "asc" }]
+            where: { status: LifecycleStatus.ACTIVE }
           }
         },
         orderBy: [{ branchId: "asc" }, { ageMin: "asc" }]
@@ -150,10 +162,22 @@ export default async function CoachProfilePage({
 
   const photo = media.find((item) => item.contentType?.startsWith("image/"));
   const fullName = [coach.firstName, coach.lastName].filter(Boolean).join(" ");
+  const initials = [coach.firstName, coach.lastName]
+    .filter(Boolean)
+    .map((value) => value?.slice(0, 1).toUpperCase())
+    .join("");
   const bio = locale === "ru" ? coach.publicBioRu : coach.publicBioUz;
   const education = locale === "ru" ? coach.educationRu : coach.educationUz;
   const qualification =
     locale === "ru" ? coach.qualificationRu : coach.qualificationUz;
+
+  const trialGroup = coach.primaryGroups[0];
+  const trialSport = trialGroup?.sport.slug ?? coach.sportLinks[0]?.sport.slug;
+  const trialBranch =
+    trialGroup?.branch.slug ?? coach.branchLinks[0]?.branch.slug;
+  const trialHref = trialSport
+    ? `/${locale}/trial?sport=${encodeURIComponent(trialSport)}${trialBranch ? `&branch=${encodeURIComponent(trialBranch)}` : ""}`
+    : `/${locale}/trial`;
 
   const structuredData = [
     breadcrumbJsonLd([
@@ -189,136 +213,249 @@ export default async function CoachProfilePage({
   return (
     <>
       <JsonLd data={structuredData} />
-      <main className="page-main">
-      <section className="coach-detail-hero">
-        <div
-          className={photo ? "coach-detail-photo has-photo" : "coach-detail-photo"}
-          style={photo ? { backgroundImage: `url("${photo.url}")` } : undefined}
-          role={photo ? "img" : undefined}
-          aria-label={
-            photo
-              ? (locale === "ru" ? photo.altRu : photo.altUz) ?? fullName
-              : undefined
-          }
-        >
-          {!photo ? <span>{coach.firstName.slice(0, 1)}</span> : null}
-        </div>
-
-        <div className="coach-detail-copy">
-          <Link className="shark-back-link" href={`/${locale}/coaches`}>
-            ← {locale === "ru" ? "Все тренеры" : "Barcha murabbiylar"}
-          </Link>
-          <p className="eyebrow">SHARK TEAM · {locale === "ru" ? "ТРЕНЕР" : "MURABBIY"}</p>
-          <h1>{fullName}</h1>
-
-          <div className="coach-detail-tags">
-            {coach.sportLinks.map((link) => (
-              <span key={link.sportId}>
-                {locale === "ru" ? link.sport.nameRu : link.sport.nameUz}
-              </span>
-            ))}
-          </div>
-
-          {coach.experienceYears ? (
-            <strong className="coach-detail-experience">
-              {locale === "ru"
-                ? `Опыт ${coach.experienceYears}+ лет`
-                : `Tajriba ${coach.experienceYears}+ yil`}
-            </strong>
-          ) : null}
-
-          {bio ? <p className="lead">{bio}</p> : null}
-        </div>
-      </section>
-
-      <section className="content-section coach-detail-info-grid">
-        <article>
-          <p className="eyebrow">{locale === "ru" ? "ОБРАЗОВАНИЕ" : "TA’LIM"}</p>
-          <h2>{locale === "ru" ? "Профессиональная база" : "Professional tayyorgarlik"}</h2>
-          <p>{education || (locale === "ru" ? "Информация уточняется." : "Ma’lumot aniqlanmoqda.")}</p>
-        </article>
-
-        <article>
-          <p className="eyebrow">{locale === "ru" ? "КВАЛИФИКАЦИЯ" : "MALAKA"}</p>
-          <h2>{locale === "ru" ? "Компетенции тренера" : "Murabbiy kompetensiyalari"}</h2>
-          <p>{qualification || (locale === "ru" ? "Информация уточняется." : "Ma’lumot aniqlanmoqda.")}</p>
-        </article>
-
-        <article>
-          <p className="eyebrow">{locale === "ru" ? "ФИЛИАЛЫ" : "FILIALlar"}</p>
-          <h2>{locale === "ru" ? "Где тренирует" : "Qayerda mashg‘ulot o‘tkazadi"}</h2>
-          <div className="coach-detail-links">
-            {coach.branchLinks.map((link) => (
-              <Link
-                href={`/${locale}/branches/${link.branch.slug}`}
-                key={link.branchId}
-              >
-                {locale === "ru"
-                  ? link.branch.publicNameRu
-                  : link.branch.publicNameUz}
-                {" →"}
-              </Link>
-            ))}
-            {coach.branchLinks.length === 0 ? (
-              <span>{locale === "ru" ? "Филиалы уточняются." : "Filiallar aniqlanmoqda."}</span>
+      <main className="page-main coach-profile-v2">
+        <section className="coach-hero-v2">
+          <div
+            className={photo ? "coach-photo-v2 has-photo" : "coach-photo-v2"}
+            style={photo ? { backgroundImage: `url("${photo.url}")` } : undefined}
+            role={photo ? "img" : undefined}
+            aria-label={
+              photo
+                ? (locale === "ru" ? photo.altRu : photo.altUz) ?? fullName
+                : undefined
+            }
+          >
+            {!photo ? (
+              <div className="coach-photo-placeholder-v2">
+                <span>{initials || coach.firstName.slice(0, 1)}</span>
+                <small>SHARK TEAM</small>
+              </div>
             ) : null}
           </div>
-        </article>
-      </section>
 
-      <section className="content-section">
-        <div className="section-heading">
-          <p className="eyebrow">{locale === "ru" ? "ГРУППЫ" : "GURUHLAR"}</p>
-          <h2>{locale === "ru" ? "Текущие группы" : "Joriy guruhlar"}</h2>
-        </div>
+          <div className="coach-hero-copy-v2">
+            <Link className="shark-back-link" href={`/${locale}/coaches`}>
+              ← {locale === "ru" ? "Все тренеры" : "Barcha murabbiylar"}
+            </Link>
 
-        <div className="sport-group-list">
-          {coach.primaryGroups.map((group) => {
-            const schedule = group.scheduleRules
-              .map(
-                (rule) =>
-                  `${weekdayLabel(rule.weekday, locale)} ${minutes(rule.startMinutes)}`
-              )
-              .join(" · ");
+            <p className="eyebrow">
+              SHARK TEAM · {locale === "ru" ? "ТРЕНЕР" : "MURABBIY"}
+            </p>
+            <h1>{fullName}</h1>
 
-            return (
-              <article className="sport-group-row" key={group.id}>
-                <div>
-                  <span>
-                    {group.ageMin}–{group.ageMax}{" "}
-                    {locale === "ru" ? "лет" : "yosh"}
-                  </span>
-                  <h3>
-                    {locale === "ru" ? group.sport.nameRu : group.sport.nameUz}
-                  </h3>
-                  <p>{schedule || "—"}</p>
-                </div>
-                <div className="sport-group-meta">
-                  <span>
-                    {locale === "ru"
-                      ? group.branch.publicNameRu
-                      : group.branch.publicNameUz}
-                  </span>
-                  <Link
-                    className="shark-text-link"
-                    href={`/${locale}/trial?sport=${encodeURIComponent(group.sport.slug)}&branch=${encodeURIComponent(group.branch.slug)}`}
-                  >
-                    {locale === "ru" ? "Записаться →" : "Yozilish →"}
-                  </Link>
-                </div>
-              </article>
-            );
-          })}
+            <div className="coach-specialty-list-v2">
+              {coach.sportLinks.map((link) => (
+                <span key={link.sportId}>
+                  {locale === "ru" ? link.sport.nameRu : link.sport.nameUz}
+                </span>
+              ))}
+            </div>
 
-          {coach.primaryGroups.length === 0 ? (
+            {bio ? <p className="coach-bio-v2">{bio}</p> : null}
+
+            <div className="coach-hero-actions-v2">
+              <Link
+                className="button primary"
+                data-analytics-event="trial_cta_click"
+                href={trialHref}
+              >
+                {locale === "ru"
+                  ? "Записаться на пробное"
+                  : "Sinov mashg‘ulotiga yozilish"}
+              </Link>
+              {coach.branchLinks[0] ? (
+                <Link
+                  className="button secondary"
+                  href={`/${locale}/branches/${coach.branchLinks[0].branch.slug}`}
+                >
+                  {locale === "ru" ? "Посмотреть филиал" : "Filialni ko‘rish"}
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        <section className="coach-facts-v2" aria-label={locale === "ru" ? "Кратко о тренере" : "Murabbiy haqida qisqacha"}>
+          <article>
+            <span>{locale === "ru" ? "Опыт" : "Tajriba"}</span>
+            <strong>
+              {coach.experienceYears
+                ? locale === "ru"
+                  ? `${coach.experienceYears}+ лет`
+                  : `${coach.experienceYears}+ yil`
+                : "—"}
+            </strong>
+          </article>
+          <article>
+            <span>{locale === "ru" ? "Направления" : "Yo‘nalishlar"}</span>
+            <strong>{coach.sportLinks.length || "—"}</strong>
+          </article>
+          <article>
+            <span>{locale === "ru" ? "Филиалы" : "Filiallar"}</span>
+            <strong>{coach.branchLinks.length || "—"}</strong>
+          </article>
+        </section>
+
+        <section className="content-section coach-professional-v2">
+          <article>
+            <div>
+              <p className="eyebrow">{locale === "ru" ? "ОБРАЗОВАНИЕ" : "TA’LIM"}</p>
+              <h2>
+                {locale === "ru"
+                  ? "Профессиональная база"
+                  : "Professional tayyorgarlik"}
+              </h2>
+            </div>
+            <p>
+              {education ||
+                (locale === "ru"
+                  ? "Информация уточняется."
+                  : "Ma’lumot aniqlanmoqda.")}
+            </p>
+          </article>
+
+          <article>
+            <div>
+              <p className="eyebrow">{locale === "ru" ? "КВАЛИФИКАЦИЯ" : "MALAKA"}</p>
+              <h2>
+                {locale === "ru"
+                  ? "Компетенции тренера"
+                  : "Murabbiy kompetensiyalari"}
+              </h2>
+            </div>
+            <p>
+              {qualification ||
+                (locale === "ru"
+                  ? "Информация уточняется."
+                  : "Ma’lumot aniqlanmoqda.")}
+            </p>
+          </article>
+        </section>
+
+        {coach.branchLinks.length ? (
+          <section className="content-section">
+            <div className="section-heading coach-section-heading-v2">
+              <div>
+                <p className="eyebrow">
+                  {locale === "ru" ? "ФИЛИАЛЫ" : "FILIALlar"}
+                </p>
+                <h2>
+                  {locale === "ru"
+                    ? "Где проходят тренировки"
+                    : "Mashg‘ulotlar qayerda o‘tadi"}
+                </h2>
+              </div>
+            </div>
+
+            <div className="coach-branch-grid-v2">
+              {coach.branchLinks.map((link) => (
+                <Link
+                  className="coach-branch-card-v2"
+                  href={`/${locale}/branches/${link.branch.slug}`}
+                  key={link.branchId}
+                >
+                  <div>
+                    <span>
+                      {locale === "ru"
+                        ? link.branch.districtRu || "Ташкент"
+                        : link.branch.districtUz || "Toshkent"}
+                    </span>
+                    <h3>
+                      {locale === "ru"
+                        ? link.branch.publicNameRu
+                        : link.branch.publicNameUz}
+                    </h3>
+                    <p>
+                      {locale === "ru"
+                        ? link.branch.addressRu
+                        : link.branch.addressUz}
+                    </p>
+                  </div>
+                  <strong>
+                    {locale === "ru" ? "Открыть филиал →" : "Filialni ochish →"}
+                  </strong>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="content-section">
+          <div className="section-heading coach-section-heading-v2">
+            <div>
+              <p className="eyebrow">{locale === "ru" ? "ГРУППЫ" : "GURUHLAR"}</p>
+              <h2>{locale === "ru" ? "Группы тренера" : "Murabbiy guruhlari"}</h2>
+            </div>
+            {coach.primaryGroups.length ? (
+              <span>
+                {coach.primaryGroups.length}{" "}
+                {locale === "ru" ? "активных групп" : "faol guruh"}
+              </span>
+            ) : null}
+          </div>
+
+          {coach.primaryGroups.length ? (
+            <div className="coach-group-grid-v2">
+              {coach.primaryGroups.map((group) => {
+                const schedule = Array.from(
+                  new Set(
+                    group.scheduleRules.map(
+                      (rule) =>
+                        `${weekdayLabel(rule.weekday, locale)} ${minutes(rule.startMinutes)}–${minutes(rule.endMinutes)}`
+                    )
+                  )
+                );
+
+                return (
+                  <article className="coach-group-card-v2" key={group.id}>
+                    <div className="coach-group-top-v2">
+                      <span>
+                        {group.ageMin}–{group.ageMax}{" "}
+                        {locale === "ru" ? "лет" : "yosh"}
+                      </span>
+                      <strong>
+                        {locale === "ru"
+                          ? group.sport.nameRu
+                          : group.sport.nameUz}
+                      </strong>
+                    </div>
+
+                    <div className="coach-schedule-v2">
+                      {schedule.length ? (
+                        schedule.map((item) => <span key={item}>{item}</span>)
+                      ) : (
+                        <span>—</span>
+                      )}
+                    </div>
+
+                    <div className="coach-group-footer-v2">
+                      <Link
+                        href={`/${locale}/branches/${group.branch.slug}`}
+                      >
+                        {locale === "ru"
+                          ? group.branch.publicNameRu
+                          : group.branch.publicNameUz}
+                      </Link>
+                      <Link
+                        className="coach-group-cta-v2"
+                        data-analytics-event="trial_cta_click"
+                        href={`/${locale}/trial?sport=${encodeURIComponent(group.sport.slug)}&branch=${encodeURIComponent(group.branch.slug)}`}
+                      >
+                        {locale === "ru" ? "Записаться →" : "Yozilish →"}
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
             <div className="shark-coming-soon">
               {locale === "ru"
                 ? "Активные группы скоро появятся."
                 : "Faol guruhlar tez orada paydo bo‘ladi."}
             </div>
-          ) : null}
-        </div>
-      </section>
+          )}
+        </section>
       </main>
     </>
   );
