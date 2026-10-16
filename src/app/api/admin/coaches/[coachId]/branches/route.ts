@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
@@ -109,6 +110,23 @@ export async function PUT(
     before,
     after
   });
+
+  const linkedBranches = await prisma.branch.findMany({
+    where: { id: { in: ids } },
+    select: { slug: true }
+  });
+
+  revalidatePath("/ru/branches");
+  revalidatePath("/uz/branches");
+  revalidatePath("/ru/coaches");
+  revalidatePath("/uz/coaches");
+  revalidatePath(`/ru/coaches/${coachId}`);
+  revalidatePath(`/uz/coaches/${coachId}`);
+
+  for (const branch of linkedBranches) {
+    revalidatePath(`/ru/branches/${branch.slug}`);
+    revalidatePath(`/uz/branches/${branch.slug}`);
+  }
 
   return NextResponse.json({
     ok: true,

@@ -46,13 +46,29 @@ export default async function BranchCatalogPage({
   const prisma = getPrisma();
   const branches = await prisma.branch.findMany({
     where: {
-      status: LifecycleStatus.ACTIVE,
-      groups: { some: { status: LifecycleStatus.ACTIVE } }
+      status: LifecycleStatus.ACTIVE
     },
     include: {
+      sportLinks: {
+        where: { status: LifecycleStatus.ACTIVE },
+        include: {
+          sport: true
+        }
+      },
+      coachLinks: {
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          coach: { status: LifecycleStatus.ACTIVE }
+        },
+        include: {
+          coach: true
+        }
+      },
       groups: {
         where: { status: LifecycleStatus.ACTIVE },
-        include: { sport: true }
+        select: {
+          primaryCoach: true
+        }
       }
     },
     orderBy: { createdAt: "asc" }
@@ -118,10 +134,28 @@ export default async function BranchCatalogPage({
           {branches.map((branch) => {
             const sportNames = Array.from(
               new Set(
-                branch.groups.map((group) =>
-                  locale === "ru" ? group.sport.nameRu : group.sport.nameUz
-                )
+                branch.sportLinks
+                  .filter((link) => link.sport.status === LifecycleStatus.ACTIVE)
+                  .map((link) =>
+                    locale === "ru" ? link.sport.nameRu : link.sport.nameUz
+                  )
               )
+            );
+            const coachNames = Array.from(
+              new Set([
+                ...branch.coachLinks.map((link) =>
+                  [link.coach.firstName, link.coach.lastName]
+                    .filter(Boolean)
+                    .join(" ")
+                ),
+                ...branch.groups
+                  .filter((group) => group.primaryCoach.status === LifecycleStatus.ACTIVE)
+                  .map((group) =>
+                    [group.primaryCoach.firstName, group.primaryCoach.lastName]
+                      .filter(Boolean)
+                      .join(" ")
+                  )
+              ].filter(Boolean))
             );
             const photo = media.find(
               (item) =>
@@ -153,7 +187,23 @@ export default async function BranchCatalogPage({
                       : branch.publicNameUz}
                   </h2>
                   <p>{locale === "ru" ? branch.addressRu : branch.addressUz}</p>
-                  <small>{sportNames.join(" · ")}</small>
+                  <small>
+                    {sportNames.length
+                      ? sportNames.join(" · ")
+                      : locale === "ru"
+                        ? "Направления скоро появятся"
+                        : "Yo‘nalishlar tez orada paydo bo‘ladi"}
+                  </small>
+                  <div className="branch-catalog-coaches">
+                    <span>{locale === "ru" ? "Тренер" : "Murabbiy"}</span>
+                    <b>
+                      {coachNames.length
+                        ? coachNames.join(" · ")
+                        : locale === "ru"
+                          ? "Уточняется"
+                          : "Aniqlanmoqda"}
+                    </b>
+                  </div>
                   <strong>
                     {locale === "ru" ? "Открыть филиал →" : "Filialni ochish →"}
                   </strong>

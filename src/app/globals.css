@@ -4309,6 +4309,49 @@ h3 {
   color: var(--ps-blue);
   font-size: 12px;
 }
+.branch-catalog-coaches {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ps-line);
+}
+
+.branch-catalog-coaches span {
+  color: var(--ps-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.branch-catalog-coaches b {
+  color: var(--ps-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.branch-mini-card-link {
+  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.branch-mini-card-link:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--ps-blue) 30%, var(--ps-line));
+  box-shadow: 0 10px 24px rgba(7, 26, 51, 0.05);
+}
+
+.branch-mini-card-link > div {
+  display: grid;
+  gap: 4px;
+}
+
+.branch-mini-card-link small {
+  color: var(--ps-blue);
+  font-size: 10px;
+  font-weight: 800;
+}
+
 
 .branch-info-strip {
   display: grid;
@@ -6182,7 +6225,7 @@ h3 {
 
 .admin-branch-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 4px;
 }
