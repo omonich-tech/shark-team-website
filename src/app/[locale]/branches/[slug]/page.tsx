@@ -103,14 +103,7 @@ export default async function PublicBranchPage({
       item.targetId === data.id &&
       item.contentType?.startsWith("image/")
   );
-  const coaches = Array.from(
-    new Map(
-      [
-        ...data.coaches,
-        ...data.groups.map((group) => group.coach)
-      ].map((coach) => [coach.id, coach])
-    ).values()
-  );
+  const coaches = data.coaches;
 
   const branchName = pickLocalized(locale, data.name);
   const branchDescription =
