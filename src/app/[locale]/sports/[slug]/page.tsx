@@ -10,6 +10,14 @@ import {
   PriceProductType
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  PUBLIC_BRANCH_WHERE,
+  PUBLIC_COACH_WHERE
+} from "@/server/public-data/visibility";
+import {
+  activePriceWhere,
+  resolveEffectivePrice
+} from "@/server/public-data/pricing";
 import { isPublicLocale, weekdayLabel } from "@/lib/public-i18n";
 import { getSportCatalogEntry } from "@/lib/sport-catalog";
 import {
@@ -100,12 +108,35 @@ export default async function SportPage({
       branchLinks: {
         where: {
           status: LifecycleStatus.ACTIVE,
-          branch: { status: LifecycleStatus.ACTIVE }
+          branch: PUBLIC_BRANCH_WHERE
         },
         include: { branch: true }
       },
+      coachLinks: {
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          coach: PUBLIC_COACH_WHERE
+        },
+        include: {
+          coach: {
+            include: {
+              branchLinks: {
+                where: {
+                  status: LifecycleStatus.ACTIVE,
+                  branch: PUBLIC_BRANCH_WHERE
+                },
+                include: { branch: true }
+              }
+            }
+          }
+        }
+      },
       groups: {
-        where: { status: LifecycleStatus.ACTIVE },
+        where: {
+          status: LifecycleStatus.ACTIVE,
+          branch: PUBLIC_BRANCH_WHERE,
+          primaryCoach: PUBLIC_COACH_WHERE
+        },
         include: {
           branch: true,
           primaryCoach: true,
@@ -121,7 +152,7 @@ export default async function SportPage({
 
   if (!sport) notFound();
 
-  const [media, trialPrice, faq] = await Promise.all([
+  const [media, prices, faq] = await Promise.all([
     prisma.mediaAsset.findMany({
       where: {
         targetType: MediaTargetType.SPORT,
@@ -140,12 +171,13 @@ export default async function SportPage({
         { createdAt: "asc" }
       ]
     }),
-    prisma.price.findFirst({
+    prisma.price.findMany({
       where: {
-        sportId: sport.id,
-        productType: PriceProductType.TRIAL,
-        status: LifecycleStatus.ACTIVE,
-        OR: [{ validTo: null }, { validTo: { gt: new Date() } }]
+        ...activePriceWhere(),
+        OR: [
+          { sportId: sport.id },
+          { sportId: null }
+        ]
       },
       orderBy: { validFrom: "desc" }
     }),
@@ -170,6 +202,7 @@ export default async function SportPage({
     String(Math.max(1, sport.sortOrder + 1)).padStart(2, "0");
   const story = fallback?.story[locale === "ru" ? "ru" : "uz"] ?? null;
   const branches = sport.branchLinks.map((link) => link.branch);
+  const coaches = sport.coachLinks.map((link) => link.coach);
 
   const structuredData = [
     breadcrumbJsonLd([
@@ -314,6 +347,63 @@ export default async function SportPage({
         </section>
       ) : null}
 
+      {coaches.length ? (
+        <section className="content-section">
+          <div className="section-heading shark-section-heading">
+            <div>
+              <p className="eyebrow">{locale === "ru" ? "ТРЕНЕРЫ" : "MURABBIYLAR"}</p>
+              <h2>
+                {locale === "ru"
+                  ? "Кто ведёт это направление"
+                  : "Bu yo‘nalishni kim olib boradi"}
+              </h2>
+            </div>
+            <Link className="shark-text-link" href={`/${locale}/coaches`}>
+              {locale === "ru" ? "Все тренеры →" : "Barcha murabbiylar →"}
+            </Link>
+          </div>
+
+          <div className="shark-coach-grid">
+            {coaches.map((coach) => (
+              <Link
+                className="shark-coach-card shark-coach-card-link"
+                href={`/${locale}/coaches/${coach.id}`}
+                key={coach.id}
+              >
+                <div className="shark-coach-photo">
+                  <span>{coach.firstName.slice(0, 1)}</span>
+                </div>
+                <div>
+                  <h3>
+                    {[coach.firstName, coach.lastName].filter(Boolean).join(" ")}
+                  </h3>
+                  <p>
+                    {coach.branchLinks.length
+                      ? coach.branchLinks
+                          .map((item) =>
+                            locale === "ru"
+                              ? item.branch.publicNameRu
+                              : item.branch.publicNameUz
+                          )
+                          .join(" · ")
+                      : locale === "ru"
+                        ? "Филиал уточняется"
+                        : "Filial aniqlanmoqda"}
+                  </p>
+                  {coach.experienceYears ? (
+                    <span>
+                      {locale === "ru"
+                        ? `Опыт ${coach.experienceYears}+ лет`
+                        : `Tajriba ${coach.experienceYears}+ yil`}
+                    </span>
+                  ) : null}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {story ? (
         <>
           <section className="content-section sport-story-section">
@@ -454,9 +544,18 @@ export default async function SportPage({
               const schedule = group.scheduleRules
                 .map(
                   (rule) =>
-                    `${weekdayLabel(rule.weekday, locale)} ${minutes(rule.startMinutes)}`
+                    `${weekdayLabel(rule.weekday, locale)} ${minutes(rule.startMinutes)}–${minutes(rule.endMinutes)}`
                 )
                 .join(" · ");
+              const trialPrice = resolveEffectivePrice(
+                prices,
+                PriceProductType.TRIAL,
+                {
+                  sportId: sport.id,
+                  branchId: group.branchId,
+                  groupId: group.id
+                }
+              );
               return (
                 <article className="sport-group-row" key={group.id}>
                   <div>
@@ -469,12 +568,12 @@ export default async function SportPage({
                     <p>{schedule || "—"}</p>
                   </div>
                   <div className="sport-group-meta">
-                    <span>
+                    <Link href={`/${locale}/coaches/${group.primaryCoach.id}`}>
                       {locale === "ru" ? "Тренер" : "Murabbiy"} ·{" "}
                       {[group.primaryCoach.firstName, group.primaryCoach.lastName]
                         .filter(Boolean)
                         .join(" ")}
-                    </span>
+                    </Link>
                     {trialPrice ? (
                       <strong>
                         {new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "uz-UZ").format(
