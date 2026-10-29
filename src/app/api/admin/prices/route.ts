@@ -8,6 +8,7 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+import { hasActiveBranchSport } from "@/server/admin/relation-integrity";
 
 export async function POST(request: NextRequest) {
   const admin = await getAdminSession();
@@ -53,37 +54,19 @@ export async function POST(request: NextRequest) {
   const prisma = getPrisma();
   const now = new Date();
 
-  const [branch, sport, group] = await Promise.all([
-    branchId
-      ? prisma.branch.findUnique({
-          where: { id: branchId },
-          select: { id: true, slug: true, status: true }
-        })
-      : Promise.resolve(null),
-    sportId
-      ? prisma.sport.findUnique({
-          where: { id: sportId },
-          select: { id: true, slug: true, status: true }
-        })
-      : Promise.resolve(null),
-    groupId
-      ? prisma.trainingGroup.findUnique({
-          where: { id: groupId },
-          select: {
-            id: true,
-            branchId: true,
-            sportId: true,
-            status: true
-          }
-        })
-      : Promise.resolve(null)
-  ]);
+  const group = groupId
+    ? await prisma.trainingGroup.findUnique({
+        where: { id: groupId },
+        select: {
+          id: true,
+          branchId: true,
+          sportId: true,
+          status: true
+        }
+      })
+    : null;
 
-  if (
-    (branchId && (!branch || branch.status === LifecycleStatus.ARCHIVED)) ||
-    (sportId && (!sport || sport.status === LifecycleStatus.ARCHIVED)) ||
-    (groupId && (!group || group.status === LifecycleStatus.ARCHIVED))
-  ) {
+  if (groupId && (!group || group.status === LifecycleStatus.ARCHIVED)) {
     return NextResponse.json(
       { ok: false, error: "PRICE_SCOPE_NOT_FOUND" },
       { status: 400 }
@@ -103,11 +86,56 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const effectiveBranchId = branchId ?? group?.branchId ?? null;
+  const effectiveSportId = sportId ?? group?.sportId ?? null;
+
+  const [branch, sport] = await Promise.all([
+    effectiveBranchId
+      ? prisma.branch.findUnique({
+          where: { id: effectiveBranchId },
+          select: { id: true, slug: true, status: true }
+        })
+      : Promise.resolve(null),
+    effectiveSportId
+      ? prisma.sport.findUnique({
+          where: { id: effectiveSportId },
+          select: { id: true, slug: true, status: true }
+        })
+      : Promise.resolve(null)
+  ]);
+
+  if (
+    (effectiveBranchId &&
+      (!branch || branch.status === LifecycleStatus.ARCHIVED)) ||
+    (effectiveSportId &&
+      (!sport || sport.status === LifecycleStatus.ARCHIVED))
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "PRICE_SCOPE_NOT_FOUND" },
+      { status: 400 }
+    );
+  }
+
+  if (
+    effectiveBranchId &&
+    effectiveSportId &&
+    !(await hasActiveBranchSport(
+      prisma,
+      effectiveBranchId,
+      effectiveSportId
+    ))
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "PRICE_SCOPE_RELATION_INACTIVE" },
+      { status: 409 }
+    );
+  }
+
   const before = await prisma.price.findMany({
     where: {
       productType,
-      branchId,
-      sportId,
+      branchId: effectiveBranchId,
+      sportId: effectiveSportId,
       groupId,
       status: LifecycleStatus.ACTIVE,
       validFrom: { lte: now },
@@ -120,8 +148,8 @@ export async function POST(request: NextRequest) {
     await tx.price.updateMany({
       where: {
         productType,
-        branchId,
-        sportId,
+        branchId: effectiveBranchId,
+        sportId: effectiveSportId,
         groupId,
         status: LifecycleStatus.ACTIVE,
         OR: [{ validTo: null }, { validTo: { gt: now } }]
@@ -137,8 +165,8 @@ export async function POST(request: NextRequest) {
         productType,
         amount,
         currency: "UZS",
-        branchId,
-        sportId,
+        branchId: effectiveBranchId,
+        sportId: effectiveSportId,
         groupId,
         validFrom: now,
         status: LifecycleStatus.ACTIVE
