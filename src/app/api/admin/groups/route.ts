@@ -220,7 +220,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        error: "ACTIVE_GROUP_REQUIRES_ACTIVE_RELATIONS"
+        error: "ACTIVE_GROUP_REQUIRES_ACTIVE_RELATIONS",
+        dependencies: {
+          branch: { id: branch.id, name: branch.publicNameRu, status: branch.status },
+          sport: { id: sport.id, name: sport.nameRu, status: sport.status },
+          coach: {
+            id: coach.id,
+            name: [coach.firstName, coach.lastName].filter(Boolean).join(" "),
+            status: coach.status
+          }
+        }
       },
       { status: 409 }
     );
