@@ -8,3 +8,11 @@ dist/
 .vercel/
 *.log
 .DS_Store
+
+# Local secrets and credentials (keep the committed .env.example template)
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.key
