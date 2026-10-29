@@ -131,12 +131,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const versionScope = groupId
+    ? { groupId }
+    : {
+        branchId: effectiveBranchId,
+        sportId: effectiveSportId,
+        groupId: null
+      };
+
   const before = await prisma.price.findMany({
     where: {
       productType,
-      branchId: effectiveBranchId,
-      sportId: effectiveSportId,
-      groupId,
+      ...versionScope,
       status: LifecycleStatus.ACTIVE,
       validFrom: { lte: now },
       OR: [{ validTo: null }, { validTo: { gt: now } }]
@@ -148,9 +154,7 @@ export async function POST(request: NextRequest) {
     await tx.price.updateMany({
       where: {
         productType,
-        branchId: effectiveBranchId,
-        sportId: effectiveSportId,
-        groupId,
+        ...versionScope,
         status: LifecycleStatus.ACTIVE,
         OR: [{ validTo: null }, { validTo: { gt: now } }]
       },
