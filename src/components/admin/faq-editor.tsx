@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { adminApiErrorMessage } from "@/components/admin/api-error-message";
 
 type Faq = {
   id: string;
@@ -53,7 +54,7 @@ export function FaqEditor({
     const payload = await response.json();
 
     if (!response.ok || !payload.ok) {
-      setMessage(payload.error ?? "Не удалось добавить FAQ.");
+      setMessage(adminApiErrorMessage(payload, "Не удалось добавить FAQ."));
       return;
     }
 
@@ -86,7 +87,7 @@ export function FaqEditor({
     const payload = await response.json();
 
     if (!response.ok || !payload.ok) {
-      setMessage(payload.error ?? "Не удалось сохранить FAQ.");
+      setMessage(adminApiErrorMessage(payload, "Не удалось сохранить FAQ."));
       return;
     }
 
@@ -104,7 +105,7 @@ export function FaqEditor({
     const payload = await response.json();
 
     if (!response.ok || !payload.ok) {
-      setMessage(payload.error ?? "Не удалось удалить FAQ.");
+      setMessage(adminApiErrorMessage(payload, "Не удалось удалить FAQ."));
       return;
     }
 
