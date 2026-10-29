@@ -192,10 +192,16 @@ export default async function SportPage({
     })
   ]);
 
+  const activeBranchIds = new Set(
+    sport.branchLinks.map((link) => link.branchId)
+  );
   const faq = faqItems.filter(
     (item) =>
       !item.branch ||
-      item.branch.status === LifecycleStatus.ACTIVE
+      (
+        item.branch.status === LifecycleStatus.ACTIVE &&
+        activeBranchIds.has(item.branchId ?? "")
+      )
   );
   const hero = media.find((item) => item.contentType?.startsWith("image/"));
   const name = locale === "ru" ? sport.nameRu : sport.nameUz;
