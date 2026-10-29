@@ -4,6 +4,7 @@ import { ContentStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+import { hasActiveBranchSport } from "@/server/admin/relation-integrity";
 
 function required(value: unknown, max: number) {
   if (typeof value !== "string") return null;
@@ -70,6 +71,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { ok: false, error: "FAQ_SCOPE_NOT_FOUND" },
       { status: 400 }
+    );
+  }
+
+  if (
+    branchId &&
+    sportId &&
+    !(await hasActiveBranchSport(prisma, branchId, sportId))
+  ) {
+    return NextResponse.json(
+      { ok: false, error: "FAQ_SCOPE_RELATION_INACTIVE" },
+      { status: 409 }
     );
   }
 
