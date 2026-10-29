@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminApiErrorMessage } from "@/components/admin/api-error-message";
 
 type CoachOption = {
   id: string;
@@ -49,7 +50,9 @@ export function BranchCoachesEditor({
       const payload = await response.json();
 
       if (!response.ok || !payload.ok) {
-        throw new Error(payload.error ?? "BRANCH_COACHES_SAVE_FAILED");
+        throw new Error(
+          adminApiErrorMessage(payload, "Не удалось сохранить тренеров.")
+        );
       }
 
       setState("saved");
