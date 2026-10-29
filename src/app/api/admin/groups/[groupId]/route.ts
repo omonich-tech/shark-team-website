@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import {
   EnrollmentStatus,
@@ -219,6 +220,23 @@ export async function PATCH(
     return NextResponse.json(
       { ok: false, error: "GROUP_RELATION_NOT_FOUND" },
       { status: 404 }
+    );
+  }
+
+  if (
+    status === LifecycleStatus.ACTIVE &&
+    (
+      branch.status !== LifecycleStatus.ACTIVE ||
+      sport.status !== LifecycleStatus.ACTIVE ||
+      coach.status !== LifecycleStatus.ACTIVE
+    )
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "ACTIVE_GROUP_REQUIRES_ACTIVE_RELATIONS"
+      },
+      { status: 409 }
     );
   }
 
@@ -490,6 +508,46 @@ export async function PATCH(
     before,
     after
   });
+
+  const previousSport = await prisma.sport.findUnique({
+    where: { id: before.sportId },
+    select: { slug: true }
+  });
+
+  revalidatePath("/admin/groups");
+  revalidatePath(`/admin/branches/${before.branchId}`);
+  revalidatePath(`/admin/branches/${branchId}`);
+  revalidatePath("/ru");
+  revalidatePath("/uz");
+  revalidatePath("/ru/branches");
+  revalidatePath("/uz/branches");
+  revalidatePath("/ru/sports");
+  revalidatePath("/uz/sports");
+  revalidatePath("/ru/coaches");
+  revalidatePath("/uz/coaches");
+  revalidatePath("/ru/schedule");
+  revalidatePath("/uz/schedule");
+  revalidatePath("/ru/prices");
+  revalidatePath("/uz/prices");
+
+  for (const slug of new Set([before.branch.slug, after.branch.slug])) {
+    revalidatePath(`/ru/branches/${slug}`);
+    revalidatePath(`/uz/branches/${slug}`);
+  }
+
+  for (const slug of new Set(
+    [previousSport?.slug, after.sport.slug].filter(
+      (value): value is string => Boolean(value)
+    )
+  )) {
+    revalidatePath(`/ru/sports/${slug}`);
+    revalidatePath(`/uz/sports/${slug}`);
+  }
+
+  for (const coachId of new Set([before.primaryCoachId, after.primaryCoach.id])) {
+    revalidatePath(`/ru/coaches/${coachId}`);
+    revalidatePath(`/uz/coaches/${coachId}`);
+  }
 
   return NextResponse.json({ ok: true, group: after });
 }
