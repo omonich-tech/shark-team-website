@@ -29,6 +29,7 @@ type TrialOptions =
       reason: string | null;
       group: {
         id: string;
+        firstTrialAmount: number;
         ageMin: number;
         ageMax: number;
         branchSlug: string;
@@ -89,7 +90,10 @@ const copy = {
     childName: "Имя ребёнка",
     parentName: "Имя родителя",
     phone: "Телефон",
-    submit: "Забронировать пробное",
+    submit: "Записаться на пробное",
+    freeLabel: "Первое пробное занятие — бесплатно",
+    paidLabel: "Стоимость пробного занятия",
+    freeSuccess: "Вы записаны на бесплатное пробное занятие",
     saving: "Бронируем…",
     successTitle: "Место временно забронировано",
     successPrefix: "Место удерживается до",
@@ -125,7 +129,10 @@ const copy = {
     childName: "Bolaning ismi",
     parentName: "Ota-ona ismi",
     phone: "Telefon",
-    submit: "Sinov joyini band qilish",
+    submit: "Sinov mashg‘ulotiga yozilish",
+    freeLabel: "Birinchi sinov mashg‘uloti — bepul",
+    paidLabel: "Sinov mashg‘uloti narxi",
+    freeSuccess: "Bepul sinov mashg‘ulotiga yozildingiz",
     saving: "Band qilinmoqda…",
     successTitle: "Joy vaqtincha band qilindi",
     successPrefix: "Joy quyidagi vaqtgacha saqlanadi:",
@@ -411,10 +418,14 @@ export function TrialLeadFlow({
       });
       setReservation(nextReservation);
       setResult("success");
-      await Promise.all([
-        initManualCard(nextReservation.id),
-        initTelegram(nextReservation.id)
-      ]);
+      if (options?.ok && options.group.firstTrialAmount === 0) {
+        await initTelegram(nextReservation.id);
+      } else {
+        await Promise.all([
+          initManualCard(nextReservation.id),
+          initTelegram(nextReservation.id)
+        ]);
+      }
     } catch {
       setResult("error");
     } finally {
@@ -504,6 +515,8 @@ export function TrialLeadFlow({
               {options.group.coachName}
             </p>
           </div>
+
+          <p className="booking-note">{options.group.firstTrialAmount === 0 ? t.freeLabel : `${t.paidLabel}: ${moneyLabel(options.group.firstTrialAmount, locale)} UZS`}</p>
 
           {!options.bookingAvailable ? (
             <div className="booking-message">
@@ -606,11 +619,10 @@ export function TrialLeadFlow({
 
       {result === "success" && reservation ? (
         <div className="booking-success">
-          <strong>{t.successTitle}</strong>
-          <p>
-            {t.successPrefix}{" "}
-            <b>{holdLabel(reservation.expiresAt, locale)}</b>.
-          </p>
+          <strong>{reservation.status === "CONFIRMED" ? t.freeSuccess : t.successTitle}</strong>
+          {reservation.status !== "CONFIRMED" ? (
+            <p>{t.successPrefix} <b>{holdLabel(reservation.expiresAt, locale)}</b>.</p>
+          ) : null}
 
           {manualPayment ? (
             <div className="manual-card-payment ph-no-capture" data-ph-no-capture>
