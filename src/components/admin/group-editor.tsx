@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { adminApiErrorMessage } from "@/components/admin/api-error-message";
 
 type ScheduleRow = {
   weekday: string;
@@ -145,7 +146,7 @@ export function GroupEditor({
             ? "Изменение расписания, филиала или дат заблокировано: есть будущие занятия с бронями/посещаемостью."
             : payload.error === "INVALID_GROUP_DATE_RANGE"
               ? "Дата окончания не может быть раньше даты начала."
-              : payload.error ?? "Не удалось сохранить группу."
+              : adminApiErrorMessage(payload, "Не удалось сохранить группу.")
         );
         return;
       }
