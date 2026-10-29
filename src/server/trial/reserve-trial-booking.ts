@@ -92,7 +92,7 @@ export async function reserveTrialBooking(leadId: string) {
       });
       await tx.notification.updateMany({
         where: { trialBookingId: booking.id, type: NotificationType.PAYMENT_HOLD_REMINDER },
-        data: { status: NotificationStatus.CANCELLED }
+        data: { status: NotificationStatus.SKIPPED }
       });
       await tx.lead.update({ where: { id: leadId }, data: { status: LeadStatus.TRIAL_CONFIRMED } });
       return {
