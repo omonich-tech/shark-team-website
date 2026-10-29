@@ -1,19 +1,15 @@
 import "dotenv/config";
 import { getPrisma } from "../src/lib/prisma";
+import {
+  ADMIN_SESSION_COOKIE,
+  createAdminSessionToken
+} from "../src/server/admin/auth";
 
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
-const username = process.env.ADMIN_USERNAME;
-const password = process.env.ADMIN_PASSWORD;
 const prisma = getPrisma();
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
-}
-
-function cookieFrom(response: Response) {
-  const raw = response.headers.get("set-cookie");
-  if (!raw) throw new Error("Admin login did not return a cookie");
-  return raw.split(";")[0];
 }
 
 async function expectError(
@@ -40,10 +36,6 @@ async function expectError(
 }
 
 async function main() {
-  if (!username || !password) {
-    throw new Error("Admin smoke credentials are not configured");
-  }
-
   const group = await prisma.trainingGroup.findFirst({
     where: {
       status: "ACTIVE",
@@ -61,13 +53,8 @@ async function main() {
 
   assert(group, "No fully active group is available for relation integrity smoke");
 
-  const login = await fetch(`${baseUrl}/api/admin/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  });
-  assert(login.ok, "Relation integrity smoke admin login failed");
-  const cookie = cookieFrom(login);
+  const cookie =
+    `${ADMIN_SESSION_COOKIE}=${createAdminSessionToken()}`;
 
   await expectError(
     `/api/admin/branches/${group.branchId}/sports`,
