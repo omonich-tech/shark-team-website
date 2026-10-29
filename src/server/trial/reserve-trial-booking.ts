@@ -197,7 +197,6 @@ export async function reserveTrialBooking(leadId: string) {
             reminderAt: isFreeTrial ? null : window.reminderAt,
             confirmedAt: isFreeTrial ? now : null,
             reminderSentAt: null,
-            confirmedAt: null,
             cancelledAt: null
           }
         })
@@ -207,7 +206,8 @@ export async function reserveTrialBooking(leadId: string) {
             sessionId,
             status: isFreeTrial ? TrialBookingStatus.CONFIRMED : TrialBookingStatus.HOLD,
             expiresAt: window.expiresAt,
-            reminderAt: window.reminderAt
+            confirmedAt: isFreeTrial ? now : null,
+            reminderAt: isFreeTrial ? null : window.reminderAt
           }
         });
 
