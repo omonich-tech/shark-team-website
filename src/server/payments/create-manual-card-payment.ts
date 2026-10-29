@@ -1,11 +1,14 @@
 import {
-  LifecycleStatus,
   PaymentProvider,
   PaymentStatus,
   PriceProductType,
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  activePriceWhere,
+  resolveEffectivePrice
+} from "@/server/public-data/pricing";
 
 function formatCardNumber(value: string) {
   const digits = value.replace(/\D+/g, "");
@@ -70,45 +73,33 @@ export async function createManualCardPayment(bookingId: string) {
 
   const prices = await prisma.price.findMany({
     where: {
+      ...activePriceWhere(now),
       productType: PriceProductType.TRIAL,
-      status: LifecycleStatus.ACTIVE,
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gt: now } }],
-      AND: [
+      OR: [
+        { groupId: group.id },
         {
-          OR: [
-            { groupId: group.id },
-            {
-              groupId: null,
-              branchId: group.branchId,
-              sportId: group.sportId
-            },
-            {
-              groupId: null,
-              branchId: group.branchId,
-              sportId: null
-            },
-            {
-              groupId: null,
-              branchId: null,
-              sportId: group.sportId
-            }
-          ]
+          groupId: null,
+          branchId: group.branchId
+        },
+        {
+          groupId: null,
+          branchId: null,
+          sportId: group.sportId
         }
       ]
     },
     orderBy: { validFrom: "desc" }
   });
 
-  const price =
-    prices.find((item) => item.groupId === group.id) ??
-    prices.find(
-      (item) =>
-        item.branchId === group.branchId &&
-        item.sportId === group.sportId
-    ) ??
-    prices.find((item) => item.branchId === group.branchId) ??
-    prices.find((item) => item.sportId === group.sportId);
+  const price = resolveEffectivePrice(
+    prices,
+    PriceProductType.TRIAL,
+    {
+      groupId: group.id,
+      branchId: group.branchId,
+      sportId: group.sportId
+    }
+  );
 
   if (!price) {
     return {
