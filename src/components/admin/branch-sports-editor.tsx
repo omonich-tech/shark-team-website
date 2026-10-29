@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { adminApiErrorMessage } from "@/components/admin/api-error-message";
 
 type SportOption = {
   id: string;
@@ -47,7 +48,9 @@ export function BranchSportsEditor({
       const payload = await response.json();
 
       if (!response.ok || !payload.ok) {
-        throw new Error(payload.error ?? "BRANCH_SPORTS_SAVE_FAILED");
+        throw new Error(
+          adminApiErrorMessage(payload, "Не удалось сохранить направления.")
+        );
       }
 
       setState("saved");

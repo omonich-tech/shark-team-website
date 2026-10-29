@@ -4,6 +4,7 @@ import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+import { countActiveGroups } from "@/server/admin/relation-integrity";
 
 function optionalString(value: unknown, max = 1000) {
   if (value === null || value === undefined || value === "") return null;
@@ -67,6 +68,23 @@ export async function PATCH(
     );
   }
 
+  if (status !== LifecycleStatus.ACTIVE) {
+    const activeGroups = await countActiveGroups(prisma, {
+      primaryCoachId: coachId
+    });
+
+    if (activeGroups > 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "COACH_HAS_ACTIVE_GROUPS",
+          dependencies: { activeGroups }
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const yearsRaw =
     body.experienceYears === null ||
     body.experienceYears === undefined ||
@@ -127,8 +145,45 @@ export async function PATCH(
   revalidatePath("/uz");
   revalidatePath("/ru/coaches");
   revalidatePath("/uz/coaches");
+  revalidatePath("/ru/branches");
+  revalidatePath("/uz/branches");
+  revalidatePath("/ru/sports");
+  revalidatePath("/uz/sports");
+  revalidatePath("/ru/schedule");
+  revalidatePath("/uz/schedule");
   revalidatePath(`/ru/coaches/${coachId}`);
   revalidatePath(`/uz/coaches/${coachId}`);
+
+  const [branchLinks, sportLinks] = await Promise.all([
+    prisma.coachBranch.findMany({
+      where: { coachId },
+      select: { branchId: true }
+    }),
+    prisma.coachSport.findMany({
+      where: { coachId },
+      select: { sportId: true }
+    })
+  ]);
+  const [linkedBranches, linkedSports] = await Promise.all([
+    prisma.branch.findMany({
+      where: { id: { in: branchLinks.map((item) => item.branchId) } },
+      select: { slug: true }
+    }),
+    prisma.sport.findMany({
+      where: { id: { in: sportLinks.map((item) => item.sportId) } },
+      select: { slug: true }
+    })
+  ]);
+
+  for (const branch of linkedBranches) {
+    revalidatePath(`/ru/branches/${branch.slug}`);
+    revalidatePath(`/uz/branches/${branch.slug}`);
+  }
+
+  for (const sport of linkedSports) {
+    revalidatePath(`/ru/sports/${sport.slug}`);
+    revalidatePath(`/uz/sports/${sport.slug}`);
+  }
 
   return NextResponse.json({ ok: true, coach: after });
 }

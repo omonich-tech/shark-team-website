@@ -57,16 +57,18 @@ async function main() {
     "First subscription payment is not PAID"
   );
 
-  const now = new Date("2026-10-25T12:00:00.000Z");
-  const dueAt = new Date("2026-10-27T12:00:00.000Z");
-  const graceUntil = new Date("2026-10-30T12:00:00.000Z");
+  const dayMs = 24 * 60 * 60 * 1000;
+  const now = new Date(Date.now() + 60 * 1000);
+  const dueAt = new Date(now.getTime() + 2 * dayMs);
+  const graceUntil = new Date(now.getTime() + 5 * dayMs);
+  const currentPeriodStart = new Date(now.getTime() - 28 * dayMs);
 
   await prisma.studentEnrollment.update({
     where: { id: enrollment.id },
     data: {
       status: StudentEnrollmentStatus.ACTIVE,
       subscriptionStatus: SubscriptionStatus.ACTIVE,
-      currentPeriodStart: new Date("2026-09-27T12:00:00.000Z"),
+      currentPeriodStart,
       currentPeriodEnd: dueAt,
       nextPaymentDueAt: dueAt,
       graceUntil,
@@ -114,7 +116,7 @@ async function main() {
   );
 
   await advanceSubscriptionLifecycle(
-    new Date("2026-10-27T12:01:00.000Z")
+    new Date(dueAt.getTime() + 60 * 1000)
   );
 
   updatedEnrollment = await prisma.studentEnrollment.findUnique({
@@ -127,7 +129,7 @@ async function main() {
   );
 
   await advanceSubscriptionLifecycle(
-    new Date("2026-10-30T12:01:00.000Z")
+    new Date(graceUntil.getTime() + 60 * 1000)
   );
 
   updatedEnrollment = await prisma.studentEnrollment.findUnique({

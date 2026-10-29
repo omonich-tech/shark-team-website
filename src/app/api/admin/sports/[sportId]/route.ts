@@ -4,6 +4,7 @@ import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+import { countActiveGroups } from "@/server/admin/relation-integrity";
 
 function optionalString(value: unknown, max: number) {
   if (value === null || value === undefined || value === "") return null;
@@ -79,6 +80,21 @@ export async function PATCH(
     );
   }
 
+  if (status !== LifecycleStatus.ACTIVE) {
+    const activeGroups = await countActiveGroups(prisma, { sportId });
+
+    if (activeGroups > 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "SPORT_HAS_ACTIVE_GROUPS",
+          dependencies: { activeGroups }
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const conflict = await prisma.sport.findFirst({
     where: {
       slug,
@@ -132,6 +148,38 @@ export async function PATCH(
   revalidatePath("/uz");
   revalidatePath("/ru/sports");
   revalidatePath("/uz/sports");
+  revalidatePath("/ru/branches");
+  revalidatePath("/uz/branches");
+  revalidatePath("/ru/coaches");
+  revalidatePath("/uz/coaches");
+  revalidatePath("/ru/schedule");
+  revalidatePath("/uz/schedule");
+
+  const [branchLinks, coachLinks] = await Promise.all([
+    prisma.branchSport.findMany({
+      where: { sportId },
+      select: { branchId: true }
+    }),
+    prisma.coachSport.findMany({
+      where: { sportId },
+      select: { coachId: true }
+    })
+  ]);
+  const linkedBranches = await prisma.branch.findMany({
+    where: { id: { in: branchLinks.map((item) => item.branchId) } },
+    select: { slug: true }
+  });
+
+  for (const branch of linkedBranches) {
+    revalidatePath(`/ru/branches/${branch.slug}`);
+    revalidatePath(`/uz/branches/${branch.slug}`);
+  }
+
+  for (const link of coachLinks) {
+    revalidatePath(`/ru/coaches/${link.coachId}`);
+    revalidatePath(`/uz/coaches/${link.coachId}`);
+  }
+
   for (const value of [before.slug, after.slug]) {
     revalidatePath(`/ru/sports/${value}`);
     revalidatePath(`/uz/sports/${value}`);

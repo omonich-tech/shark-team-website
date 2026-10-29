@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { adminApiErrorMessage } from "@/components/admin/api-error-message";
 
 type FieldOption = {
   value: string;
@@ -68,7 +69,9 @@ export function AdminEntityForm({
 
       if (!response.ok || !payload.ok) {
         setState("error");
-        setMessage(payload.error ?? "Не удалось сохранить изменения.");
+        setMessage(
+          adminApiErrorMessage(payload, "Не удалось сохранить изменения.")
+        );
         return;
       }
 

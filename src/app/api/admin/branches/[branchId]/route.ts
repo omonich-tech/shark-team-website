@@ -6,6 +6,7 @@ import { absoluteUrl } from "@/lib/seo";
 import { submitIndexNowUrls } from "@/lib/indexnow";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+import { countActiveGroups } from "@/server/admin/relation-integrity";
 
 function optionalString(value: unknown, max = 500) {
   if (value === null || value === undefined || value === "") return null;
@@ -78,6 +79,21 @@ export async function PATCH(
       { ok: false, error: "INVALID_STATUS" },
       { status: 400 }
     );
+  }
+
+  if (status !== LifecycleStatus.ACTIVE) {
+    const activeGroups = await countActiveGroups(prisma, { branchId });
+
+    if (activeGroups > 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "BRANCH_HAS_ACTIVE_GROUPS",
+          dependencies: { activeGroups }
+        },
+        { status: 409 }
+      );
+    }
   }
 
   const conflictingSlug = await prisma.branch.findFirst({
@@ -162,6 +178,34 @@ export async function PATCH(
   revalidatePath("/uz/branches");
   revalidatePath("/ru/contacts");
   revalidatePath("/uz/contacts");
+  revalidatePath("/ru/schedule");
+  revalidatePath("/uz/schedule");
+
+  const [sportLinks, coachLinks] = await Promise.all([
+    prisma.branchSport.findMany({
+      where: { branchId },
+      select: { sportId: true }
+    }),
+    prisma.coachBranch.findMany({
+      where: { branchId },
+      select: { coachId: true }
+    })
+  ]);
+  const linkedSports = await prisma.sport.findMany({
+    where: { id: { in: sportLinks.map((item) => item.sportId) } },
+    select: { slug: true }
+  });
+
+  for (const sport of linkedSports) {
+    revalidatePath(`/ru/sports/${sport.slug}`);
+    revalidatePath(`/uz/sports/${sport.slug}`);
+  }
+
+  for (const link of coachLinks) {
+    revalidatePath(`/ru/coaches/${link.coachId}`);
+    revalidatePath(`/uz/coaches/${link.coachId}`);
+  }
+
   for (const value of [before.slug, after.slug]) {
     revalidatePath(`/ru/branches/${value}`);
     revalidatePath(`/uz/branches/${value}`);

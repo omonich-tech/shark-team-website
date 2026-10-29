@@ -1,8 +1,6 @@
-import {
-  LifecycleStatus,
-  PriceProductType
-} from "@/generated/prisma/client";
+import { PriceProductType } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { findEffectiveGroupPrice } from "@/server/public-data/pricing";
 
 export async function findSubscriptionPrice(
   groupId: string,
@@ -10,52 +8,20 @@ export async function findSubscriptionPrice(
 ) {
   const prisma = getPrisma();
   const group = await prisma.trainingGroup.findUnique({
-    where: { id: groupId }
+    where: { id: groupId },
+    select: {
+      id: true,
+      branchId: true,
+      sportId: true
+    }
   });
 
   if (!group) return null;
 
-  const prices = await prisma.price.findMany({
-    where: {
-      productType: PriceProductType.SUBSCRIPTION,
-      status: LifecycleStatus.ACTIVE,
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gt: now } }],
-      AND: [
-        {
-          OR: [
-            { groupId: group.id },
-            {
-              groupId: null,
-              branchId: group.branchId,
-              sportId: group.sportId
-            },
-            {
-              groupId: null,
-              branchId: group.branchId,
-              sportId: null
-            },
-            {
-              groupId: null,
-              branchId: null,
-              sportId: group.sportId
-            }
-          ]
-        }
-      ]
-    },
-    orderBy: { validFrom: "desc" }
-  });
-
-  return (
-    prices.find((item) => item.groupId === group.id) ??
-    prices.find(
-      (item) =>
-        item.branchId === group.branchId &&
-        item.sportId === group.sportId
-    ) ??
-    prices.find((item) => item.branchId === group.branchId) ??
-    prices.find((item) => item.sportId === group.sportId) ??
-    null
+  return findEffectiveGroupPrice(
+    prisma,
+    group,
+    PriceProductType.SUBSCRIPTION,
+    now
   );
 }

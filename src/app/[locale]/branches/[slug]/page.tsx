@@ -95,10 +95,14 @@ export default async function PublicBranchPage({
     include: { sport: true },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
   });
+  const activeSportIds = new Set(data.sports.map((sport) => sport.id));
   const branchFaq = branchFaqItems.filter(
     (item) =>
       !item.sport ||
-      item.sport.status === LifecycleStatus.ACTIVE
+      (
+        item.sport.status === LifecycleStatus.ACTIVE &&
+        activeSportIds.has(item.sportId ?? "")
+      )
   );
 
   const hero = data.media.find(

@@ -209,6 +209,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (
+    status === LifecycleStatus.ACTIVE &&
+    (
+      branch.status !== LifecycleStatus.ACTIVE ||
+      sport.status !== LifecycleStatus.ACTIVE ||
+      coach.status !== LifecycleStatus.ACTIVE
+    )
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "ACTIVE_GROUP_REQUIRES_ACTIVE_RELATIONS"
+      },
+      { status: 409 }
+    );
+  }
+
   const groupId = `GR-${randomUUID()}`;
   const now = new Date();
 
@@ -310,8 +327,18 @@ export async function POST(request: NextRequest) {
 
   revalidatePath("/admin/groups");
   revalidatePath(`/admin/branches/${branchId}`);
+  revalidatePath("/ru");
+  revalidatePath("/uz");
   revalidatePath("/ru/branches");
   revalidatePath("/uz/branches");
+  revalidatePath("/ru/sports");
+  revalidatePath("/uz/sports");
+  revalidatePath("/ru/coaches");
+  revalidatePath("/uz/coaches");
+  revalidatePath("/ru/schedule");
+  revalidatePath("/uz/schedule");
+  revalidatePath("/ru/prices");
+  revalidatePath("/uz/prices");
   revalidatePath(`/ru/branches/${branch.slug}`);
   revalidatePath(`/uz/branches/${branch.slug}`);
   revalidatePath(`/ru/sports/${sport.slug}`);

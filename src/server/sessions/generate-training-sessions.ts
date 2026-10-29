@@ -155,6 +155,9 @@ export async function generateTrainingSessions(
   const groups = await prisma.trainingGroup.findMany({
     where: {
       status: LifecycleStatus.ACTIVE,
+      branch: { status: LifecycleStatus.ACTIVE },
+      sport: { status: LifecycleStatus.ACTIVE },
+      primaryCoach: { status: LifecycleStatus.ACTIVE },
       ...(options.branchId ? { branchId: options.branchId } : {})
     },
     include: {

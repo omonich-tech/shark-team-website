@@ -4,6 +4,7 @@ import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+import { findBranchSportGroupBlockers } from "@/server/admin/relation-integrity";
 
 export async function PUT(
   request: NextRequest,
@@ -71,6 +72,22 @@ export async function PUT(
     );
   }
 
+  const blockingGroups = await findBranchSportGroupBlockers(
+    prisma,
+    branchId,
+    sportIds
+  );
+
+  if (blockingGroups.length > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "BRANCH_SPORT_IN_USE",
+        dependencies: { groups: blockingGroups }
+      },
+      { status: 409 }
+    );
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.branchSport.updateMany({
@@ -119,8 +136,11 @@ export async function PUT(
     where: { id: branchId },
     select: { slug: true }
   });
+  const affectedSportIds = Array.from(
+    new Set([...before.map((item) => item.sportId), ...sportIds])
+  );
   const linkedSports = await prisma.sport.findMany({
-    where: { id: { in: sportIds } },
+    where: { id: { in: affectedSportIds } },
     select: { slug: true }
   });
 

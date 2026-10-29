@@ -37,11 +37,41 @@ export async function getTrialOptions(
       ageMax: { gte: age },
       branch: {
         ...BOOKABLE_GROUP_WHERE.branch,
-        slug: branchSlug
+        slug: branchSlug,
+        sportLinks: {
+          some: {
+            status: "ACTIVE",
+            sport: {
+              ...BOOKABLE_GROUP_WHERE.sport,
+              slug: sportSlug
+            }
+          }
+        }
       },
       sport: {
         ...BOOKABLE_GROUP_WHERE.sport,
         slug: sportSlug
+      },
+      primaryCoach: {
+        ...BOOKABLE_GROUP_WHERE.primaryCoach,
+        sportLinks: {
+          some: {
+            status: "ACTIVE",
+            sport: {
+              ...BOOKABLE_GROUP_WHERE.sport,
+              slug: sportSlug
+            }
+          }
+        },
+        branchLinks: {
+          some: {
+            status: "ACTIVE",
+            branch: {
+              ...BOOKABLE_GROUP_WHERE.branch,
+              slug: branchSlug
+            }
+          }
+        }
       }
     },
     include: {

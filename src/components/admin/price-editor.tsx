@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminApiErrorMessage } from "@/components/admin/api-error-message";
 
 export function PriceEditor({
   branchId,
@@ -42,7 +43,9 @@ export function PriceEditor({
     const payload = await response.json();
 
     if (!response.ok || !payload.ok) {
-      throw new Error(payload.error ?? "PRICE_SAVE_FAILED");
+      throw new Error(
+        adminApiErrorMessage(payload, "Не удалось сохранить цену.")
+      );
     }
   }
 

@@ -4,6 +4,7 @@ import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+import { findBranchCoachGroupBlockers } from "@/server/admin/relation-integrity";
 
 export async function PUT(
   request: NextRequest,
@@ -72,6 +73,23 @@ export async function PUT(
     );
   }
 
+  const blockingGroups = await findBranchCoachGroupBlockers(
+    prisma,
+    branchId,
+    coachIds
+  );
+
+  if (blockingGroups.length > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "BRANCH_COACH_IN_USE",
+        dependencies: { groups: blockingGroups }
+      },
+      { status: 409 }
+    );
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.coachBranch.updateMany({
       where: {
@@ -120,7 +138,11 @@ export async function PUT(
   revalidatePath("/ru/coaches");
   revalidatePath("/uz/coaches");
 
-  for (const coachId of coachIds) {
+  const affectedCoachIds = Array.from(
+    new Set([...before.map((item) => item.coachId), ...coachIds])
+  );
+
+  for (const coachId of affectedCoachIds) {
     revalidatePath(`/ru/coaches/${coachId}`);
     revalidatePath(`/uz/coaches/${coachId}`);
   }

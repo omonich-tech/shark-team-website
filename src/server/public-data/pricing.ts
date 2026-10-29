@@ -2,7 +2,7 @@ import {
   LifecycleStatus,
   PriceProductType
 } from "@/generated/prisma/client";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 export type PriceCandidate = {
   id: string;
@@ -61,4 +61,50 @@ export function activePriceWhere(now = new Date()): Prisma.PriceWhereInput {
       }
     ]
   };
+}
+
+
+type GroupPriceScope = {
+  id: string;
+  branchId: string;
+  sportId: string;
+};
+
+export async function findEffectiveGroupPrice(
+  prisma: PrismaClient,
+  group: GroupPriceScope,
+  productType: PriceProductType,
+  now = new Date()
+) {
+  const prices = await prisma.price.findMany({
+    where: {
+      ...activePriceWhere(now),
+      productType,
+      OR: [
+        { groupId: group.id },
+        {
+          groupId: null,
+          branchId: group.branchId,
+          sportId: group.sportId
+        },
+        {
+          groupId: null,
+          branchId: group.branchId,
+          sportId: null
+        },
+        {
+          groupId: null,
+          branchId: null,
+          sportId: group.sportId
+        }
+      ]
+    },
+    orderBy: { validFrom: "desc" }
+  });
+
+  return resolveEffectivePrice(prices, productType, {
+    groupId: group.id,
+    branchId: group.branchId,
+    sportId: group.sportId
+  });
 }
