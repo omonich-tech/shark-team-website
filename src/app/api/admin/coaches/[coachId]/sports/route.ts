@@ -1,8 +1,10 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { getAdminSession } from "@/server/admin/auth";
 import { writeAdminAudit } from "@/server/admin/audit";
+import { findCoachSportGroupBlockers } from "@/server/admin/relation-integrity";
 
 export async function PUT(
   request: NextRequest,
@@ -69,6 +71,23 @@ export async function PUT(
     );
   }
 
+  const blockingGroups = await findCoachSportGroupBlockers(
+    prisma,
+    coachId,
+    ids
+  );
+
+  if (blockingGroups.length > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "COACH_SPORT_IN_USE",
+        dependencies: { groups: blockingGroups }
+      },
+      { status: 409 }
+    );
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.coachSport.updateMany({
       where: {
@@ -109,6 +128,28 @@ export async function PUT(
     before,
     after
   });
+
+  const affectedSportIds = Array.from(
+    new Set([...before.map((item) => item.sportId), ...ids])
+  );
+  const affectedSports = await prisma.sport.findMany({
+    where: { id: { in: affectedSportIds } },
+    select: { slug: true }
+  });
+
+  revalidatePath("/ru");
+  revalidatePath("/uz");
+  revalidatePath("/ru/sports");
+  revalidatePath("/uz/sports");
+  revalidatePath("/ru/coaches");
+  revalidatePath("/uz/coaches");
+  revalidatePath(`/ru/coaches/${coachId}`);
+  revalidatePath(`/uz/coaches/${coachId}`);
+
+  for (const sport of affectedSports) {
+    revalidatePath(`/ru/sports/${sport.slug}`);
+    revalidatePath(`/uz/sports/${sport.slug}`);
+  }
 
   return NextResponse.json({
     ok: true,
