@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { adminApiErrorMessage } from "@/components/admin/api-error-message";
 
 type Option = {
   id: string;
@@ -55,7 +56,9 @@ function RelationGroup({
       const payload = await response.json();
 
       if (!response.ok || !payload.ok) {
-        throw new Error(payload.error ?? "RELATION_SAVE_FAILED");
+        throw new Error(
+          adminApiErrorMessage(payload, "Не удалось сохранить связи.")
+        );
       }
 
       setState("saved");
