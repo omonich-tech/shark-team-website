@@ -91,6 +91,20 @@ export function GroupCreateForm({
 
       if (!response.ok || !payload.ok) {
         setState("error");
+        if (payload.error === "ACTIVE_GROUP_REQUIRES_ACTIVE_RELATIONS" && payload.dependencies) {
+          const labels: Array<[string, { name?: string; status?: string } | undefined]> = [
+            ["Филиал", payload.dependencies.branch],
+            ["Вид спорта", payload.dependencies.sport],
+            ["Тренер", payload.dependencies.coach]
+          ];
+          const inactive = labels
+            .filter(([, value]) => value?.status !== "ACTIVE")
+            .map(([label, value]) => `${label} «${value?.name || "Без названия"}» — ${value?.status ?? "не найден"}`);
+          setMessage(
+            `Нельзя создать активную группу. ${inactive.join("; ")}. Активируйте эти объекты или создайте группу в статусе Draft.`
+          );
+          return;
+        }
         setMessage(
           payload.error === "INVALID_GROUP_DATE_RANGE"
             ? "Дата окончания не может быть раньше даты начала."
