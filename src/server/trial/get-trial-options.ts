@@ -4,6 +4,7 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { BOOKABLE_GROUP_WHERE } from "@/server/public-data/visibility";
+import { resolveFirstTrialAmount } from "@/server/trial/first-trial-pricing";
 
 export async function getTrialOptions(
   age: number,
@@ -89,6 +90,8 @@ export async function getTrialOptions(
     };
   }
 
+  const firstTrialAmount = await resolveFirstTrialAmount(prisma, group.id, now);
+
   if (group.capacityTrial === null || group.capacityTrial <= 0) {
     return {
       ok: true as const,
@@ -96,6 +99,7 @@ export async function getTrialOptions(
       reason: "TRIAL_CAPACITY_NOT_CONFIGURED" as const,
       group: {
         id: group.id,
+        firstTrialAmount,
         ageMin: group.ageMin,
         ageMax: group.ageMax,
         branchSlug: group.branch.slug,
@@ -166,6 +170,7 @@ export async function getTrialOptions(
         : ("NO_AVAILABLE_SESSIONS" as const),
     group: {
       id: group.id,
+      firstTrialAmount,
       ageMin: group.ageMin,
       ageMax: group.ageMax,
       branchSlug: group.branch.slug,
