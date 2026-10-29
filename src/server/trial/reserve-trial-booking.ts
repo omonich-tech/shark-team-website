@@ -7,6 +7,8 @@ import {
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { calculateTrialHoldWindow } from "@/server/trial/calculate-hold-window";
+import { PriceProductType } from "@/generated/prisma/client";
+import { activePriceWhere } from "@/server/public-data/pricing";
 
 export async function reserveTrialBooking(leadId: string) {
   const prisma = getPrisma();
@@ -45,6 +47,19 @@ export async function reserveTrialBooking(leadId: string) {
       return { ok: false as const, error: "SESSION_NOT_AVAILABLE" as const };
     }
 
+    // Resolve the group's explicit price while holding the session lock.
+    // With no override, the first trial is free and must not enter payment HOLD.
+    const trialPrice = await tx.price.findFirst({
+      where: {
+        ...activePriceWhere(now),
+        productType: PriceProductType.TRIAL,
+        groupId: session.groupId
+      },
+      select: { amount: true },
+      orderBy: { validFrom: "desc" }
+    });
+    const isFreeTrial = (trialPrice?.amount ?? 0) === 0;
+
     await tx.trialBooking.updateMany({
       where: {
         sessionId,
@@ -64,6 +79,31 @@ export async function reserveTrialBooking(leadId: string) {
         }
       }
     });
+
+    if (isFreeTrial && existing?.status === TrialBookingStatus.HOLD && existing.expiresAt > now) {
+      const booking = await tx.trialBooking.update({
+        where: { id: existing.id },
+        data: {
+          status: TrialBookingStatus.CONFIRMED,
+          confirmedAt: now,
+          reminderAt: null,
+          reminderSentAt: null
+        }
+      });
+      await tx.notification.updateMany({
+        where: { trialBookingId: booking.id, type: NotificationType.PAYMENT_HOLD_REMINDER },
+        data: { status: NotificationStatus.CANCELLED }
+      });
+      await tx.lead.update({ where: { id: leadId }, data: { status: LeadStatus.TRIAL_CONFIRMED } });
+      return {
+        ok: true as const,
+        booking: {
+          id: booking.id, status: booking.status,
+          expiresAt: booking.expiresAt.toISOString(),
+          reminderAt: null, sessionId: booking.sessionId
+        }
+      };
+    }
 
     if (
       existing?.status === TrialBookingStatus.HOLD &&
@@ -152,9 +192,10 @@ export async function reserveTrialBooking(leadId: string) {
       ? await tx.trialBooking.update({
           where: { id: existing.id },
           data: {
-            status: TrialBookingStatus.HOLD,
+            status: isFreeTrial ? TrialBookingStatus.CONFIRMED : TrialBookingStatus.HOLD,
             expiresAt: window.expiresAt,
-            reminderAt: window.reminderAt,
+            reminderAt: isFreeTrial ? null : window.reminderAt,
+            confirmedAt: isFreeTrial ? now : null,
             reminderSentAt: null,
             confirmedAt: null,
             cancelledAt: null
@@ -164,7 +205,7 @@ export async function reserveTrialBooking(leadId: string) {
           data: {
             leadId,
             sessionId,
-            status: TrialBookingStatus.HOLD,
+            status: isFreeTrial ? TrialBookingStatus.CONFIRMED : TrialBookingStatus.HOLD,
             expiresAt: window.expiresAt,
             reminderAt: window.reminderAt
           }
@@ -172,7 +213,7 @@ export async function reserveTrialBooking(leadId: string) {
 
     await tx.lead.update({
       where: { id: leadId },
-      data: { status: LeadStatus.TRIAL_HELD }
+      data: { status: isFreeTrial ? LeadStatus.TRIAL_CONFIRMED : LeadStatus.TRIAL_HELD }
     });
 
     if (booking.reminderAt) {
