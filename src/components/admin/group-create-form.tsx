@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { adminApiErrorMessage } from "@/components/admin/api-error-message";
 
 const weekdays = [
   ["MONDAY", "Пн"],
@@ -93,7 +94,7 @@ export function GroupCreateForm({
         setMessage(
           payload.error === "INVALID_GROUP_DATE_RANGE"
             ? "Дата окончания не может быть раньше даты начала."
-            : payload.error ?? "Не удалось создать группу."
+            : adminApiErrorMessage(payload, "Не удалось создать группу.")
         );
         return;
       }
