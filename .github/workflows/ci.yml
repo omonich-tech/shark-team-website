@@ -37,6 +37,9 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shark_team
       DATABASE_POOL_MAX: "1"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      GOOGLE_SITE_VERIFICATION: ci-google-verification
+      YANDEX_SITE_VERIFICATION: ci-yandex-verification
+      INDEXNOW_KEY: ci-indexnow-key-12345678
       PAYMENT_MODE: PAYME
       PAYME_MERCHANT_ID: ci-merchant
       PAYME_LOGIN: ci-login
@@ -103,12 +106,18 @@ jobs:
       - name: Verify core data
         run: npm run db:verify
 
+      - name: Set deterministic future session window
+        run: |
+          DOW=$(TZ=Asia/Tashkent date +%u)
+          OFFSET=$((8 - DOW))
+          SESSION_FROM=$(TZ=Asia/Tashkent date -d "+${OFFSET} days" +%F)
+          SESSION_TO=$(TZ=Asia/Tashkent date -d "${SESSION_FROM} +13 days" +%F)
+          echo "SESSION_FROM=${SESSION_FROM}" >> "$GITHUB_ENV"
+          echo "SESSION_TO=${SESSION_TO}" >> "$GITHUB_ENV"
+          echo "SESSION_BRANCH_ID=BR-SCHOOL-117-01" >> "$GITHUB_ENV"
+
       - name: Generate deterministic test sessions
         run: npm run db:sessions
-        env:
-          SESSION_FROM: "2026-09-29"
-          SESSION_TO: "2026-10-12"
-          SESSION_BRANCH_ID: "BR-SCHOOL-117-01"
 
       - name: Verify generated sessions
         run: npm run db:verify-sessions
@@ -117,10 +126,6 @@ jobs:
         run: |
           npm run db:sessions
           npm run db:verify-sessions
-        env:
-          SESSION_FROM: "2026-09-29"
-          SESSION_TO: "2026-10-12"
-          SESSION_BRANCH_ID: "BR-SCHOOL-117-01"
 
       - name: Prepare booking smoke data
         run: npm run db:prepare-booking-smoke
@@ -162,6 +167,10 @@ jobs:
           curl -fsS http://127.0.0.1:3000/uz | grep -q "Basketbol"
           curl -fsS http://127.0.0.1:3000/ru/branches/school-117 | grep -q "Школа"
           curl -fsS http://127.0.0.1:3000/api/public/branches/school-117 | grep -q "BR-SCHOOL-117-01"
+          curl -fsS http://127.0.0.1:3000/ru/about | grep -q "Спорт формирует"
+          curl -fsS http://127.0.0.1:3000/uz/about | grep -q "Sport jismoniy"
+          curl -fsS http://127.0.0.1:3000/ru/contacts | grep -q "Контакты и филиалы"
+          curl -fsS http://127.0.0.1:3000/uz/contacts | grep -q "Kontaktlar va filiallar"
           curl -fsS http://127.0.0.1:3000/ru/trial | grep -q "Подберите"
 
       - name: Smoke test trial lead flow
@@ -184,6 +193,9 @@ jobs:
         env:
           TELEGRAM_ADMIN_CHAT_ID: "-1001234567890"
           TELEGRAM_ADMIN_USER_IDS: "999001"
+
+      - name: Prepare Payme smoke capacity
+        run: npm run db:prepare-payme-smoke
 
       - name: Smoke test Payme Merchant API
         run: npm run smoke:payme
@@ -266,6 +278,9 @@ jobs:
       - name: Smoke test group operations
         run: npm run smoke:group-operations
 
+      - name: Smoke test web analytics
+        run: npm run smoke:web-analytics
+
       - name: Smoke test operations dashboard
         run: npm run smoke:operations-dashboard
 
@@ -311,6 +326,12 @@ jobs:
 
       - name: Smoke test admin CMS
         run: npm run smoke:admin-cms
+
+      - name: Smoke test structured content CMS
+        run: npm run smoke:content-cms
+
+      - name: Smoke test SEO metadata
+        run: npm run smoke:seo
 
       - name: Smoke test production hardening
         run: npm run smoke:production
