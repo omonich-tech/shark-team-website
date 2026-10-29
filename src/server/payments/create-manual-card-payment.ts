@@ -5,10 +5,7 @@ import {
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
-import {
-  activePriceWhere,
-  resolveEffectivePrice
-} from "@/server/public-data/pricing";
+import { findEffectiveGroupPrice } from "@/server/public-data/pricing";
 
 function formatCardNumber(value: string) {
   const digits = value.replace(/\D+/g, "");
@@ -71,34 +68,11 @@ export async function createManualCardPayment(bookingId: string) {
 
   const group = booking.session.group;
 
-  const prices = await prisma.price.findMany({
-    where: {
-      ...activePriceWhere(now),
-      productType: PriceProductType.TRIAL,
-      OR: [
-        { groupId: group.id },
-        {
-          groupId: null,
-          branchId: group.branchId
-        },
-        {
-          groupId: null,
-          branchId: null,
-          sportId: group.sportId
-        }
-      ]
-    },
-    orderBy: { validFrom: "desc" }
-  });
-
-  const price = resolveEffectivePrice(
-    prices,
+  const price = await findEffectiveGroupPrice(
+    prisma,
+    group,
     PriceProductType.TRIAL,
-    {
-      groupId: group.id,
-      branchId: group.branchId,
-      sportId: group.sportId
-    }
+    now
   );
 
   if (!price) {
