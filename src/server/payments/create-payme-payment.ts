@@ -1,11 +1,14 @@
 import {
-  LifecycleStatus,
   PaymentProvider,
   PaymentStatus,
   PriceProductType,
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import {
+  activePriceWhere,
+  resolveEffectivePrice
+} from "@/server/public-data/pricing";
 
 export async function createPaymePayment(
   bookingId: string,
@@ -61,30 +64,18 @@ export async function createPaymePayment(
 
   const prices = await prisma.price.findMany({
     where: {
+      ...activePriceWhere(now),
       productType: PriceProductType.TRIAL,
-      status: LifecycleStatus.ACTIVE,
-      validFrom: { lte: now },
-      OR: [{ validTo: null }, { validTo: { gt: now } }],
-      AND: [
+      OR: [
+        { groupId: group.id },
         {
-          OR: [
-            { groupId: group.id },
-            {
-              groupId: null,
-              branchId: group.branchId,
-              sportId: group.sportId
-            },
-            {
-              groupId: null,
-              branchId: group.branchId,
-              sportId: null
-            },
-            {
-              groupId: null,
-              branchId: null,
-              sportId: group.sportId
-            }
-          ]
+          groupId: null,
+          branchId: group.branchId
+        },
+        {
+          groupId: null,
+          branchId: null,
+          sportId: group.sportId
         }
       ]
     },
@@ -93,15 +84,15 @@ export async function createPaymePayment(
     }
   });
 
-  const price =
-    prices.find((item) => item.groupId === group.id) ??
-    prices.find(
-      (item) =>
-        item.branchId === group.branchId &&
-        item.sportId === group.sportId
-    ) ??
-    prices.find((item) => item.branchId === group.branchId) ??
-    prices.find((item) => item.sportId === group.sportId);
+  const price = resolveEffectivePrice(
+    prices,
+    PriceProductType.TRIAL,
+    {
+      groupId: group.id,
+      branchId: group.branchId,
+      sportId: group.sportId
+    }
+  );
 
   if (!price) {
     return { ok: false as const, error: "TRIAL_PRICE_NOT_FOUND" as const };
