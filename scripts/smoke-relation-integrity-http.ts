@@ -141,6 +141,61 @@ async function main() {
     "COACH_HAS_ACTIVE_GROUPS"
   );
 
+  const faqQuestion = `Relation integrity FAQ ${group.id}`;
+  const faqResponse = await fetch(`${baseUrl}/api/admin/faq`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookie
+    },
+    body: JSON.stringify({
+      status: "PUBLISHED",
+      branchId: group.branchId,
+      sportId: group.sportId,
+      questionRu: faqQuestion,
+      questionUz: faqQuestion,
+      answerRu: "Scoped relation smoke answer.",
+      answerUz: "Scoped relation smoke answer.",
+      sortOrder: 9999
+    })
+  });
+  const faqPayload = await faqResponse.json();
+  assert(
+    faqResponse.status === 201 && faqPayload.ok,
+    `Scoped FAQ creation failed: ${faqResponse.status} ${JSON.stringify(faqPayload)}`
+  );
+
+  const [branchPage, sportPage] = await Promise.all([
+    fetch(`${baseUrl}/ru/branches/${group.branch.slug}`),
+    fetch(`${baseUrl}/ru/sports/${group.sport.slug}`)
+  ]);
+  const [branchHtml, sportHtml] = await Promise.all([
+    branchPage.text(),
+    sportPage.text()
+  ]);
+
+  assert(
+    branchPage.ok && branchHtml.includes(faqQuestion),
+    "Branch page did not render branch + sport FAQ"
+  );
+  assert(
+    sportPage.ok && sportHtml.includes(faqQuestion),
+    "Sport page did not render branch + sport FAQ"
+  );
+
+  const faqDelete = await fetch(
+    `${baseUrl}/api/admin/faq/${faqPayload.faq.id}`,
+    {
+      method: "DELETE",
+      headers: { Cookie: cookie }
+    }
+  );
+  const faqDeletePayload = await faqDelete.json();
+  assert(
+    faqDelete.ok && faqDeletePayload.ok,
+    "Scoped FAQ cleanup failed"
+  );
+
   console.log("Relation integrity HTTP smoke test passed.");
 }
 
