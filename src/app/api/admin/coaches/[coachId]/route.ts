@@ -47,6 +47,49 @@ export async function PATCH(
     );
   }
 
+  // Status-only actions must not require resubmitting the full coach profile.
+  // This preserves the existing CoachAccount, assignments, and profile details.
+  if (body.action === "SET_STATUS") {
+    const status = String(body.status ?? "") as LifecycleStatus;
+    if (![LifecycleStatus.ACTIVE, LifecycleStatus.PAUSED, LifecycleStatus.ARCHIVED].includes(status)) {
+      return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 400 });
+    }
+    const dependentGroups = await prisma.trainingGroup.findMany({
+      where: { primaryCoachId: coachId, status: { not: LifecycleStatus.ARCHIVED } },
+      select: { id: true, internalName: true },
+      take: 20
+    });
+    if (status === LifecycleStatus.ARCHIVED && dependentGroups.length > 0) {
+      return NextResponse.json({
+        ok: false, error: "COACH_HAS_GROUP_DEPENDENCIES",
+        dependencies: { groups: dependentGroups }
+      }, { status: 409 });
+    }
+    if (status !== LifecycleStatus.ACTIVE && await countActiveGroups(prisma, { primaryCoachId: coachId }) > 0) {
+      return NextResponse.json({ ok: false, error: "COACH_HAS_ACTIVE_GROUPS" }, { status: 409 });
+    }
+    const after = await prisma.$transaction(async (tx) => {
+      const updated = await tx.coach.update({ where: { id: coachId }, data: { status } });
+      if (status === LifecycleStatus.ARCHIVED) {
+        await tx.coachAccount.updateMany({ where: { coachId }, data: { isActive: false } });
+      }
+      return updated;
+    });
+    await writeAdminAudit({
+      actorId: admin.sub, action: status === LifecycleStatus.ARCHIVED ? "ARCHIVE" : "UPDATE_STATUS",
+      entityType: "Coach", entityId: coachId, before, after
+    });
+    for (const locale of ["ru", "uz"]) {
+      revalidatePath(`/${locale}`);
+      revalidatePath(`/${locale}/coaches`);
+      revalidatePath(`/${locale}/coaches/${coachId}`);
+      revalidatePath(`/${locale}/schedule`);
+    }
+    revalidatePath("/admin/coaches");
+    revalidatePath(`/admin/coaches/${coachId}`);
+    return NextResponse.json({ ok: true, coach: after });
+  }
+
   const firstName =
     typeof body.firstName === "string"
       ? body.firstName.trim().slice(0, 80)
