@@ -51,7 +51,7 @@ export async function PATCH(
   // This preserves the existing CoachAccount, assignments, and profile details.
   if (body.action === "SET_STATUS") {
     const status = String(body.status ?? "") as LifecycleStatus;
-    if (![LifecycleStatus.ACTIVE, LifecycleStatus.PAUSED, LifecycleStatus.ARCHIVED].includes(status)) {
+    if (status !== LifecycleStatus.ACTIVE && status !== LifecycleStatus.PAUSED && status !== LifecycleStatus.ARCHIVED) {
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 400 });
     }
     const dependentGroups = await prisma.trainingGroup.findMany({
