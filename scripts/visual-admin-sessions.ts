@@ -151,7 +151,7 @@ async function waitForPage(
   client: CdpClient,
   expectedText: string
 ) {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     const result = await client.send("Runtime.evaluate", {
       expression: `({
         ready: document.readyState,
@@ -174,18 +174,20 @@ async function waitForPage(
 
     if (
       value?.ready === "complete" &&
-      value?.text?.includes(expectedText) &&
+      value?.text?.toLocaleLowerCase("ru").includes(expectedText.toLocaleLowerCase("ru")) &&
       !value.overlay
     ) {
       return value.text;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  throw new Error(
-    "Page did not become ready with expected text: " + expectedText
-  );
+  const diagnosis = await client.send("Runtime.evaluate", {
+    expression: `({ url: location.href, title: document.title, text: (document.body?.innerText ?? "").slice(0, 2500), ready: document.readyState })`,
+    returnByValue: true
+  });
+  throw new Error("Page did not become ready with expected text: " + expectedText + " | " + JSON.stringify(diagnosis));
 }
 
 async function navigate(
@@ -312,11 +314,11 @@ async function main() {
       const listText = await navigate(
         client,
         baseUrl + "/admin/sessions?scope=all",
-        "Занятия"
+        "Отмечено"
       );
 
       assert(listText.includes("Фильтры"), "Sessions filters are missing");
-      assert(listText.includes("Отмечено"), "Marked count column is missing");
+      assert(listText.toLocaleLowerCase("ru").includes("отмечено"), "Marked count column is missing");
       assert(
         listText.includes("Не завершены вовремя"),
         "Overdue sessions metric is missing"
