@@ -60,6 +60,48 @@ export async function reserveTrialBooking(leadId: string) {
     });
     const isFreeTrial = (trialPrice?.amount ?? 0) === 0;
 
+    if (isFreeTrial) {
+      // Serialize free-trial eligibility checks across simultaneous requests,
+      // including separate leads for the same child.
+      const normalizedPhone = lead.phone.replace(/\\D/g, "");
+      const normalizedName = lead.childName.trim().toLocaleLowerCase("ru");
+      const eligibilityKey = lead.childId
+        ? `child:${lead.childId}`
+        : `lead-child:${normalizedPhone}:${normalizedName}:${lead.childAge}`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${eligibilityKey}))`;
+
+      const previousBookings = await tx.trialBooking.findMany({
+        where: {
+          status: {
+            in: [
+              TrialBookingStatus.CONFIRMED,
+              TrialBookingStatus.ATTENDED,
+              TrialBookingStatus.NO_SHOW
+            ]
+          },
+          lead: {
+            OR: [
+              ...(lead.childId ? [{ childId: lead.childId }] : []),
+              { phone: lead.phone }
+            ]
+          }
+        },
+        include: {
+          lead: { select: { phone: true, childName: true, childAge: true, childId: true } }
+        }
+      });
+      const alreadyUsed = previousBookings.some((prior) => {
+        if (prior.leadId === leadId && prior.sessionId === sessionId) return false;
+        if (lead.childId && prior.lead.childId === lead.childId) return true;
+        return prior.lead.phone.replace(/\\D/g, "") === normalizedPhone &&
+          prior.lead.childName.trim().toLocaleLowerCase("ru") === normalizedName &&
+          prior.lead.childAge === lead.childAge;
+      });
+      if (alreadyUsed) {
+        return { ok: false as const, error: "FREE_TRIAL_ALREADY_USED" as const };
+      }
+    }
+
     await tx.trialBooking.updateMany({
       where: {
         sessionId,
