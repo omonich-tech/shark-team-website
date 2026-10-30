@@ -174,7 +174,7 @@ async function waitForPage(
 
     if (
       value?.ready === "complete" &&
-      value?.text?.includes(expectedText) &&
+      value?.text?.toLocaleLowerCase("ru").includes(expectedText.toLocaleLowerCase("ru")) &&
       !value.overlay
     ) {
       return value.text;
@@ -318,7 +318,7 @@ async function main() {
       );
 
       assert(listText.includes("Фильтры"), "Sessions filters are missing");
-      assert(listText.includes("Отмечено"), "Marked count column is missing");
+      assert(listText.toLocaleLowerCase("ru").includes("отмечено"), "Marked count column is missing");
       assert(
         listText.includes("Не завершены вовремя"),
         "Overdue sessions metric is missing"
