@@ -312,7 +312,7 @@ async function main() {
       const listText = await navigate(
         client,
         baseUrl + "/admin/sessions?scope=all",
-        "Занятия"
+        "Отмечено"
       );
 
       assert(listText.includes("Фильтры"), "Sessions filters are missing");
