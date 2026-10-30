@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AdminEntityForm } from "@/components/admin/entity-form";
 import { CoachAccessForm } from "@/components/admin/coach-access-form";
 import { CoachRelationsEditor } from "@/components/admin/coach-relations-editor";
+import { CoachStatusActions } from "@/components/admin/coach-status-actions";
 import { LifecycleStatus } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 
@@ -76,6 +77,8 @@ export default async function AdminCoachEditPage({
           ) : null}
         </div>
       </div>
+
+      <CoachStatusActions coachId={coach.id} coachName={fullName} status={coach.status} />
 
       <div className="admin-branch-summary">
         <div>
