@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const status =
+      result.error === "FREE_TRIAL_ALREADY_USED" ||
       result.error === "SLOT_FULL" ||
       result.error === "SESSION_NOT_AVAILABLE"
         ? 409
