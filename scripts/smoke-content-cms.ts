@@ -79,10 +79,13 @@ async function main() {
 
   const login = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(process.env.CI === "true" ? { "x-real-ip": "127.0.0.81" } : {})
+    },
     body: JSON.stringify({ username, password })
   });
-  assert(login.ok, "Content CMS smoke admin login failed");
+  assert(login.ok, `Content CMS smoke admin login failed: HTTP ${login.status} ${await login.text()}`);
   const cookie = cookieFrom(login);
 
   const suffix = Date.now().toString(36);
