@@ -68,7 +68,7 @@ export async function reserveTrialBooking(leadId: string) {
       const eligibilityKey = lead.childId
         ? `child:${lead.childId}`
         : `lead-child:${normalizedPhone}:${normalizedName}:${lead.childAge}`;
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${eligibilityKey}))`;
+      await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext(${eligibilityKey}))) AS acquired_lock`;
 
       const previousBookings = await tx.trialBooking.findMany({
         where: {
