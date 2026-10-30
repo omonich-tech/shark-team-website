@@ -1,11 +1,10 @@
 import {
   PaymentProvider,
   PaymentStatus,
-  PriceProductType,
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
-import { findEffectiveGroupPrice } from "@/server/public-data/pricing";
+import { resolveFirstTrialAmount } from "@/server/trial/first-trial-pricing";
 
 function formatCardNumber(value: string) {
   const digits = value.replace(/\D+/g, "");
@@ -68,21 +67,13 @@ export async function createManualCardPayment(bookingId: string) {
 
   const group = booking.session.group;
 
-  const price = await findEffectiveGroupPrice(
-    prisma,
-    group,
-    PriceProductType.TRIAL,
-    now
-  );
-
-  if (!price) {
-    return {
-      ok: false as const,
-      error: "TRIAL_PRICE_NOT_FOUND" as const
-    };
+  // Never create a payment for an already-confirmed free trial.
+  // Preserve existing payment amounts if an administrator changes group pricing.
+  const configuredAmount = await resolveFirstTrialAmount(prisma, group.id, now);
+  if (!booking.payment && (configuredAmount === 0 || booking.status === TrialBookingStatus.CONFIRMED)) {
+    return { ok: false as const, error: "TRIAL_PAYMENT_NOT_REQUIRED" as const };
   }
-
-  const amountUzs = price.amount;
+  const amountUzs = booking.payment?.amountUzs ?? configuredAmount;
   const amountTiyin = amountUzs * 100;
 
   if (
