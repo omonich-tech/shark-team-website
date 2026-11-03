@@ -111,34 +111,20 @@ Delivery is retried up to 5 attempts.
 
 If no linked Telegram contact exists, the Notification remains pending for retries and is eventually SKIPPED.
 
-## Assistant
+## Deterministic Telegram menu and answers
 
-The bot answers these standard intents directly from live backend data:
+The bot does not use AI models or OpenAI API calls. All actions are explicit
+button/callback workflows or fixed intent responses backed by PostgreSQL.
 
-- price;
-- address;
-- schedule;
-- current trial / booking / payment status.
+- price: current group-specific first-trial and subscription price;
+- address: selected branch from the linked booking/lead;
+- schedule: actual active rules for the linked group;
+- current trial/booking/payment status;
+- parent cabinet: children, attendance, subscriptions and receipts.
 
-No model is required for these responses.
-
-For free-text questions, OpenAI Responses API can be enabled with:
-
-```
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-5.6-luna
-```
-
-The model receives a compact live context built from PostgreSQL.
-
-Rules:
-
-- reply in RU or UZ;
-- never invent a price, schedule, branch or booking fact;
-- complaints, refunds, discounts and legal issues require an administrator;
-- no medical diagnosis or health clearance.
-
-If `OPENAI_API_KEY` is absent or the API fails, the bot falls back to deterministic help text.
+Where a group or branch is not linked, ask the user to choose or contact
+an administrator instead of returning facts from a different location.
+Complex requests are handled by the administrator, not an AI assistant.
 
 ## Data model
 
