@@ -5,6 +5,7 @@ import {
 } from "../src/generated/prisma/client";
 import { getPrisma } from "../src/lib/prisma";
 import { buildTelegramAssistantReply } from "../src/server/telegram/assistant";
+import { runTelegramTrialSmoke } from "./smoke-telegram-trial";
 
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -267,6 +268,7 @@ async function main() {
 
   assert(usedToken, "Telegram link token was not consumed");
 
+  await runTelegramTrialSmoke();
   console.log("Telegram HTTP smoke test passed.");
 }
 
