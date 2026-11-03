@@ -20,6 +20,7 @@ import {
   submitManualCardReceipt
 } from "@/server/payments/manual-card";
 import { buildTelegramAssistantReply } from "@/server/telegram/assistant";
+import { beginTelegramTrial, handleTelegramTrialCallback, handleTelegramTrialText } from "@/server/telegram/trial-flow";
 import { consumeTelegramLinkToken } from "@/server/telegram/link";
 import {
   buildParentCabinetHome,
@@ -78,6 +79,7 @@ type TelegramUpdate = {
       id?: number;
       username?: string;
       first_name?: string;
+      language_code?: string;
     };
     message?: TelegramMessage;
   };
@@ -127,6 +129,44 @@ function formatDate(value: Date, locale: "ru" | "uz") {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("ru-RU").format(value);
+}
+
+function telegramMainMenu(locale: "ru" | "uz", linked: boolean) {
+  const lang = locale;
+  const root = "https://sharkteam.uz/" + lang;
+  const keyboard: Array<Array<{ text: string; url?: string; callback_data?: string }>> = [
+    [
+      {
+        text: locale === "uz" ? "🏀 Sinovga yozilish" : "🏀 Записаться на пробное",
+        callback_data: "trial:start"
+      }
+    ],
+    [
+      {
+        text: locale === "uz" ? "📅 Sport turlari va jadval" : "📅 Секции и расписание",
+        url: root + "/sports"
+      },
+      {
+        text: locale === "uz" ? "📍 Filiallar" : "📍 Филиалы",
+        url: root + "/branches"
+      }
+    ],
+    [
+      {
+        text: locale === "uz" ? "☎️ Bog‘lanish" : "☎️ Контакты",
+        url: root + "/contacts"
+      }
+    ]
+  ];
+  if (linked) {
+    keyboard.unshift([
+      {
+        text: locale === "uz" ? "👨‍👩‍👧 Ota-ona kabineti" : "👨‍👩‍👧 Кабинет родителя",
+        callback_data: "parent:home"
+      }
+    ]);
+  }
+  return { inline_keyboard: keyboard };
 }
 
 function adminChatId() {
@@ -1089,6 +1129,26 @@ export async function POST(request: NextRequest) {
   }
 
   if (update.callback_query) {
+    const trialData = update.callback_query.data ?? "";
+    if (trialData.startsWith("trial:") && update.callback_query.from?.id &&
+        update.callback_query.message?.chat?.id && update.callback_query.id) {
+      const chat = update.callback_query.message.chat;
+      if (chat?.type && chat.type !== "private") {
+        return NextResponse.json({ ok: true });
+      }
+      const userId = BigInt(update.callback_query.from.id);
+      const chatId = BigInt(chat.id!);
+      const result = await handleTelegramTrialCallback(
+        userId, chatId, trialData,
+        update.callback_query.from?.language_code?.toLowerCase().startsWith("uz") ? "uz" : "ru"
+      );
+      await answerTelegramCallbackQuery({ callbackQueryId: update.callback_query.id });
+      if (result) {
+        await sendTelegramMessage({ chatId, text: result.text,
+          ...(result.replyMarkup ? { replyMarkup: result.replyMarkup } : {}) });
+      }
+      return NextResponse.json({ ok: true });
+    }
     const parentBillingHandled =
       await handleParentBillingHistoryCallbackQuery(
         update.callback_query
@@ -1214,11 +1274,46 @@ export async function POST(request: NextRequest) {
     }
   });
 
+  if (text && /^\/(?:start|menu)(?:@[A-Za-z0-9_]+)?$/.test(text)) {
+    const locale: "ru" | "uz" =
+      contact?.locale === "uz" ||
+      (!contact && message.from?.language_code?.toLowerCase().startsWith("uz"))
+        ? "uz" : "ru";
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: locale === "uz"
+        ? "🏀 <b>SHARK TEAM</b>\nKerakli bo‘limni tanlang. Sinov mashg‘ulotiga shu botda yozilishingiz mumkin."
+        : "🏀 <b>SHARK TEAM</b>\nВыберите раздел. Запись на пробное доступна прямо в Telegram.",
+      replyMarkup: telegramMainMenu(locale, Boolean(contact))
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (text && /^\/trial(?:@[A-Za-z0-9_]+)?$/.test(text)) {
+    const locale: "ru" | "uz" =
+      contact?.locale === "uz" ||
+      (!contact && message.from?.language_code?.toLowerCase().startsWith("uz"))
+        ? "uz" : "ru";
+    const trial = await beginTelegramTrial(BigInt(telegramUserId), BigInt(chatId), locale);
+    await sendTelegramMessage({ chatId: BigInt(chatId), text: trial.text,
+      ...(trial.replyMarkup ? { replyMarkup: trial.replyMarkup } : {}) });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (text && !text.startsWith("/")) {
+    const reply = await handleTelegramTrialText(BigInt(telegramUserId), text);
+    if (reply) {
+      await sendTelegramMessage({ chatId: BigInt(chatId), text: reply.text,
+        ...(reply.replyMarkup ? { replyMarkup: reply.replyMarkup } : {}) });
+      return NextResponse.json({ ok: true });
+    }
+  }
+
   if (!contact) {
     await sendTelegramMessage({
       chatId: BigInt(chatId),
       text:
-        "Сначала подключите Telegram через персональную ссылку после записи на пробное занятие."
+        "Чтобы записаться на пробное, нажмите /start или /trial."
     });
 
     return NextResponse.json({ ok: true });

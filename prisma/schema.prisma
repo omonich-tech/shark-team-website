@@ -1125,3 +1125,20 @@ model WebFunnelEvent {
   @@index([bookingId, eventName])
   @@index([paymentId, eventName])
 }
+
+model TelegramTrialDraft {
+  telegramUserId BigInt   @id
+  chatId         BigInt
+  locale         String   @default("ru")
+  step           String   @default("sport")
+  sportId        String?
+  branchId       String?
+  childAge       Int?
+  sessionId      String?
+  parentName     String?
+  childName      String?
+  phone          String?
+  leadId         String?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+}

@@ -5,6 +5,7 @@ import {
 } from "../src/generated/prisma/client";
 import { getPrisma } from "../src/lib/prisma";
 import { buildTelegramAssistantReply } from "../src/server/telegram/assistant";
+import { runTelegramTrialSmoke } from "./smoke-telegram-trial";
 
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -80,6 +81,26 @@ async function main() {
     unauthorizedWebhook.status === 401,
     "Invalid Telegram webhook secret must return 401"
   );
+
+  const publicMenu = await fetch(
+    `${baseUrl}/api/telegram/webhook`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-telegram-bot-api-secret-token": webhookSecret
+      },
+      body: JSON.stringify({
+        update_id: 101,
+        message: {
+          text: "/start",
+          chat: { id: 777099, type: "private" },
+          from: { id: 777099, first_name: "New Visitor", language_code: "ru" }
+        }
+      })
+    }
+  );
+  assert(publicMenu.ok, "Unlinked Telegram /start menu failed");
 
   const linkedWebhook = await fetch(
     `${baseUrl}/api/telegram/webhook`,
@@ -247,6 +268,7 @@ async function main() {
 
   assert(usedToken, "Telegram link token was not consumed");
 
+  await runTelegramTrialSmoke();
   console.log("Telegram HTTP smoke test passed.");
 }
 
