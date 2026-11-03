@@ -97,7 +97,7 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
     ]);
     if (!sport || !branch) return errorReply(locale);
     const options = await getTrialOptions(age, sport.slug, branch.slug);
-    if (!options.ok || !options.bookingAvailable || !options.sessions.length) {
+    if (!options.ok || !options.bookingAvailable || !options.sessions.length || options.group.firstTrialAmount !== 0) {
       return { text: textOf(locale, "Свободных пробных занятий для этого возраста нет. Нажмите /start для другого выбора.", "Bu yosh uchun bo‘sh sinov mashg‘uloti yo‘q. Boshqa variant uchun /start ni bosing.") };
     }
     await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { childAge: age, step: "session" } });
@@ -142,6 +142,16 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
         leadId = created.lead.id;
         await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { leadId } });
         await getPrisma().lead.update({ where: { id: leadId }, data: { source: "telegram" } });
+      }
+      const currentSession = await getPrisma().trainingSession.findUnique({
+        where: { id: draft.sessionId },
+        select: { groupId: true }
+      });
+      if (!currentSession || (await resolveFirstTrialAmount(getPrisma(), currentSession.groupId)) !== 0) {
+        await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "failed" } });
+        return { text: textOf(locale,
+          "Сейчас через Telegram доступны только бесплатные пробные. Выберите другую группу через /start.",
+          "Hozir Telegram orqali faqat bepul sinov mashg‘ulotlari mavjud. /start orqali boshqa guruhni tanlang.") };
       }
       const reserved = await reserveTrialBooking(leadId);
       if (!reserved.ok) {
@@ -210,6 +220,11 @@ export async function handleTelegramTrialText(userId: bigint, text: string): Pro
     : null;
   if (!session) return errorReply(locale);
   const firstTrialAmount = await resolveFirstTrialAmount(getPrisma(), session.groupId);
+  if (firstTrialAmount !== 0) {
+    return { text: textOf(locale,
+      "Сейчас через Telegram доступны только бесплатные пробные занятия. Выберите другую группу через /start.",
+      "Hozir Telegram orqali faqat bepul sinov mashg‘ulotlari mavjud. /start orqali boshqa guruhni tanlang.") };
+  }
   const cost = firstTrialAmount === 0
     ? textOf(locale, "Первое пробное: бесплатно", "Birinchi sinov: bepul")
     : textOf(locale, "Пробное: " + firstTrialAmount.toLocaleString("ru-RU") + " сум (оплата после брони)",
