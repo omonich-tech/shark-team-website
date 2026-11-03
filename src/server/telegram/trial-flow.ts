@@ -48,10 +48,10 @@ export async function beginTelegramTrial(userId: bigint, chatId: bigint, locale:
   };
 }
 
-export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint, data: string): Promise<Reply | null> {
+export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint, data: string, preferredLocale: Locale = "ru"): Promise<Reply | null> {
   if (!data.startsWith("trial:")) return null;
   const draft = await getDraft(userId);
-  const locale: Locale = draft?.locale === "uz" ? "uz" : "ru";
+  const locale: Locale = draft ? (draft.locale === "uz" ? "uz" : "ru") : preferredLocale;
   if (data === "trial:cancel") {
     await prisma.telegramTrialDraft.deleteMany({ where: { telegramUserId: userId } });
     return cancelled(locale);
@@ -156,9 +156,9 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
       return {
         text: free
           ? textOf(locale, "✅ Запись подтверждена! Данные переданы в CRM. Напоминание придёт сюда.", "✅ Yozilish tasdiqlandi! Ma’lumotlar CRMga yuborildi.")
-          : textOf(locale, "🕒 Место временно забронировано. Для подтверждения требуется оплата. Откройте страницу оплаты или свяжитесь с администратором.", "🕒 Joy vaqtincha band qilindi. Tasdiqlash uchun to‘lov kerak."),
+          : textOf(locale, "🕒 Место временно забронировано. Для подтверждения требуется оплата. Свяжитесь с администратором для получения реквизитов или способа оплаты.", "🕒 Joy vaqtincha band qilindi. Tasdiqlash uchun to‘lov kerak."),
         replyMarkup: free ? undefined : {
-          inline_keyboard: [[{ text: locale === "uz" ? "💳 To‘lovga o‘tish" : "💳 Перейти к оплате", url: "https://sharkteam.uz/" + locale + "/trial" }]]
+          inline_keyboard: [[{ text: locale === "uz" ? "☎️ Administrator" : "☎️ Связаться для оплаты", url: "https://sharkteam.uz/" + locale + "/contacts" }]]
         }
       };
     } catch (error) {
