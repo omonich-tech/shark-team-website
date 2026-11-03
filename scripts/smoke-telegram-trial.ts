@@ -2,6 +2,7 @@ import "dotenv/config";
 import { getPrisma } from "../src/lib/prisma";
 import { BOOKABLE_GROUP_WHERE } from "../src/server/public-data/visibility";
 import { getTrialOptions } from "../src/server/trial/get-trial-options";
+import { getCoachSessionParticipants } from "../src/server/coach/get-session-participants";
 import { resolveFirstTrialAmount } from "../src/server/trial/first-trial-pricing";
 import {
   beginTelegramTrial,
@@ -74,6 +75,17 @@ export async function runTelegramTrialSmoke() {
   assert(contact.lead.selectedSessionId === selection.sessionId, "Wrong booked session");
   const booking = await prisma.trialBooking.findFirst({ where: { leadId: contact.leadId! } });
   assert(booking, "Trial booking missing in CRM");
+  const linkedLead = await prisma.lead.findUnique({ where: { id: contact.leadId! } });
+  assert(linkedLead?.parentId && linkedLead.childId, "Telegram trial family was not linked for coach");
+  const selectedSession = await prisma.trainingSession.findUnique({
+    where: { id: selection.sessionId }, select: { coachId: true }
+  });
+  assert(selectedSession, "Coach session missing");
+  const coachSession = await getCoachSessionParticipants(selectedSession.coachId, selection.sessionId);
+  assert(coachSession?.participants.some((participant) =>
+    participant.childId === linkedLead.childId && participant.trialBookingId === booking.id
+  ), "Confirmed Telegram trial is absent from coach attendance");
+
   if (booking.status === "CONFIRMED") {
     for (const suffix of ["confirmed", "reminder", "feedback"]) {
       const notification = await prisma.notification.findUnique({

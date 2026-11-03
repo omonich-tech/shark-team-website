@@ -10,11 +10,12 @@ function envMinutes(name: string, fallback: number) {
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
-export async function backfillConfirmedTrialFamilies(limit = 200) {
+export async function backfillConfirmedTrialFamilies(limit = 200, sessionId?: string) {
   const prisma = getPrisma();
 
   const bookings = await prisma.trialBooking.findMany({
     where: {
+      ...(sessionId ? { sessionId } : {}),
       status: {
         in: [
           TrialBookingStatus.CONFIRMED,
