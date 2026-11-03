@@ -3,6 +3,7 @@ import { BOOKABLE_GROUP_WHERE } from "@/server/public-data/visibility";
 import { getTrialOptions } from "@/server/trial/get-trial-options";
 import { createWebsiteLead, normalizeUzbekPhone } from "@/server/leads/create-website-lead";
 import { reserveTrialBooking } from "@/server/trial/reserve-trial-booking";
+import { resolveFirstTrialAmount } from "@/server/trial/first-trial-pricing";
 import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
 
 type Locale = "ru" | "uz";
@@ -52,6 +53,11 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
   const draft = await getDraft(userId);
   const locale: Locale = draft ? (draft.locale === "uz" ? "uz" : "ru") : preferredLocale;
   if (data === "trial:cancel") {
+    if (draft?.step === "processing" || draft?.step === "complete") {
+      return { text: textOf(locale,
+        "Оформленную запись эта кнопка не отменяет. Для изменения или отмены обратитесь к администратору.",
+        "Tasdiqlangan yozilish bu tugma orqali bekor qilinmaydi. Administratorga murojaat qiling.") };
+    }
     await getPrisma().telegramTrialDraft.deleteMany({ where: { telegramUserId: userId } });
     return cancelled(locale);
   }
@@ -186,8 +192,17 @@ export async function handleTelegramTrialText(userId: bigint, text: string): Pro
   const phone = normalizeUzbekPhone(value);
   if (!phone) return { text: textOf(locale, "Введите корректный номер Узбекистана: +998XXXXXXXXX.", "To‘g‘ri raqamni kiriting: +998XXXXXXXXX.") };
   await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { phone, step: "confirm" } });
+  const session = draft.sessionId
+    ? await getPrisma().trainingSession.findUnique({ where: { id: draft.sessionId }, select: { groupId: true } })
+    : null;
+  if (!session) return errorReply(locale);
+  const firstTrialAmount = await resolveFirstTrialAmount(getPrisma(), session.groupId);
+  const cost = firstTrialAmount === 0
+    ? textOf(locale, "Первое пробное: бесплатно", "Birinchi sinov: bepul")
+    : textOf(locale, "Пробное: " + firstTrialAmount.toLocaleString("ru-RU") + " сум (оплата после брони)",
+        "Sinov: " + firstTrialAmount.toLocaleString("ru-RU") + " so‘m (bron qilgandan so‘ng to‘lov)");
   const summary = textOf(locale, "Проверьте заявку:", "Arizani tekshiring:") + "\n" +
     escapeHtml(draft.parentName ?? "") + " · " + escapeHtml(phone) + "\n" +
-    escapeHtml(draft.childName ?? "") + ", " + draft.childAge;
+    escapeHtml(draft.childName ?? "") + ", " + draft.childAge + "\n" + cost;
   return { text: summary, replyMarkup: keyboard([[button(textOf(locale, "✅ Подтвердить запись", "✅ Yozilishni tasdiqlash"), "trial:confirm")], cancelRow(locale)]) };
 }
