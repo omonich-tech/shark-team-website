@@ -4,12 +4,22 @@ import {
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { backfillConfirmedTrialFamilies } from "@/server/trial/backfill-confirmed-trial-families";
 
 export async function getCoachSessionParticipants(
   coachId: string,
   sessionId: string
 ) {
   const prisma = getPrisma();
+
+  // A Telegram/website lead may not yet have a linked Child record.
+  // Repair only this coach-owned session before fetching attendance participants.
+  const owned = await prisma.trainingSession.findFirst({
+    where: { id: sessionId, coachId },
+    select: { id: true }
+  });
+  if (!owned) return null;
+  await backfillConfirmedTrialFamilies(100, sessionId);
 
   const session = await prisma.trainingSession.findFirst({
     where: {
