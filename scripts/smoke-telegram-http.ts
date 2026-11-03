@@ -81,6 +81,26 @@ async function main() {
     "Invalid Telegram webhook secret must return 401"
   );
 
+  const publicMenu = await fetch(
+    `${baseUrl}/api/telegram/webhook`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-telegram-bot-api-secret-token": webhookSecret
+      },
+      body: JSON.stringify({
+        update_id: 101,
+        message: {
+          text: "/start",
+          chat: { id: 777099, type: "private" },
+          from: { id: 777099, first_name: "New Visitor", language_code: "ru" }
+        }
+      })
+    }
+  );
+  assert(publicMenu.ok, "Unlinked Telegram /start menu failed");
+
   const linkedWebhook = await fetch(
     `${baseUrl}/api/telegram/webhook`,
     {
