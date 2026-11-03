@@ -26,35 +26,6 @@ function includesAny(text: string, variants: string[]) {
   return variants.some((variant) => text.includes(variant));
 }
 
-function extractResponseText(payload: unknown) {
-  if (!payload || typeof payload !== "object") return null;
-
-  const output = (payload as { output?: unknown }).output;
-
-  if (!Array.isArray(output)) return null;
-
-  for (const item of output) {
-    if (!item || typeof item !== "object") continue;
-
-    const content = (item as { content?: unknown }).content;
-
-    if (!Array.isArray(content)) continue;
-
-    for (const part of content) {
-      if (
-        part &&
-        typeof part === "object" &&
-        (part as { type?: string }).type === "output_text" &&
-        typeof (part as { text?: unknown }).text === "string"
-      ) {
-        return (part as { text: string }).text;
-      }
-    }
-  }
-
-  return null;
-}
-
 export async function buildTelegramAssistantReply(
   telegramUserId: bigint,
   rawText: string
@@ -254,66 +225,9 @@ export async function buildTelegramAssistantReply(
       : `Пробное: ${upcomingTrial.lead.childName}, ${date}. Статус брони: ${bookingStatus}. Оплата: ${paymentStatus}.`;
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  if (!apiKey) {
-    return locale === "uz"
-      ? "Men jadval, narx, manzil va sinov holati bo‘yicha yordam bera olaman. Murakkab savol bo‘lsa, administratorga yuboraman."
-      : "Я могу подсказать расписание, цены, адрес и статус пробного. Если вопрос требует администратора, я передам его дальше.";
-  }
-
-  const context = {
-    locale,
-    branch: branch
-      ? {
-          name:
-            locale === "uz" ? branch.publicNameUz : branch.publicNameRu,
-          address: locale === "uz" ? branch.addressUz : branch.addressRu,
-          landmark:
-            locale === "uz" ? branch.landmarkUz : branch.landmarkRu
-        }
-      : null,
-    trialPrice: trialAmount,
-    subscriptionPrice: subscriptionPrice?.amount ?? null,
-    upcomingTrial: upcomingTrial
-      ? {
-          child: upcomingTrial.lead.childName,
-          startsAt: upcomingTrial.session.startsAt.toISOString(),
-          bookingStatus: upcomingTrial.status,
-          paymentStatus: upcomingTrial.payment?.status ?? null
-        }
-      : null
-  };
-
-  const model = process.env.OPENAI_MODEL ?? "gpt-5.6-luna";
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model,
-      instructions:
-        "You are the SHARK TEAM Telegram assistant for parents. Reply in the user's selected language (Russian or Uzbek). Use only the supplied live context for prices, schedule, branch and booking facts. Never invent missing facts. Keep replies concise. Do not make medical diagnoses or give health clearance. For complaints, refunds, discounts, legal questions, or facts not in context, say an administrator needs to handle it.",
-      input: `Live context:\n${JSON.stringify(context)}\n\nParent message:\n${rawText}`
-    })
-  });
-
-  if (!response.ok) {
-    return locale === "uz"
-      ? "Hozir bu savolga avtomatik javob bera olmadim. Administrator bilan bog‘lanish kerak."
-      : "Сейчас не получилось ответить автоматически. Этот вопрос нужно передать администратору.";
-  }
-
-  const payload = await response.json();
-  const answer = extractResponseText(payload);
-
-  return (
-    answer ??
-    (locale === "uz"
-      ? "Bu savolni administratorga yuborish kerak."
-      : "Этот вопрос нужно передать администратору.")
-  );
+  // All bot replies are deterministic and use CRM data only.
+  // Unknown questions are referred to the administrator, not sent to an LLM.
+  return locale === "uz"
+    ? "Quyidagilardan birini yozing: narx, manzil, jadval yoki sinov holati. Boshqa savollar bo‘yicha SHARK TEAM administratoriga murojaat qiling."
+    : "Напишите: цена, адрес, расписание или статус пробного. По другим вопросам обратитесь к администратору SHARK TEAM.";
 }
