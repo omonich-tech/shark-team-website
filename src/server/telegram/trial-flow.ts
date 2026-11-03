@@ -7,7 +7,6 @@ import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
 
 type Locale = "ru" | "uz";
 type Reply = { text: string; replyMarkup?: Record<string, unknown> };
-const prisma = getPrisma();
 const button = (text: string, data: string) => ({ text, callback_data: data });
 const keyboard = (rows: ReturnType<typeof button>[][]) => ({ inline_keyboard: rows });
 const escapeHtml = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -25,18 +24,18 @@ const errorReply = (locale: Locale): Reply => ({
 const textOf = (locale: Locale, ru: string, uz: string) => locale === "uz" ? uz : ru;
 
 async function getDraft(userId: bigint) {
-  const draft = await prisma.telegramTrialDraft.findUnique({ where: { telegramUserId: userId } });
+  const draft = await getPrisma().telegramTrialDraft.findUnique({ where: { telegramUserId: userId } });
   return draft && !expired(draft) ? draft : null;
 }
 
 export async function beginTelegramTrial(userId: bigint, chatId: bigint, locale: Locale): Promise<Reply> {
-  await prisma.telegramTrialDraft.upsert({
+  await getPrisma().telegramTrialDraft.upsert({
     where: { telegramUserId: userId },
     update: { chatId, locale, step: "sport", sportId: null, branchId: null, childAge: null,
       sessionId: null, parentName: null, childName: null, phone: null, leadId: null },
     create: { telegramUserId: userId, chatId, locale, step: "sport" }
   });
-  const groups = await prisma.trainingGroup.findMany({
+  const groups = await getPrisma().trainingGroup.findMany({
     where: BOOKABLE_GROUP_WHERE,
     select: { sport: { select: { id: true, nameRu: true, nameUz: true } } }
   });
@@ -53,7 +52,7 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
   const draft = await getDraft(userId);
   const locale: Locale = draft ? (draft.locale === "uz" ? "uz" : "ru") : preferredLocale;
   if (data === "trial:cancel") {
-    await prisma.telegramTrialDraft.deleteMany({ where: { telegramUserId: userId } });
+    await getPrisma().telegramTrialDraft.deleteMany({ where: { telegramUserId: userId } });
     return cancelled(locale);
   }
   if (data === "trial:start") {
@@ -62,22 +61,22 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
   if (!draft || draft.chatId !== chatId) return errorReply(locale);
   const parts = data.split(":");
   if (parts[1] === "s" && draft.step === "sport" && parts.length === 3) {
-    const groups = await prisma.trainingGroup.findMany({
+    const groups = await getPrisma().trainingGroup.findMany({
       where: { ...BOOKABLE_GROUP_WHERE, sportId: parts[2] },
       select: { branch: { select: { id: true, publicNameRu: true, publicNameUz: true } } }
     });
     const branches = new Map(groups.map((g) => [g.branch.id, g.branch]));
     if (!branches.size) return errorReply(locale);
-    await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { sportId: parts[2], step: "branch" } });
+    await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { sportId: parts[2], step: "branch" } });
     return {
       text: textOf(locale, "Выберите филиал:", "Filialni tanlang:"),
       replyMarkup: keyboard([...branches.values()].map(b => [button(locale === "uz" ? b.publicNameUz : b.publicNameRu, "trial:b:" + b.id)]).concat([cancelRow(locale)]))
     };
   }
   if (parts[1] === "b" && draft.step === "branch" && draft.sportId && parts.length === 3) {
-    const count = await prisma.trainingGroup.count({ where: { ...BOOKABLE_GROUP_WHERE, sportId: draft.sportId, branchId: parts[2] } });
+    const count = await getPrisma().trainingGroup.count({ where: { ...BOOKABLE_GROUP_WHERE, sportId: draft.sportId, branchId: parts[2] } });
     if (!count) return errorReply(locale);
-    await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { branchId: parts[2], step: "age" } });
+    await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { branchId: parts[2], step: "age" } });
     const ages = Array.from({ length: 12 }, (_, i) => i + 6);
     const rows = Array.from({ length: 4 }, (_, row) => ages.slice(row * 3, row * 3 + 3).map(age => button(String(age), "trial:a:" + age)));
     return { text: textOf(locale, "Сколько лет ребёнку?", "Farzandingiz necha yoshda?"), replyMarkup: keyboard([...rows, cancelRow(locale)]) };
@@ -86,15 +85,15 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
     const age = Number(parts[2]);
     if (!Number.isInteger(age) || age < 6 || age > 17) return errorReply(locale);
     const [sport, branch] = await Promise.all([
-      prisma.sport.findUnique({ where: { id: draft.sportId }, select: { slug: true } }),
-      prisma.branch.findUnique({ where: { id: draft.branchId }, select: { slug: true } })
+      getPrisma().sport.findUnique({ where: { id: draft.sportId }, select: { slug: true } }),
+      getPrisma().branch.findUnique({ where: { id: draft.branchId }, select: { slug: true } })
     ]);
     if (!sport || !branch) return errorReply(locale);
     const options = await getTrialOptions(age, sport.slug, branch.slug);
     if (!options.ok || !options.bookingAvailable || !options.sessions.length) {
       return { text: textOf(locale, "Свободных пробных занятий для этого возраста нет. Нажмите /start для другого выбора.", "Bu yosh uchun bo‘sh sinov mashg‘uloti yo‘q. Boshqa variant uchun /start ni bosing.") };
     }
-    await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { childAge: age, step: "session" } });
+    await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { childAge: age, step: "session" } });
     return {
       text: textOf(locale, "Выберите дату пробного занятия:", "Sinov mashg‘uloti sanasini tanlang:"),
       replyMarkup: keyboard(options.sessions.slice(0, 8).map(session =>
@@ -103,20 +102,20 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
     };
   }
   if (parts[1] === "t" && draft.step === "session" && draft.sportId && draft.branchId && draft.childAge && parts.length === 3) {
-    const session = await prisma.trainingSession.findUnique({
+    const session = await getPrisma().trainingSession.findUnique({
       where: { id: parts[2] },
       select: { group: { select: { sportId: true, branchId: true, ageMin: true, ageMax: true } }, startsAt: true, trialBookingEnabled: true, trialCapacity: true }
     });
     if (!session || session.group.sportId !== draft.sportId || session.group.branchId !== draft.branchId ||
         draft.childAge < session.group.ageMin || draft.childAge > session.group.ageMax ||
         !session.trialBookingEnabled || !session.trialCapacity || session.startsAt <= new Date()) return errorReply(locale);
-    await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { sessionId: parts[2], step: "parent" } });
+    await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { sessionId: parts[2], step: "parent" } });
     return { text: textOf(locale, "Напишите имя родителя (минимум 2 символа):", "Ota-onaning ismini kiriting (kamida 2 belgi):") };
   }
   if (data === "trial:confirm" && draft.step === "confirm" && draft.sessionId &&
     draft.childAge && draft.childName && draft.parentName && draft.phone) {
     // Atomic step transition prevents duplicate creation on repeated Telegram callbacks.
-    const claimed = await prisma.telegramTrialDraft.updateMany({
+    const claimed = await getPrisma().telegramTrialDraft.updateMany({
       where: { telegramUserId: userId, step: "confirm" },
       data: { step: "processing" }
     });
@@ -130,28 +129,28 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
           utmSource: "telegram", landingPage: "telegram-bot"
         });
         if (!created.ok) {
-          await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "session" } });
+          await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "session" } });
           return { text: textOf(locale, "Занятие недоступно или данные неверны. Нажмите /start и выберите другое.", "Mashg‘ulot mavjud emas. /start orqali qayta tanlang.") };
         }
         leadId = created.lead.id;
-        await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { leadId } });
-        await prisma.lead.update({ where: { id: leadId }, data: { source: "telegram" } });
+        await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { leadId } });
+        await getPrisma().lead.update({ where: { id: leadId }, data: { source: "telegram" } });
       }
       const reserved = await reserveTrialBooking(leadId);
       if (!reserved.ok) {
-        await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "failed" } });
+        await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "failed" } });
         return { text: textOf(locale,
           "Не удалось забронировать место (" + reserved.error + "). Новая запись: /start.",
           "Joyni band qilib bo‘lmadi (" + reserved.error + "). Qayta yozilish: /start.") };
       }
       await recordLeadFunnelEvent({ leadId, eventName: "lead_created", dedupeKey: "lead:" + leadId + ":created" });
       await recordLeadFunnelEvent({ leadId, eventName: "trial_booking_created", bookingId: reserved.booking.id, dedupeKey: "booking:" + reserved.booking.id + ":created" });
-      await prisma.telegramContact.upsert({
+      await getPrisma().telegramContact.upsert({
         where: { telegramUserId: userId },
         update: { leadId, chatId, locale, lastMessageAt: new Date() },
         create: { telegramUserId: userId, chatId, locale, leadId }
       });
-      await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "complete" } });
+      await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "complete" } });
       const free = reserved.booking.status === "CONFIRMED";
       return {
         text: free
@@ -164,7 +163,7 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
     } catch (error) {
       console.error("Telegram trial confirmation failed", error);
       // Keep the leadId to avoid duplicating it on retry.
-      await prisma.telegramTrialDraft.updateMany({ where: { telegramUserId: userId, step: "processing" }, data: { step: "confirm" } });
+      await getPrisma().telegramTrialDraft.updateMany({ where: { telegramUserId: userId, step: "processing" }, data: { step: "confirm" } });
       return { text: textOf(locale, "Не получилось завершить запись. Нажмите «Подтвердить» ещё раз.", "Yozilishni tugatib bo‘lmadi. Tasdiqlashni qayta bosing."), replyMarkup: keyboard([[button(textOf(locale, "✅ Подтвердить", "✅ Tasdiqlash"), "trial:confirm")], cancelRow(locale)]) };
     }
   }
@@ -179,14 +178,14 @@ export async function handleTelegramTrialText(userId: bigint, text: string): Pro
   if (draft.step === "parent" || draft.step === "child") {
     if (value.length < 2) return { text: textOf(locale, "Введите имя длиной не менее 2 символов.", "Kamida 2 belgidan iborat ism kiriting.") };
     const field = draft.step === "parent" ? "parentName" : "childName";
-    await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { [field]: value, step: draft.step === "parent" ? "child" : "phone" } });
+    await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { [field]: value, step: draft.step === "parent" ? "child" : "phone" } });
     return { text: draft.step === "parent"
       ? textOf(locale, "Как зовут ребёнка?", "Farzandingizning ismi nima?")
       : textOf(locale, "Укажите номер телефона родителя в формате +998XXXXXXXXX:", "Ota-onaning telefon raqamini +998XXXXXXXXX formatida kiriting:") };
   }
   const phone = normalizeUzbekPhone(value);
   if (!phone) return { text: textOf(locale, "Введите корректный номер Узбекистана: +998XXXXXXXXX.", "To‘g‘ri raqamni kiriting: +998XXXXXXXXX.") };
-  await prisma.telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { phone, step: "confirm" } });
+  await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { phone, step: "confirm" } });
   const summary = textOf(locale, "Проверьте заявку:", "Arizani tekshiring:") + "\n" +
     escapeHtml(draft.parentName ?? "") + " · " + escapeHtml(phone) + "\n" +
     escapeHtml(draft.childName ?? "") + ", " + draft.childAge;
