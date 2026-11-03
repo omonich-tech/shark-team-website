@@ -1274,7 +1274,7 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  if (text && /^\\/(?:start|menu)(?:@[A-Za-z0-9_]+)?$/.test(text)) {
+  if (text && /^\/(?:start|menu)(?:@[A-Za-z0-9_]+)?$/.test(text)) {
     const locale: "ru" | "uz" =
       contact?.locale === "uz" ||
       (!contact && message.from?.language_code?.toLowerCase().startsWith("uz"))
@@ -1282,14 +1282,14 @@ export async function POST(request: NextRequest) {
     await sendTelegramMessage({
       chatId: BigInt(chatId),
       text: locale === "uz"
-        ? "🏀 <b>SHARK TEAM</b>\\nKerakli bo‘limni tanlang. Sinov mashg‘ulotiga shu botda yozilishingiz mumkin."
-        : "🏀 <b>SHARK TEAM</b>\\nВыберите раздел. Запись на пробное доступна прямо в Telegram.",
+        ? "🏀 <b>SHARK TEAM</b>\nKerakli bo‘limni tanlang. Sinov mashg‘ulotiga shu botda yozilishingiz mumkin."
+        : "🏀 <b>SHARK TEAM</b>\nВыберите раздел. Запись на пробное доступна прямо в Telegram.",
       replyMarkup: telegramMainMenu(locale, Boolean(contact))
     });
     return NextResponse.json({ ok: true });
   }
 
-  if (text && /^\\/trial(?:@[A-Za-z0-9_]+)?$/.test(text)) {
+  if (text && /^\/trial(?:@[A-Za-z0-9_]+)?$/.test(text)) {
     const locale: "ru" | "uz" =
       contact?.locale === "uz" ||
       (!contact && message.from?.language_code?.toLowerCase().startsWith("uz"))
