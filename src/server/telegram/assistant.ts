@@ -163,7 +163,7 @@ export async function buildTelegramAssistantReply(
       : (locale === "uz" ? "administrator bilan aniqlashtiring" : "уточните у администратора");
     return locale === "uz"
       ? `Birinchi sinov mashg‘uloti: ${trialLabel}. Oylik abonement: ${subscriptionLabel}.`
-      : `Первое пробное занятие: ${trialLabel}. Абонемент: ${subscriptionLabel} в месяц.`;
+      : `Пробное занятие (первое): ${trialLabel}. Абонемент: ${subscriptionLabel} в месяц.`;
   }
 
   if (
