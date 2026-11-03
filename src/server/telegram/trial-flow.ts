@@ -5,6 +5,7 @@ import { createWebsiteLead, normalizeUzbekPhone } from "@/server/leads/create-we
 import { reserveTrialBooking } from "@/server/trial/reserve-trial-booking";
 import { resolveFirstTrialAmount } from "@/server/trial/first-trial-pricing";
 import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
+import { queueConfirmedTrialNotifications } from "@/server/notifications/telegram-notifications";
 
 type Locale = "ru" | "uz";
 type Reply = { text: string; replyMarkup?: Record<string, unknown> };
@@ -156,6 +157,18 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
         update: { leadId, chatId, locale, lastMessageAt: new Date() },
         create: { telegramUserId: userId, chatId, locale, leadId }
       });
+      if (reserved.booking.status === "CONFIRMED") {
+        const bookedSession = await getPrisma().trainingSession.findUnique({
+          where: { id: reserved.booking.sessionId },
+          select: { startsAt: true, endsAt: true }
+        });
+        if (bookedSession) {
+          await queueConfirmedTrialNotifications({
+            bookingId: reserved.booking.id, leadId,
+            startsAt: bookedSession.startsAt, endsAt: bookedSession.endsAt
+          });
+        }
+      }
       await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "complete", parentName: null, childName: null, phone: null } });
       const free = reserved.booking.status === "CONFIRMED";
       return {
