@@ -98,6 +98,16 @@ async function main() {
     dashboardHtml.includes("SHARK TEAM COACH"),
     "Coach dashboard content missing"
   );
+  assert(
+    dashboardHtml.includes("Записаны на пробное"),
+    "Coach dashboard upcoming trial section missing"
+  );
+  if (booking.session.startsAt >= new Date()) {
+    assert(
+      dashboardHtml.includes("Coach Trial Child"),
+      "Confirmed future trial child missing from coach dashboard"
+    );
+  }
 
   const groups = await fetch(`${baseUrl}/coach/groups`, { headers });
   const groupsHtml = await groups.text();
