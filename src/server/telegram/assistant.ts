@@ -4,6 +4,8 @@ import {
   TrialBookingStatus
 } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
+import { findEffectiveGroupPrice } from "@/server/public-data/pricing";
+import { resolveFirstTrialAmount } from "@/server/trial/first-trial-pricing";
 
 function formatDate(value: Date, locale: "ru" | "uz") {
   return new Intl.DateTimeFormat(locale === "uz" ? "uz-UZ" : "ru-RU", {
@@ -117,25 +119,28 @@ export async function buildTelegramAssistantReply(
     }
   });
 
-  const branch = await prisma.branch.findUnique({
-    where: { id: "BR-SCHOOL-117-01" }
-  });
+  // Resolve location from the parent's current booking or linked lead.
+  // Never answer with an unrelated branch's address or prices.
+  const selectedGroupId = upcomingTrial?.session.groupId ?? contact.lead?.groupId;
+  const selectedGroup = selectedGroupId
+    ? await prisma.trainingGroup.findUnique({
+        where: { id: selectedGroupId },
+        select: { id: true, branchId: true, sportId: true }
+      })
+    : null;
+  const selectedBranchId =
+    selectedGroup?.branchId ?? upcomingTrial?.session.group.branchId ??
+    contact.lead?.branchId ?? null;
+  const branch = selectedBranchId
+    ? await prisma.branch.findUnique({ where: { id: selectedBranchId } })
+    : null;
 
-  const prices = await prisma.price.findMany({
-    where: {
-      status: LifecycleStatus.ACTIVE,
-      branchId: "BR-SCHOOL-117-01",
-      validFrom: { lte: new Date() },
-      OR: [{ validTo: null }, { validTo: { gt: new Date() } }]
-    }
-  });
-
-  const trialPrice = prices.find(
-    (price) => price.productType === PriceProductType.TRIAL
-  );
-  const subscriptionPrice = prices.find(
-    (price) => price.productType === PriceProductType.SUBSCRIPTION
-  );
+  const subscriptionPrice = selectedGroup
+    ? await findEffectiveGroupPrice(prisma, selectedGroup, PriceProductType.SUBSCRIPTION)
+    : null;
+  const trialAmount = selectedGroup
+    ? await resolveFirstTrialAmount(prisma, selectedGroup.id)
+    : null;
 
   if (
     includesAny(text, [
@@ -148,9 +153,17 @@ export async function buildTelegramAssistantReply(
       "to‘lov"
     ])
   ) {
+    const trialLabel = trialAmount === null
+      ? (locale === "uz" ? "guruhni aniqlashtiring" : "уточните группу")
+      : trialAmount === 0
+        ? (locale === "uz" ? "bepul" : "бесплатно")
+        : formatMoney(trialAmount) + " UZS";
+    const subscriptionLabel = subscriptionPrice
+      ? formatMoney(subscriptionPrice.amount) + " UZS"
+      : (locale === "uz" ? "administrator bilan aniqlashtiring" : "уточните у администратора");
     return locale === "uz"
-      ? `Sinov mashg‘uloti: ${trialPrice ? formatMoney(trialPrice.amount) : "—"} UZS. Oylik abonement: ${subscriptionPrice ? formatMoney(subscriptionPrice.amount) : "—"} UZS.`
-      : `Пробное занятие: ${trialPrice ? formatMoney(trialPrice.amount) : "—"} UZS. Абонемент: ${subscriptionPrice ? formatMoney(subscriptionPrice.amount) : "—"} UZS в месяц.`;
+      ? `Birinchi sinov mashg‘uloti: ${trialLabel}. Oylik abonement: ${subscriptionLabel}.`
+      : `Первое пробное занятие: ${trialLabel}. Абонемент: ${subscriptionLabel} в месяц.`;
   }
 
   if (
@@ -163,9 +176,14 @@ export async function buildTelegramAssistantReply(
       "metro"
     ])
   ) {
+    if (!branch) {
+      return locale === "uz"
+        ? "Qaysi filial kerakligini aniqlashtiring. Manzilni tekshirib aytaman."
+        : "Уточните, какой филиал вас интересует, чтобы я назвал правильный адрес.";
+    }
     return locale === "uz"
-      ? `${branch?.publicNameUz ?? "SHARK TEAM"}: ${branch?.addressUz ?? ""}. Mo‘ljal: ${branch?.landmarkUz ?? ""}.`
-      : `${branch?.publicNameRu ?? "SHARK TEAM"}: ${branch?.addressRu ?? ""}. Ориентир: ${branch?.landmarkRu ?? ""}.`;
+      ? `${branch.publicNameUz}: ${branch.addressUz ?? "manzilni administratordan aniqlashtiring"}. Mo‘ljal: ${branch.landmarkUz ?? "—"}.`
+      : `${branch.publicNameRu}: ${branch.addressRu ?? "адрес уточняется у администратора"}. Ориентир: ${branch.landmarkRu ?? "—"}.`;
   }
 
   if (
@@ -180,7 +198,8 @@ export async function buildTelegramAssistantReply(
   ) {
     const groups = await prisma.trainingGroup.findMany({
       where: {
-        branchId: "BR-SCHOOL-117-01",
+        ...(selectedBranchId ? { branchId: selectedBranchId } : { id: "__unselected__" }),
+        ...(selectedGroup ? { id: selectedGroup.id } : {}),
         status: LifecycleStatus.ACTIVE
       },
       include: {
@@ -248,7 +267,7 @@ export async function buildTelegramAssistantReply(
             locale === "uz" ? branch.landmarkUz : branch.landmarkRu
         }
       : null,
-    trialPrice: trialPrice?.amount ?? null,
+    trialPrice: trialAmount,
     subscriptionPrice: subscriptionPrice?.amount ?? null,
     upcomingTrial: upcomingTrial
       ? {
