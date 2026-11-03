@@ -65,6 +65,14 @@ export async function runTelegramTrialSmoke() {
   assert(contact.lead.selectedSessionId === selection.sessionId, "Wrong booked session");
   const booking = await prisma.trialBooking.findFirst({ where: { leadId: contact.leadId! } });
   assert(booking, "Trial booking missing in CRM");
+  if (booking.status === "CONFIRMED") {
+    for (const suffix of ["confirmed", "reminder", "feedback"]) {
+      const notification = await prisma.notification.findUnique({
+        where: { dedupeKey: "trial:" + booking.id + ":" + suffix }
+      });
+      assert(notification?.leadId === contact.leadId, "Missing Telegram trial notification: " + suffix);
+    }
+  }
   const countBefore = await prisma.trialBooking.count({ where: { leadId: contact.leadId! } });
   await handleTelegramTrialCallback(userId, chatId, "trial:confirm");
   const countAfter = await prisma.trialBooking.count({ where: { leadId: contact.leadId! } });
