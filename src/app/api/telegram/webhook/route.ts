@@ -79,6 +79,7 @@ type TelegramUpdate = {
       id?: number;
       username?: string;
       first_name?: string;
+      language_code?: string;
     };
     message?: TelegramMessage;
   };
@@ -1137,7 +1138,10 @@ export async function POST(request: NextRequest) {
       }
       const userId = BigInt(update.callback_query.from.id);
       const chatId = BigInt(chat.id!);
-      const result = await handleTelegramTrialCallback(userId, chatId, trialData);
+      const result = await handleTelegramTrialCallback(
+        userId, chatId, trialData,
+        update.callback_query.from?.language_code?.toLowerCase().startsWith("uz") ? "uz" : "ru"
+      );
       await answerTelegramCallbackQuery({ callbackQueryId: update.callback_query.id });
       if (result) {
         await sendTelegramMessage({ chatId, text: result.text,
