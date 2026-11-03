@@ -225,10 +225,7 @@ export async function handleTelegramTrialText(userId: bigint, text: string): Pro
       "Сейчас через Telegram доступны только бесплатные пробные занятия. Выберите другую группу через /start.",
       "Hozir Telegram orqali faqat bepul sinov mashg‘ulotlari mavjud. /start orqali boshqa guruhni tanlang.") };
   }
-  const cost = firstTrialAmount === 0
-    ? textOf(locale, "Первое пробное: бесплатно", "Birinchi sinov: bepul")
-    : textOf(locale, "Пробное: " + firstTrialAmount.toLocaleString("ru-RU") + " сум (оплата после брони)",
-        "Sinov: " + firstTrialAmount.toLocaleString("ru-RU") + " so‘m (bron qilgandan so‘ng to‘lov)");
+  const cost = textOf(locale, "Первое пробное: бесплатно", "Birinchi sinov: bepul");
   const summary = textOf(locale, "Проверьте заявку:", "Arizani tekshiring:") + "\n" +
     escapeHtml(draft.parentName ?? "") + " · " + escapeHtml(phone) + "\n" +
     escapeHtml(draft.childName ?? "") + ", " + draft.childAge + "\n" + cost;
