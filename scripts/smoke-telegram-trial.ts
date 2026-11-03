@@ -16,7 +16,7 @@ function assert(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
 }
 
-async function main() {
+export async function runTelegramTrialSmoke() {
   const groups = await prisma.trainingGroup.findMany({
     where: BOOKABLE_GROUP_WHERE,
     include: { sport: true, branch: true },
@@ -72,8 +72,3 @@ async function main() {
   console.log("Telegram in-chat trial booking smoke passed.");
 }
 
-main().then(async () => prisma.$disconnect()).catch(async error => {
-  console.error(error);
-  await prisma.$disconnect();
-  process.exit(1);
-});
