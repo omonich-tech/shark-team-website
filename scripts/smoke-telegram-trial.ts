@@ -30,7 +30,7 @@ export async function runTelegramTrialSmoke() {
   } | null = null;
   for (const group of groups) {
     const options = await getTrialOptions(group.ageMin, group.sport.slug, group.branch.slug);
-    if (options.ok && options.bookingAvailable && options.sessions.length) {
+    if (options.ok && options.bookingAvailable && options.sessions.length && options.group.firstTrialAmount === 0) {
       selection = { sportId: group.sportId, branchId: group.branchId,
         age: group.ageMin, sessionId: options.sessions[0].id };
       break;
