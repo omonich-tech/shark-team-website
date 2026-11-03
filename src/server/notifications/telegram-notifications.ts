@@ -80,7 +80,7 @@ export async function queueHoldReminder(input: {
 export async function queueConfirmedTrialNotifications(input: {
   bookingId: string;
   leadId: string;
-  parentId: string;
+  parentId?: string | null;
   startsAt: Date;
   endsAt: Date;
 }) {
@@ -103,7 +103,7 @@ export async function queueConfirmedTrialNotifications(input: {
         dedupeKey: `trial:${input.bookingId}:confirmed`
       },
       update: {
-        parentId: input.parentId,
+        parentId: input.parentId ?? null,
         scheduledAt: now,
         status: NotificationStatus.PENDING,
         lastError: null
@@ -111,7 +111,7 @@ export async function queueConfirmedTrialNotifications(input: {
       create: {
         type: NotificationType.TRIAL_CONFIRMED,
         leadId: input.leadId,
-        parentId: input.parentId,
+        parentId: input.parentId ?? null,
         trialBookingId: input.bookingId,
         scheduledAt: now,
         dedupeKey: `trial:${input.bookingId}:confirmed`
@@ -122,7 +122,7 @@ export async function queueConfirmedTrialNotifications(input: {
         dedupeKey: `trial:${input.bookingId}:reminder`
       },
       update: {
-        parentId: input.parentId,
+        parentId: input.parentId ?? null,
         scheduledAt: reminderAt > now ? reminderAt : now,
         status: NotificationStatus.PENDING,
         lastError: null
@@ -130,7 +130,7 @@ export async function queueConfirmedTrialNotifications(input: {
       create: {
         type: NotificationType.TRIAL_REMINDER,
         leadId: input.leadId,
-        parentId: input.parentId,
+        parentId: input.parentId ?? null,
         trialBookingId: input.bookingId,
         scheduledAt: reminderAt > now ? reminderAt : now,
         dedupeKey: `trial:${input.bookingId}:reminder`
@@ -141,7 +141,7 @@ export async function queueConfirmedTrialNotifications(input: {
         dedupeKey: `trial:${input.bookingId}:feedback`
       },
       update: {
-        parentId: input.parentId,
+        parentId: input.parentId ?? null,
         scheduledAt: feedbackAt,
         status: NotificationStatus.PENDING,
         lastError: null
@@ -149,7 +149,7 @@ export async function queueConfirmedTrialNotifications(input: {
       create: {
         type: NotificationType.POST_TRIAL_FEEDBACK,
         leadId: input.leadId,
-        parentId: input.parentId,
+        parentId: input.parentId ?? null,
         trialBookingId: input.bookingId,
         scheduledAt: feedbackAt,
         dedupeKey: `trial:${input.bookingId}:feedback`
