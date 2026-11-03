@@ -3,6 +3,7 @@ import { BOOKABLE_GROUP_WHERE } from "@/server/public-data/visibility";
 import { getTrialOptions } from "@/server/trial/get-trial-options";
 import { createWebsiteLead, normalizeUzbekPhone } from "@/server/leads/create-website-lead";
 import { reserveTrialBooking } from "@/server/trial/reserve-trial-booking";
+import { backfillConfirmedTrialFamilies } from "@/server/trial/backfill-confirmed-trial-families";
 import { resolveFirstTrialAmount } from "@/server/trial/first-trial-pricing";
 import { recordLeadFunnelEvent } from "@/server/analytics/funnel";
 import { queueConfirmedTrialNotifications } from "@/server/notifications/telegram-notifications";
@@ -178,6 +179,11 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
             startsAt: bookedSession.startsAt, endsAt: bookedSession.endsAt
           });
         }
+      }
+      // Link the confirmed trial lead to Parent and Child immediately,
+      // so the coach can mark attendance without waiting for nightly maintenance.
+      if (reserved.booking.status === "CONFIRMED") {
+        await backfillConfirmedTrialFamilies(10, reserved.booking.sessionId);
       }
       await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "complete", parentName: null, childName: null, phone: null } });
       const free = reserved.booking.status === "CONFIRMED";
