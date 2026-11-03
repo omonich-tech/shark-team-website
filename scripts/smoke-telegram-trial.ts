@@ -2,6 +2,7 @@ import "dotenv/config";
 import { getPrisma } from "../src/lib/prisma";
 import { BOOKABLE_GROUP_WHERE } from "../src/server/public-data/visibility";
 import { getTrialOptions } from "../src/server/trial/get-trial-options";
+import { resolveFirstTrialAmount } from "../src/server/trial/first-trial-pricing";
 import {
   beginTelegramTrial,
   handleTelegramTrialCallback,
@@ -29,6 +30,14 @@ export async function runTelegramTrialSmoke() {
     sessionId: string;
   } | null = null;
   for (const group of groups) {
+    if ((await resolveFirstTrialAmount(prisma, group.id)) !== 0) continue;
+    // The legacy CI booking fixtures enable trial slots only on a paid group.
+    // Enable a separate free fixture without modifying that paid group's tests.
+    await prisma.trainingGroup.update({ where: { id: group.id }, data: { capacityTrial: 2 } });
+    await prisma.trainingSession.updateMany({
+      where: { groupId: group.id, startsAt: { gt: new Date() } },
+      data: { trialBookingEnabled: true, trialCapacity: 2 }
+    });
     const options = await getTrialOptions(group.ageMin, group.sport.slug, group.branch.slug);
     if (options.ok && options.bookingAvailable && options.sessions.length && options.group.firstTrialAmount === 0) {
       selection = { sportId: group.sportId, branchId: group.branchId,
