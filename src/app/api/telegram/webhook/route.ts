@@ -129,6 +129,44 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat("ru-RU").format(value);
 }
 
+function telegramMainMenu(locale: "ru" | "uz", linked: boolean) {
+  const lang = locale;
+  const root = "https://sharkteam.uz/" + lang;
+  const keyboard: Array<Array<{ text: string; url?: string; callback_data?: string }>> = [
+    [
+      {
+        text: locale === "uz" ? "🏀 Sinovga yozilish" : "🏀 Записаться на пробное",
+        url: root + "/trial"
+      }
+    ],
+    [
+      {
+        text: locale === "uz" ? "📅 Sport turlari va jadval" : "📅 Секции и расписание",
+        url: root + "/sports"
+      },
+      {
+        text: locale === "uz" ? "📍 Filiallar" : "📍 Филиалы",
+        url: root + "/branches"
+      }
+    ],
+    [
+      {
+        text: locale === "uz" ? "☎️ Bog‘lanish" : "☎️ Контакты",
+        url: root + "/contacts"
+      }
+    ]
+  ];
+  if (linked) {
+    keyboard.unshift([
+      {
+        text: locale === "uz" ? "👨‍👩‍👧 Ota-ona kabineti" : "👨‍👩‍👧 Кабинет родителя",
+        callback_data: "parent:home"
+      }
+    ]);
+  }
+  return { inline_keyboard: keyboard };
+}
+
 function adminChatId() {
   const value = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
   return value || null;
@@ -1213,6 +1251,21 @@ export async function POST(request: NextRequest) {
       telegramUserId: BigInt(telegramUserId)
     }
   });
+
+  if (text && /^\\/(?:start|menu)(?:@[A-Za-z0-9_]+)?$/.test(text)) {
+    const locale: "ru" | "uz" =
+      contact?.locale === "uz" ||
+      (!contact && message.from?.language_code?.toLowerCase().startsWith("uz"))
+        ? "uz" : "ru";
+    await sendTelegramMessage({
+      chatId: BigInt(chatId),
+      text: locale === "uz"
+        ? "🏀 <b>SHARK TEAM</b>\\nKerakli bo‘limni tanlang. Sinov mashg‘ulotiga saytda yozilishingiz mumkin."
+        : "🏀 <b>SHARK TEAM</b>\\nВыберите раздел. Записаться на пробное занятие можно на сайте.",
+      replyMarkup: telegramMainMenu(locale, Boolean(contact))
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   if (!contact) {
     await sendTelegramMessage({
