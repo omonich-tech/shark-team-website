@@ -210,21 +210,27 @@ export async function buildTelegramAssistantReply(
       orderBy: { ageMin: "asc" }
     });
 
-    const lines = groups.map((group) => {
-      const first = group.scheduleRules[0];
-      const start = first
-        ? `${String(Math.floor(first.startMinutes / 60)).padStart(2, "0")}:${String(first.startMinutes % 60).padStart(2, "0")}`
-        : "—";
-      const end = first
-        ? `${String(Math.floor(first.endMinutes / 60)).padStart(2, "0")}:${String(first.endMinutes % 60).padStart(2, "0")}`
-        : "—";
-
-      return `${group.ageMin}–${group.ageMax}: ${start}–${end}`;
-    });
-
+    const weekdayNames: Record<string, [string, string]> = {
+      MONDAY: ["пн", "du"], TUESDAY: ["вт", "se"],
+      WEDNESDAY: ["ср", "ch"], THURSDAY: ["чт", "pa"],
+      FRIDAY: ["пт", "ju"], SATURDAY: ["сб", "sha"],
+      SUNDAY: ["вс", "ya"]
+    };
+    const clock = (minutes: number) =>
+      `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    const lines = groups.flatMap((group) =>
+      group.scheduleRules.map((rule) =>
+        `${group.ageMin}–${group.ageMax}: ${weekdayNames[rule.weekday]?.[locale === "uz" ? 1 : 0] ?? rule.weekday} ${clock(rule.startMinutes)}–${clock(rule.endMinutes)}`
+      )
+    );
+    if (lines.length === 0) {
+      return locale === "uz"
+        ? "Ushbu filial uchun hozircha tasdiqlangan jadval yo‘q. Administrator bilan aniqlashtiring."
+        : "Для этого филиала пока нет подтверждённого расписания. Уточните у администратора.";
+    }
     return locale === "uz"
-      ? `Mashg‘ulotlar seshanba / payshanba / shanba:\n${lines.join("\n")}`
-      : `Занятия во вторник / четверг / субботу:\n${lines.join("\n")}`;
+      ? `Mashg‘ulotlar jadvali:\n${lines.join("\n")}`
+      : `Расписание тренировок:\n${lines.join("\n")}`;
   }
 
   if (
