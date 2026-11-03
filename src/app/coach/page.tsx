@@ -17,7 +17,7 @@ export default async function CoachDashboardPage() {
   const now = new Date();
   const today = dayRangeInTimeZone(now, "Asia/Tashkent");
 
-  const [todaySessions, upcomingSessions, pendingAssessments, overdueProgress] =
+  const [todaySessions, upcomingSessions, upcomingTrials, pendingAssessments, overdueProgress] =
     await Promise.all([
       prisma.trainingSession.findMany({
         where: {
@@ -62,6 +62,27 @@ export default async function CoachDashboardPage() {
           startsAt: "asc"
         },
         take: 8
+      }),
+      prisma.trialBooking.findMany({
+        where: {
+          status: TrialBookingStatus.CONFIRMED,
+          session: {
+            coachId: auth.coachId,
+            startsAt: { gte: today.start }
+          }
+        },
+        include: {
+          lead: true,
+          session: {
+            include: {
+              group: {
+                include: { branch: true, sport: true }
+              }
+            }
+          }
+        },
+        orderBy: { session: { startsAt: "asc" } },
+        take: 30
       }),
       prisma.trialBooking.findMany({
         where: {
@@ -161,6 +182,29 @@ export default async function CoachDashboardPage() {
               <span>{session.group.branch.publicNameRu}</span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="coach-section">
+        <div className="coach-section-head">
+          <h2>Записаны на пробное</h2>
+          <span>{upcomingTrials.length}</span>
+        </div>
+        <div className="coach-list">
+          {upcomingTrials.map((booking) => (
+            <Link
+              href={`/coach/sessions/${booking.sessionId}`}
+              className="coach-list-row"
+              key={booking.id}
+            >
+              <span>{booking.lead.childName} · {booking.lead.childAge} лет</span>
+              <strong>{formatCoachDate(booking.session.startsAt)}</strong>
+              <span>{booking.session.group.sport.nameRu} · {booking.session.group.branch.publicNameRu}</span>
+            </Link>
+          ))}
+          {upcomingTrials.length === 0 ? (
+            <div className="coach-empty">Подтверждённых записей на ближайшие пробные занятия пока нет.</div>
+          ) : null}
         </div>
       </section>
 
