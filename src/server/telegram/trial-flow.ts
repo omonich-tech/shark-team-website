@@ -150,7 +150,7 @@ export async function handleTelegramTrialCallback(userId: bigint, chatId: bigint
         update: { leadId, chatId, locale, lastMessageAt: new Date() },
         create: { telegramUserId: userId, chatId, locale, leadId }
       });
-      await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "complete" } });
+      await getPrisma().telegramTrialDraft.update({ where: { telegramUserId: userId }, data: { step: "complete", parentName: null, childName: null, phone: null } });
       const free = reserved.booking.status === "CONFIRMED";
       return {
         text: free
