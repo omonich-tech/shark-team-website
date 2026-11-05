@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,8 @@ function equal(a: string, b: string) {
  * Coaches must still log in with their own active CRM coach account.
  */
 export async function POST(request: NextRequest) {
-  const secret = process.env.COACH_TELEGRAM_WEBHOOK_SECRET;
+  const rawSecret = process.env.COACH_TELEGRAM_WEBHOOK_SECRET?.trim();
+  const secret = rawSecret ? createHash("sha256").update(rawSecret).digest("hex") : null;
   const token = process.env.COACH_TELEGRAM_BOT_TOKEN;
   if (!secret || !token) {
     return NextResponse.json({ ok: false, error: "COACH_BOT_NOT_CONFIGURED" }, { status: 503 });

@@ -1,13 +1,15 @@
+import { createHash } from "node:crypto";
 // Register only the dedicated coach bot during production builds.
 // The bot token and webhook secret never appear in logs or source control.
 const token = process.env.COACH_TELEGRAM_BOT_TOKEN?.trim();
-const secret = process.env.COACH_TELEGRAM_WEBHOOK_SECRET?.trim();
+const rawSecret = process.env.COACH_TELEGRAM_WEBHOOK_SECRET?.trim();
+const secret = rawSecret ? createHash("sha256").update(rawSecret).digest("hex") : null;
 const app = "https://sharkteam.uz";
 
 if (!token && !secret) {
   console.log("Coach bot not configured: skipping webhook registration.");
 } else {
-  if (!token || !secret || !/^[a-zA-Z0-9_-]{1,256}$/.test(secret)) {
+  if (!token || !secret) {
     throw new Error("Coach Telegram bot: token or valid secret is missing.");
   }
   const api = (process.env.TELEGRAM_API_BASE_URL || "https://api.telegram.org").replace(/\/$/, "") + "/bot" + token;
