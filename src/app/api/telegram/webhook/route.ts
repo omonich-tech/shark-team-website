@@ -158,9 +158,6 @@ function telegramMainMenu(locale: "ru" | "uz", linked: boolean) {
       }
     ]
   ];
-  keyboard.push([
-    { text: locale === "uz" ? "🏅 Murabbiy kabineti" : "🏅 Кабинет тренера", web_app: { url: "https://sharkteam.uz/miniapp?role=coach" } }
-  ]);
   if (linked) {
     keyboard.unshift([
       { text: locale === "uz" ? "📊 Farzand ko‘rsatkichlari" : "📊 Показатели ребёнка",
