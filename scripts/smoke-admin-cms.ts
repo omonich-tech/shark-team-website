@@ -622,6 +622,44 @@ async function main() {
     "Pending minor media leaked to public page"
   );
 
+  const noAccess = await fetch(baseUrl + "/api/admin/sandbox");
+  assert(noAccess.status === 401, "Sandbox API must reject unauthenticated access");
+  const sandbox = await fetch(baseUrl + "/api/admin/sandbox", {
+    method: "POST", headers: { Cookie: cookie }
+  });
+  const fixture = await sandbox.json();
+  assert(sandbox.ok && fixture.ok && fixture.username === "shark_sandbox_coach",
+    "Sandbox fixture provision failed: " + JSON.stringify(fixture));
+  const sandboxCoach = await prisma.coach.findUnique({
+    where: { id: fixture.coachId }, include: { account: true }
+  });
+  const sandboxBranch = await prisma.branch.findUnique({ where: { id: fixture.branchId } });
+  const synthetic = await prisma.trainingSession.findMany({ where: { groupId: fixture.groupId } });
+  assert(sandboxCoach?.status === "DRAFT" && sandboxBranch?.status === "DRAFT",
+    "Sandbox coach and branch must remain hidden from public");
+  assert(synthetic.length === 2, "Sandbox should have two sessions");
+  assert(sandboxCoach.account &&
+    await verifyCoachPassword(fixture.password, sandboxCoach.account.passwordSalt,
+      sandboxCoach.account.passwordHash), "Sandbox password invalid");
+  const trial = await prisma.trialBooking.findUnique({ where: { id: "BOOKING-SANDBOX" } });
+  assert(trial?.status === "CONFIRMED", "Sandbox trial missing");
+  const sandboxLogin = await fetch(baseUrl + "/api/coach/login", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: fixture.username, password: fixture.password })
+  });
+  assert(sandboxLogin.ok, "Draft sandbox coach cannot login to Coach Cabinet");
+  const coachCookie = cookieFrom(sandboxLogin);
+  const coachDashboard = await fetch(baseUrl + "/api/miniapp/dashboard?role=coach", {
+    headers: { Cookie: coachCookie }
+  });
+  const coachPayload = await coachDashboard.json();
+  assert(coachDashboard.ok && coachPayload.ok &&
+    coachPayload.sessions.some((item: { id: string }) => item.id === "SESSION-SANDBOX-LIVE"),
+    "Sandbox synthetic session missing from coach Mini App");
+  const publicGhost = await fetch(baseUrl + "/ru/branches");
+  assert(!(await publicGhost.text()).includes("Призрачный филиал"),
+    "Ghost branch leaked into public catalog");
+
   console.log("Admin CMS HTTP smoke test passed.");
 }
 
