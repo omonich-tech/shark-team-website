@@ -134,7 +134,7 @@ function formatMoney(value: number) {
 function telegramMainMenu(locale: "ru" | "uz", linked: boolean) {
   const lang = locale;
   const root = "https://sharkteam.uz/" + lang;
-  const keyboard: Array<Array<{ text: string; url?: string; callback_data?: string }>> = [
+  const keyboard: Array<Array<{ text: string; url?: string; callback_data?: string; web_app?: { url: string } }>> = [
     [
       {
         text: locale === "uz" ? "🏀 Sinovga yozilish" : "🏀 Записаться на пробное",
@@ -158,7 +158,14 @@ function telegramMainMenu(locale: "ru" | "uz", linked: boolean) {
       }
     ]
   ];
+  keyboard.push([
+    { text: locale === "uz" ? "🏅 Murabbiy kabineti" : "🏅 Кабинет тренера", web_app: { url: "https://sharkteam.uz/miniapp?role=coach" } }
+  ]);
   if (linked) {
+    keyboard.unshift([
+      { text: locale === "uz" ? "📊 Farzand ko‘rsatkichlari" : "📊 Показатели ребёнка",
+        web_app: { url: "https://sharkteam.uz/miniapp?role=parent" } }
+    ]);
     keyboard.unshift([
       {
         text: locale === "uz" ? "👨‍👩‍👧 Ota-ona kabineti" : "👨‍👩‍👧 Кабинет родителя",

@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { createHmac } from "node:crypto";
+import { verifyMiniAppInitData } from "../src/server/telegram/miniapp-auth";
 import {
   NotificationStatus,
   NotificationType
@@ -267,6 +269,31 @@ async function main() {
   });
 
   assert(usedToken, "Telegram link token was not consumed");
+
+  const telegramKey = process.env.TELEGRAM_BOT_TOKEN ?? "";
+  const signed = new URLSearchParams({
+    auth_date: String(Math.floor(Date.now() / 1000)),
+    user: JSON.stringify({ id: 777001, first_name: "CI Parent" })
+  });
+  const dataCheck = [...signed.entries()].sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => key + "=" + value).join("\n");
+  const miniSecret = createHmac("sha256", "WebAppData").update(telegramKey).digest();
+  signed.set("hash", createHmac("sha256", miniSecret).update(dataCheck).digest("hex"));
+  assert(verifyMiniAppInitData(signed.toString())?.id === 777001n,
+    "Telegram Mini App valid signature rejected");
+  signed.set("user", JSON.stringify({ id: 999999, first_name: "Forged" }));
+  assert(verifyMiniAppInitData(signed.toString()) === null, "Forged Mini App identity accepted");
+
+  const parentMini = await fetch(baseUrl + "/api/miniapp/dashboard?role=parent", {
+    headers: { "x-telegram-init-data": "invalid" }
+  });
+  assert(parentMini.status === 401, "Mini App parent dashboard must reject unsigned initData");
+  const coachMini = await fetch(baseUrl + "/api/miniapp/dashboard?role=coach");
+  assert(coachMini.status === 401, "Mini App coach dashboard must require coach login");
+  const verifiedParentMini = await fetch(baseUrl + "/api/miniapp/dashboard?role=parent", {
+    headers: { "x-telegram-init-data": signed.toString() }
+  });
+  assert(verifiedParentMini.status === 401, "Modified parent Mini App data must fail HTTP auth");
 
   await runTelegramTrialSmoke();
   console.log("Telegram HTTP smoke test passed.");
