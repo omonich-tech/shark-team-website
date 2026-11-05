@@ -72,6 +72,23 @@ export async function completeCoachTrainingSession(input: {
     }
   });
 
+  if (data.session.groupId === "GR-SANDBOX") {
+    await writeCoachAudit({
+      actorId: input.coachId, action: "COMPLETE_TRAINING_SESSION",
+      entityType: "TrainingSession", entityId: input.sessionId, before, after: updated
+    });
+    return {
+      ok: true as const, session: updated,
+      summary: {
+        participants: data.participants.length,
+        present: data.participants.filter(p => p.attendanceStatus === AttendanceStatus.PRESENT).length,
+        absent: data.participants.filter(p => p.attendanceStatus === AttendanceStatus.ABSENT).length,
+        excused: data.participants.filter(p => p.attendanceStatus === AttendanceStatus.EXCUSED).length,
+        absenceFollowUps: 0
+      }
+    };
+  }
+
   const participantIds = new Set(
     data.participants.map((participant) => participant.childId)
   );
