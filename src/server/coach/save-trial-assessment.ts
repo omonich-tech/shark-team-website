@@ -87,7 +87,9 @@ export async function saveTrialAssessment(input: TrialAssessmentInput) {
     }
   });
 
-  await notifyAdminTrialOutcomeIfReady(booking.id);
+  if (booking.id !== "BOOKING-SANDBOX") {
+    await notifyAdminTrialOutcomeIfReady(booking.id);
+  }
 
   return {
     ok: true as const,
