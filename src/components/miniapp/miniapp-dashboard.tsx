@@ -114,7 +114,7 @@ export function MiniAppDashboard() {
   return <main className="mini-shell">
     <header className="mini-top">
       <div className="mini-brand"><span className="mini-logo">S</span><div><strong>SHARK TEAM</strong><small>Спорт начинается здесь</small></div></div>
-      <div className="mini-role"><button className={role === "parent" ? "is-active" : ""} onClick={() => { setRole("parent"); setSelected(""); }}>Родитель</button><button className={role === "coach" ? "is-active" : ""} onClick={() => { setRole("coach"); setActiveTab("home"); }}>Тренер</button></div>
+      <div className="mini-role"><button className={role === "parent" ? "is-active" : ""} onClick={() => { setRole("parent"); setSelected(""); }}>Родитель</button><button className={role === "coach" ? "is-active" : ""} onClick={() => { setRole("coach");  }}>Тренер</button></div>
     </header>
     {error && <div className="mini-alert" role="alert">{error}</div>}
     {busy && <p className="mini-muted">Обновление данных…</p>}
