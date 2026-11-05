@@ -109,6 +109,15 @@ async function main() {
     );
   }
 
+  const miniappCoach = await fetch(baseUrl + "/api/miniapp/dashboard?role=coach&sessionId=" + encodeURIComponent(booking.sessionId), { headers });
+  const miniappCoachData = await miniappCoach.json();
+  assert(miniappCoach.ok && miniappCoachData.ok && miniappCoachData.role === "coach",
+    "Authenticated coach Mini App dashboard failed");
+  assert(miniappCoachData.sessions.some((s: { id: string }) => s.id === booking.sessionId),
+    "Coach Mini App did not show assigned trial session");
+  assert(miniappCoachData.participants.some((p: { childName: string }) => p.childName === "Coach Trial Child"),
+    "Coach Mini App attendance missing trial child");
+
   const groups = await fetch(`${baseUrl}/coach/groups`, { headers });
   const groupsHtml = await groups.text();
   assert(groups.ok, "Coach groups page failed");
