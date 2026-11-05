@@ -652,9 +652,9 @@ async function main() {
   const coachDashboard = await fetch(baseUrl + "/api/miniapp/dashboard?role=coach", {
     headers: { Cookie: coachCookie }
   });
-  const coachPayload = await coachDashboard.json();
-  assert(coachDashboard.ok && coachPayload.ok &&
-    coachPayload.sessions.some((item: { id: string }) => item.id === "SESSION-SANDBOX-LIVE"),
+  const sandboxMiniPayload = await coachDashboard.json();
+  assert(coachDashboard.ok && sandboxMiniPayload.ok &&
+    sandboxMiniPayload.sessions.some((item: { id: string }) => item.id === "SESSION-SANDBOX-LIVE"),
     "Sandbox synthetic session missing from coach Mini App");
   const publicGhost = await fetch(baseUrl + "/ru/branches");
   assert(!(await publicGhost.text()).includes("Призрачный филиал"),
