@@ -21,3 +21,8 @@ if (process.env.VERCEL_ENV === "production") {
 }
 
 run("npm", ["run", "build"]);
+
+if (process.env.VERCEL_ENV === "production") {
+  console.log("Production build: checking dedicated coach Telegram webhook.");
+  run("node", ["scripts/setup-coach-webhook.mjs"]);
+}
