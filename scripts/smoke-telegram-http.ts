@@ -276,7 +276,7 @@ async function main() {
     user: JSON.stringify({ id: 777001, first_name: "CI Parent" })
   });
   const dataCheck = [...signed.entries()].sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => key + "=" + value).join("\\n");
+    .map(([key, value]) => key + "=" + value).join("\n");
   const miniSecret = createHmac("sha256", "WebAppData").update(telegramKey).digest();
   signed.set("hash", createHmac("sha256", miniSecret).update(dataCheck).digest("hex"));
   assert(verifyMiniAppInitData(signed.toString())?.id === 777001n,
