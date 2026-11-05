@@ -135,7 +135,7 @@ export async function markCoachAttendance(input: {
       await skipRegularAbsenceNotice(attendance.id);
     }
 
-    await refreshAttendanceRiskAlert({
+    if (data.session.groupId !== "GR-SANDBOX") await refreshAttendanceRiskAlert({
       childId: input.childId,
       groupId: data.session.groupId,
       now
