@@ -39,7 +39,7 @@ export default async function AdminCoachesPage() {
             Профили, направления, филиалы, публичные данные и доступ в кабинет тренера.
           </p>
         </div>
-        <span className="admin-count">{coaches.length} тренеров</span>
+        <div className="admin-branch-head-actions"><Link className="button secondary dark" href="/admin/sandbox">Тестовая лаборатория →</Link><span className="admin-count">{coaches.length} тренеров</span></div>
       </div>
 
       <section className="admin-panel admin-editor-panel">
