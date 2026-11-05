@@ -8,11 +8,11 @@
 - Read API: `GET /api/miniapp/dashboard?role=parent|coach`.
 - Coach attendance write: `POST /api/miniapp/dashboard` using existing `markCoachAttendance` authorization/business logic.
 - Parent indicators are database-derived: 90-day attendance among **marked** lessons, actual subscription status/next due date, upcoming sessions, latest six recorded progress assessments, trial history. Missing data is shown as missing, not invented.
-- Coach sees assigned sessions, confirmed trial signups and per-session attendance; full assessments/session completion remain in existing web cabinet.
+- Coach sees assigned sessions, confirmed trial signups, per-session attendance and can submit trial assessments and complete sessions through existing secured CRM endpoints. Detailed historical views remain in the web cabinet.
 
 ## Next iterations
 
-1. Build native session completion, reasons for absence and trial assessments into Mini App.
+1. Improve absence reason details, approval controls and complete assessment history in Mini App.
 2. Add parent absence request, subscription history and notifications preferences.
 3. Introduce dedicated coach Telegram bot only after bot credentials/ownership and role provisioning are configured. Keep a single CRM/database.
 4. Real-device QA in Telegram iOS and Android, including expired initData, login, role switching and two-child families.
