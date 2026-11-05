@@ -33,8 +33,8 @@ const statusName: Record<string, string> = {
   PRESENT: "Присутствует", ABSENT: "Отсутствует", EXCUSED: "Уважительная причина"
 };
 
-export function MiniAppDashboard() {
-  const [role, setRole] = useState<ViewRole>("parent");
+export function MiniAppDashboard({ initialRole }: { initialRole: ViewRole }) {
+  const [role, setRole] = useState<ViewRole>(initialRole);
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,7 +49,6 @@ export function MiniAppDashboard() {
   useEffect(() => {
     window.Telegram?.WebApp?.ready?.();
     window.Telegram?.WebApp?.expand?.();
-    if (new URLSearchParams(window.location.search).get("role") === "coach") setRole("coach");
   }, []);
 
   const load = useCallback(async (currentRole: ViewRole, sessionId?: string) => {
@@ -81,7 +80,10 @@ export function MiniAppDashboard() {
     } finally { setBusy(false); }
   }, []);
 
-  useEffect(() => { void load(role, selected || undefined); }, [role, selected, load]);
+  useEffect(() => {
+    const handle = window.setTimeout(() => { void load(role, selected || undefined); }, 0);
+    return () => window.clearTimeout(handle);
+  }, [role, selected, load]);
 
   async function signIn(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError("");
