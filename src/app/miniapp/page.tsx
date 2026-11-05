@@ -9,6 +9,9 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
-export default function MiniAppPage() {
-  return <><Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" /><MiniAppDashboard /></>;
+export default async function MiniAppPage({
+  searchParams
+}: { searchParams: Promise<{ role?: string }> }) {
+  const params = await searchParams;
+  return <><Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" /><MiniAppDashboard initialRole={params.role === "coach" ? "coach" : "parent"} /></>;
 }
