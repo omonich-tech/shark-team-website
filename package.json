@@ -70,7 +70,8 @@
     "smoke:content-cms": "tsx scripts/smoke-content-cms.ts",
     "smoke:seo": "tsx scripts/smoke-seo.ts",
     "smoke:production:read-only": "node scripts/smoke-production-read-only.mjs",
-    "visual:admin-sessions": "tsx scripts/visual-admin-sessions.ts"
+    "visual:admin-sessions": "tsx scripts/visual-admin-sessions.ts",
+    "telegram:coach:configure": "tsx scripts/configure-coach-telegram-webhook.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
