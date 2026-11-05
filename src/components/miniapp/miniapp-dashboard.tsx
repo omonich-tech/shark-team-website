@@ -7,7 +7,7 @@ declare global { interface Window { Telegram?: { WebApp?: TelegramWebApp } } }
 
 type Session = { id: string; startsAt: string; endsAt: string; status: string; group: string; sport: string; branch: string;
   trialBookings: { id: string; childName: string; childAge: number }[] };
-type Participant = { childId: string; childName: string; parentName: string; source: string; attendanceStatus: string | null };
+type Participant = { childId: string; childName: string; parentName: string; source: string; attendanceStatus: string | null; trialBookingId: string | null; assessmentCompleted: boolean };
 type CoachData = { ok: true; role: "coach"; coachName: string; sessions: Session[]; participants: Participant[] | null };
 type ParentChild = { id: string; name: string; attendance: { present: number; marked: number; percent: number | null };
   enrollments: { id: string; group: string; sport: string; branch: string; status: string; periodEnd: string | null;
@@ -42,6 +42,9 @@ export function MiniAppDashboard() {
   const [childId, setChildId] = useState("");
   const [login, setLogin] = useState({ username: "", password: "" });
   const [loginNeeded, setLoginNeeded] = useState(false);
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
+  const [scores, setScores] = useState<Record<string, number>>({ ability: 3, coordination: 3, discipline: 3, motivation: 3, physicalPreparation: 3, psychologicalReadiness: 3 });
+  const [comment, setComment] = useState("");
 
   useEffect(() => {
     window.Telegram?.WebApp?.ready?.();
@@ -104,6 +107,31 @@ export function MiniAppDashboard() {
     } catch { setError("Ошибка сохранения отметки."); } finally { setBusy(false); }
   }
 
+  async function completeSession() {
+    if (!selected) return;
+    setBusy(true); setError("");
+    try {
+      const res = await fetch("/api/coach/sessions/" + encodeURIComponent(selected) + "/complete", { method: "POST" });
+      if (!res.ok) { setError("Не удалось завершить тренировку. Проверьте, отмечены ли все ученики и началась ли тренировка."); return; }
+      await load("coach", selected);
+    } catch { setError("Ошибка завершения тренировки."); } finally { setBusy(false); }
+  }
+
+  async function saveAssessment(event: React.FormEvent) {
+    event.preventDefault();
+    if (!assessmentId) return;
+    setBusy(true); setError("");
+    try {
+      const res = await fetch("/api/coach/trials/" + encodeURIComponent(assessmentId) + "/assessment", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...scores, coachComment: comment })
+      });
+      if (!res.ok) { setError("Не удалось сохранить оценку. Ребёнок должен быть отмечен как присутствовавший."); return; }
+      setAssessmentId(null); setComment("");
+      await load("coach", selected);
+    } catch { setError("Ошибка сохранения оценки."); } finally { setBusy(false); }
+  }
+
   const parent = data?.role === "parent" ? data : null;
   const coach = data?.role === "coach" ? data : null;
   const child = parent?.children.find(c => c.id === childId) ?? parent?.children[0];
@@ -147,7 +175,20 @@ export function MiniAppDashboard() {
         <article className="mini-stat"><span>Ближайшие занятия</span><strong>{coach.sessions.filter(s => s.status === "SCHEDULED").length}</strong><small>В доступном расписании</small></article>
         <article className="mini-stat"><span>Пробные</span><strong>{coach.sessions.reduce((sum, s) => sum + s.trialBookings.length, 0)}</strong><small>Подтверждённые записи</small></article>
         <article className="mini-panel mini-wide"><h2>Выберите тренировку</h2>{coach.sessions.map(s => <button key={s.id} className={"mini-session " + (selected === s.id ? "is-active" : "")} onClick={() => setSelected(s.id)}><span><strong>{s.sport} · {s.group}</strong><small>{s.branch} · Пробных: {s.trialBookings.length}</small></span><b>{ruDate(s.startsAt)}</b></button>)}{!coach.sessions.length && <p className="mini-muted">Тренировок пока нет.</p>}</article>
-        {selectedSession && <article className="mini-panel mini-wide"><h2>Посещаемость</h2><p className="mini-muted">{selectedSession.sport} · {ruDate(selectedSession.startsAt)}</p>{coach.participants?.map(p => <div className="mini-person" key={p.childId}><div><strong>{p.childName}</strong><small>{p.source === "TRIAL" ? "Пробное" : "Ученик группы"} · {statusName[p.attendanceStatus ?? ""] ?? "Не отмечен"}</small></div><div className="mini-mark"><button title="Присутствует" aria-label={"Присутствует: " + p.childName} className={p.attendanceStatus === "PRESENT" ? "is-active" : ""} onClick={() => void mark(p.childId, "PRESENT")} disabled={busy || selectedSession.status !== "SCHEDULED"}>✓</button><button title="Отсутствует" aria-label={"Отсутствует: " + p.childName} className={p.attendanceStatus === "ABSENT" ? "is-active" : ""} onClick={() => void mark(p.childId, "ABSENT")} disabled={busy || selectedSession.status !== "SCHEDULED"}>×</button></div></div>)}{!coach.participants?.length && <p className="mini-muted">Участников пока нет.</p>}<p className="mini-muted">Завершение тренировки и подробная оценка доступны в полном кабинете CRM.</p><a className="mini-primary mini-link" href={"/coach/sessions/" + selectedSession.id}>Открыть полный журнал</a></article>}
+        {selectedSession && <article className="mini-panel mini-wide"><h2>Посещаемость</h2><p className="mini-muted">{selectedSession.sport} · {ruDate(selectedSession.startsAt)}</p>{coach.participants?.map(p => <div className="mini-person" key={p.childId}><div><strong>{p.childName}</strong><small>{p.source === "TRIAL" ? "Пробное" : "Ученик группы"} · {statusName[p.attendanceStatus ?? ""] ?? "Не отмечен"}</small></div><div className="mini-mark"><button title="Присутствует" aria-label={"Присутствует: " + p.childName} className={p.attendanceStatus === "PRESENT" ? "is-active" : ""} onClick={() => void mark(p.childId, "PRESENT")} disabled={busy || selectedSession.status !== "SCHEDULED"}>✓</button><button title="Отсутствует" aria-label={"Отсутствует: " + p.childName} className={p.attendanceStatus === "ABSENT" ? "is-active" : ""} onClick={() => void mark(p.childId, "ABSENT")} disabled={busy || selectedSession.status !== "SCHEDULED"}>×</button><button title="Уважительная причина" aria-label={"Уважительная причина: " + p.childName} className={p.attendanceStatus === "EXCUSED" ? "is-active" : ""} onClick={() => void mark(p.childId, "EXCUSED")} disabled={busy || selectedSession.status !== "SCHEDULED"}>—</button></div>{p.trialBookingId && p.attendanceStatus === "PRESENT" && <button type="button" className="mini-subaction" onClick={() => setAssessmentId(p.trialBookingId)}>{p.assessmentCompleted ? "Изменить оценку" : "Оценить пробное"}</button>}</div>)}{!coach.participants?.length && <p className="mini-muted">Участников пока нет.</p>}{assessmentId && <form className="mini-assessment" onSubmit={saveAssessment}>
+  <h3>Оценка пробного занятия</h3><p className="mini-muted">Шкала 1–5. Оценки сохраняются в CRM.</p>
+  {Object.keys(scores).map(key => <label key={key}>{labels[key] ?? key}
+    <select value={scores[key]} onChange={e => setScores(prev => ({ ...prev, [key]: Number(e.target.value) }))}>
+      {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} / 5</option>)}
+    </select></label>)}
+  <textarea placeholder="Комментарий тренера (необязательно)" value={comment} onChange={e => setComment(e.target.value)} maxLength={1000} rows={3}/>
+  <button className="mini-primary" type="submit" disabled={busy}>Сохранить оценку</button>
+  <button className="mini-subaction" type="button" onClick={() => setAssessmentId(null)}>Закрыть</button>
+</form>}
+{selectedSession.status === "SCHEDULED" && <button className="mini-primary mini-complete" type="button"
+  disabled={busy || !coach.participants?.length || coach.participants.some(p => !p.attendanceStatus)}
+  onClick={() => void completeSession()}>Завершить тренировку</button>}
+<p className="mini-muted">После завершения тренировки изменения посещаемости блокируются. Подробная история доступна в CRM.</p><a className="mini-primary mini-link" href={"/coach/sessions/" + selectedSession.id}>Открыть полный журнал</a></article>}
       </div>
     </>}
     {!data && !loginNeeded && !busy && <article className="mini-panel"><h2>SHARK TEAM</h2><p className="mini-muted">Откройте приложение через Telegram. Для тренера требуется вход в CRM.</p><button className="mini-primary" onClick={() => void load(role, selected || undefined)}>Повторить</button></article>}
